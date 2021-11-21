@@ -1,5 +1,5 @@
-use crate::data::dimensional_data::DimensionalData;
-use crate::data::units::*;
+use crate::dimensional_data::DimensionalData;
+use crate::units::*;
 use super::date_record::DateRecord;
 use super::parseable_data_record::ParseableDataRecord;
 

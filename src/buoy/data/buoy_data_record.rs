@@ -1,4 +1,4 @@
-use crate::data::units::*;
+use crate::units::*;
 
 use super::meteorological_data_record::MeteorologicalDataRecord;
 use super::wave_data_record::WaveDataRecord;
