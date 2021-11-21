@@ -1,0 +1,55 @@
+DART Station Listing - 09/25/2018 0117 UTC
+Station ID   Name                                                Latitude   Longitude   Water Depth   Deployment Start        Threshold   Owner
+21413        690 NM SE of Tokyo, Japan                           30.53333   152.13167   5880          2018-07-11 17:00:00.0   99          NDBC
+21414        184 NM SW of Adak, AK                               48.97033   178.21333   5479          2018-06-14 23:00:00.0   99          NDBC
+21415        175 NM S of Attu, Alaska                            50.16500   171.92334   4855          2017-06-29 12:15:24.0   30          NDBC
+21416        240 NM SE of Kamchatka Peninsula                    48.12167   163.32834   5831          2018-06-18 04:00:00.0   99          NDBC
+21418        450 NM NE of Tokyo, Japan                           38.74167   148.67000   5766          2017-07-06 16:15:00.0   30          NDBC
+21419        209 NM SE of Kuril Islands                          44.43500   155.71666   5282          2018-06-20 02:00:00.0   99          NDBC
+23218        Bay of Bengal                                        9.99889    88.50000   3350          2016-05-17 11:04:15.0   99          INTERNATIONAL
+23219        Bay of Bengal                                       13.49972    88.99777   2938          2016-05-13 15:04:17.0   99          INTERNATIONAL
+23223        Bay of Bengal                                       17.33333    89.48333   2351          2014-10-19 10:44:34.0   99          INTERNATIONAL
+23226        Arabian Sea                                         20.20000    67.33334   3080          2014-02-12 11:01:23.0   99          INTERNATIONAL
+23227        Bay of Bengal                                        6.25472    88.79195   3799          2011-10-06 16:06:58.0   99          INTERNATIONAL
+23228        Arabian Sea                                         20.79861    65.34667   2880          2011-10-06 15:59:50.0   99          INTERNATIONAL
+23401        BAY OF BENGAL - 600 NM WNW of Phuket, Thailand       8.86083    88.55806   3472          2017-10-12 09:00:00.0   99          INTERNATIONAL
+32067        Offshore Esmeraldas                                  0.65528   -81.22361   2965          2014-04-08 10:11:53.0   99          INTERNATIONAL
+32401        180 NM West of Iquique, Chile                      -20.46861   -73.43278   4794          2017-10-11 18:00:00.0   99          INTERNATIONAL
+32402        Coast of Caldera                                   -26.73472   -73.97750   4050          2017-10-13 16:00:00.0   99          INTERNATIONAL
+32403        Coast of Chile                                     -23.15361   -72.03416   4200          2018-01-31 12:00:00.0   99          INTERNATIONAL
+32404        Coast of Chile                                     -32.10528   -73.79528   4205          2017-12-14 10:22:31.0   99          INTERNATIONAL
+32411        710 NM West-Southwest of Panama City, Panama         4.96000   -90.87500   3284          2018-02-07 09:08:52.0   99          NDBC
+32412        630 NM Southwest of Lima, Peru                     -17.97944   -86.39194   4364          2017-05-30 20:15:00.0   30          NDBC
+32413        1000 NM WNW of Lima, Peru                           -7.40222   -93.53001   4018          2017-06-24 18:27:00.0   30          NDBC
+32489        Coast of Colombia                                    2.99833   -79.10166   2670          2017-02-08 08:59:00.0   99          INTERNATIONAL
+34420        Coast of Chile                                     -35.75834   -75.24333   4332          2017-12-13 10:26:33.0   99          INTERNATIONAL
+41420        690 NM East of Miami, FL                            23.44833   -67.29333   5772          2018-03-21 22:15:00.0   99          NDBC
+41421        320 NM North of San Juan, PR                        23.42083   -63.79083   5845          2018-03-23 07:15:00.0   30          NDBC
+41425        220 NM Southwest of Bermuda                         28.65167   -65.65166   5279          2018-03-18 08:06:09.0   30          NDBC
+42407        230 NM South of San Juan, PR                        15.27167   -68.20499   4493          2018-03-31 04:15:00.0   99          NDBC
+42409        300 NM Southeast of New Orleans, LA                 25.85556   -89.25750   3200          2018-02-18 22:01:00.0   99          NDBC
+43412        240 NM Southwest of Manzanillo, Mexico              16.03667  -106.97500   3205          2018-01-31 10:40:00.0   99          NDBC
+43413        360 NM South-Southwest of Acapulco, Mexico          11.00500  -100.09667   3741          2018-02-03 22:55:19.0   30          NDBC
+44401        790 NM NE of Bermuda                                37.60333   -50.06000   5492          2016-04-18 18:15:20.0   30          NDBC
+44402        136 NM SE of Fire Island, NY                        39.29667   -70.65334   2649          2016-04-24 02:15:39.0   30          NDBC
+46402        240 NM South of Dutch Harbor, AK                    51.02333  -164.06667   4768          2017-06-19 05:15:00.0   30          NDBC
+46403        230 NM Southeast of Shumagin Island, AK             52.66833  -156.97000   4537          2018-06-08 05:00:00.0   99          NDBC
+46404        230 NM West of Astoria, OR                          45.84833  -128.77499   2762          2018-05-22 19:15:00.0   99          NDBC
+46407        210 NM West of Coos Bay, OR                         42.70834  -127.82500   3269          2018-05-21 19:00:00.0   99          NDBC
+46408        NW Pacific South of AK                              49.64833  -169.88834   5415          2017-06-20 16:15:00.0   99          NDBC
+46409        240 NM Southeast of Kodiak, AK                      55.29333  -148.51167   4240          2018-06-06 00:00:00.0   99          NDBC
+46410        330 NM Southeast of Anchorage, AK                   57.65334  -143.77499   3783          2017-06-08 21:15:00.0   30          NDBC
+46411        150NM West of Mendocino Bay, CA                     39.32528  -127.06028   4319          2017-05-28 09:45:00.0   30          NDBC
+46412        190 NM West-Southwest of San Diego, CA              32.40000  -120.58167   3876          2018-05-17 01:15:08.0   30          NDBC
+46413        243NM South-Southeast of Adak Island, AK            48.00167  -174.20166   5614          2016-07-10 03:15:00.0   30          NDBC
+46414        160 NM Southeast of Chirikof Island, AK             53.72550  -152.48334   4667          2018-06-07 05:00:00.0   99          NDBC
+46415        370 NM Southwest of Juneau, AK                      52.98000  -139.95000   3615          2018-05-25 18:00:00.0   30          NDBC
+46419        300 NM West-Northwest of Seattle, WA                48.78833  -129.61667   2776          2017-06-03 17:15:58.0   30          NDBC
+51407        140 NM Southeast of Honolulu, HI                    19.55778  -156.53696   4770          2017-10-01 00:15:16.0   99          NDBC
+51425        370 NM NW of Apia, Samoa                            -9.50500  -176.26167   5000          2018-08-22 04:00:00.0   99          NDBC
+52401        610 NM Northeast of Saipan                          19.26556   155.75000   5574          2017-02-02 13:47:00.0   30          NDBC
+52402        790 NM Northwest of Kwajalein                       11.92611   153.90721   5886          2017-01-31 05:15:00.0   30          NDBC
+52403        430 NM Southwest of Truk                             4.05000   145.58833   4480          2018-07-24 02:00:00.0   99          NDBC
+52404        760 NM Northeast of Manila, Philippines             20.68444   132.16028   5915          2017-01-21 19:15:59.0   30          NDBC
+52405        740 NM West of Agana, Guam                          13.03350   132.15067   5900          2018-07-19 13:00:00.0   99          NDBC
+52406        450 NM Northeast of the Guadalcanal                 -5.33167   165.03018   1819          2018-08-07 03:00:00.0   99          NDBC

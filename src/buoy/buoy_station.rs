@@ -1,8 +1,7 @@
-use crate::data::location::Location;
+use crate::{location::Location, station::Station};
 use std::string::String;
-use serde::de::{Deserialize, Deserializer};
-use serde_xml_rs::de::from_reader;
-use serde_derive::*;
+use serde::{Deserialize, Deserializer, Serialize};
+use quick_xml::de::from_reader;
 
 #[repr(C)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -62,27 +61,6 @@ impl BuoyStation {
         }
     }
 
-    pub fn name(&self) -> String {
-        let mut name = self.location.name.split("-").map(|s| {
-            s.trim()
-        }).filter(|s| {
-            match s.parse::<i64>() {
-                Ok(_) => false, 
-                _ => true
-            }
-        }).collect::<Vec<&str>>().join("");
-
-        name = name.split_whitespace().filter(|s| {
-            if s.starts_with("(") {
-                false
-            } else {
-                true
-            }
-        }).collect::<Vec<&str>>().join(" ");
-
-        name
-    }
-
     pub fn is_active(&self) -> bool {
         self.has_meteorological_data || 
         self.has_currents_data || 
@@ -120,6 +98,37 @@ impl BuoyStation {
 
     pub fn secondary_spectral_wave_energy_data_url(&self) -> String {
         format!("https://www.ndbc.noaa.gov/data/realtime2/{}.swr2", self.station_id)
+    }
+}
+
+impl Station for BuoyStation {
+    fn id(&self) -> &str {
+        &self.station_id
+    }
+
+    fn location(&self) -> &Location {
+        &self.location
+    }
+
+    fn name(&self) -> String {
+        let mut name = self.location.name.split("-").map(|s| {
+            s.trim()
+        }).filter(|s| {
+            match s.parse::<i64>() {
+                Ok(_) => false, 
+                _ => true
+            }
+        }).collect::<Vec<&str>>().join("");
+
+        name = name.split_whitespace().filter(|s| {
+            if s.starts_with("(") {
+                false
+            } else {
+                true
+            }
+        }).collect::<Vec<&str>>().join(" ");
+
+        name
     }
 }
 

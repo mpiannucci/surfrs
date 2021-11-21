@@ -1,3 +1,4 @@
+pub mod buoy;
 pub mod dimensional_data;
 pub mod location;
 pub mod station;
