@@ -1,7 +1,7 @@
+use super::date_record::DateRecord;
+use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
 use crate::dimensional_data::DimensionalData;
 use crate::units::*;
-use super::date_record::DateRecord;
-use super::parseable_data_record::ParseableDataRecord;
 
 use std::str::FromStr;
 
@@ -21,20 +21,89 @@ pub struct WaveDataRecord {
 }
 
 impl ParseableDataRecord for WaveDataRecord {
-    fn from_data_row(row: &Vec<&str>) -> WaveDataRecord {
-        WaveDataRecord {
-            date: DateRecord::from_data_row(row),
-            wave_height: DimensionalData::from_raw_data(row[5], "wave height", Measurement::Length, Units::Metric),
-            swell_wave_height: DimensionalData::from_raw_data(row[6], "swell wave height", Measurement::Length, Units::Metric),
-            swell_wave_period: DimensionalData::from_raw_data(row[7], "swell period", Measurement::Time, Units::Metric),
-            wind_wave_height: DimensionalData::from_raw_data(row[8], "wind wave height", Measurement::Length, Units::Metric),
-            wind_wave_period: DimensionalData::from_raw_data(row[9], "wind period", Measurement::Time, Units::Metric),
-            swell_wave_direction: DimensionalData::from_raw_data(row[10], "swell wave direction", Measurement::Direction, Units::Metric),
-            wind_wave_direction: DimensionalData::from_raw_data(row[11], "wind wave direction", Measurement::Direction, Units::Metric),
+    fn from_data(raw_data: &str) -> Result<Vec<Self>, DataRecordParsingError> {
+        let mut reader = csv::ReaderBuilder::new()
+            .delimiter(b' ')
+            .trim(csv::Trim::All)
+            .comment(Some(b'#'))
+            .has_headers(false)
+            .flexible(true)
+            .from_reader(raw_data.as_bytes());
+
+        reader
+            .records()
+            .map(|result| -> Result<WaveDataRecord, DataRecordParsingError> {
+                if let Ok(record) = result {
+                    let filtered_record: Vec<&str> =
+                        record.iter().filter(|data| !data.is_empty()).collect();
+                    let mut wave_data = WaveDataRecord::from_data_row(&filtered_record)?;
+                    wave_data.to_units(&Units::Metric);
+                    return Ok(wave_data);
+                }
+                Err(DataRecordParsingError::InvalidData)
+            })
+            .collect()
+    }
+
+    fn from_data_row(row: &Vec<&str>) -> Result<WaveDataRecord, DataRecordParsingError> {
+        Ok(WaveDataRecord {
+            date: DateRecord::from_data_row(row)?,
+            wave_height: DimensionalData::from_raw_data(
+                row[5],
+                "wave height",
+                Measurement::Length,
+                Units::Metric,
+            ),
+            swell_wave_height: DimensionalData::from_raw_data(
+                row[6],
+                "swell wave height",
+                Measurement::Length,
+                Units::Metric,
+            ),
+            swell_wave_period: DimensionalData::from_raw_data(
+                row[7],
+                "swell period",
+                Measurement::Time,
+                Units::Metric,
+            ),
+            wind_wave_height: DimensionalData::from_raw_data(
+                row[8],
+                "wind wave height",
+                Measurement::Length,
+                Units::Metric,
+            ),
+            wind_wave_period: DimensionalData::from_raw_data(
+                row[9],
+                "wind period",
+                Measurement::Time,
+                Units::Metric,
+            ),
+            swell_wave_direction: DimensionalData::from_raw_data(
+                row[10],
+                "swell wave direction",
+                Measurement::Direction,
+                Units::Metric,
+            ),
+            wind_wave_direction: DimensionalData::from_raw_data(
+                row[11],
+                "wind wave direction",
+                Measurement::Direction,
+                Units::Metric,
+            ),
             steepness: Steepness::from_str(row[12]).unwrap_or(Steepness::NA),
-            average_wave_period: DimensionalData::from_raw_data(row[10], "average wave period", Measurement::Time, Units::Metric),
-            mean_wave_direction: DimensionalData::from_raw_data(row[11], "mean wave direction", Measurement::Direction, Units::Metric),
-        }
+            average_wave_period: DimensionalData::from_raw_data(
+                row[10],
+                "average wave period",
+                Measurement::Time,
+                Units::Metric,
+            ),
+            mean_wave_direction: DimensionalData::from_raw_data(
+                row[11],
+                "mean wave direction",
+                Measurement::Direction,
+                Units::Metric,
+            ),
+        })
     }
 }
 
@@ -61,11 +130,25 @@ mod tests {
         let raw_data = "2018 09 25 00 43  2.0  0.4 12.5  1.9  6.2   E   E VERY_STEEP  5.0 101";
         let data_row: Vec<&str> = raw_data.split_whitespace().collect();
 
-        let wave_data = WaveDataRecord::from_data_row(&data_row);
-        
+        let wave_data = WaveDataRecord::from_data_row(&data_row).unwrap();
+
         assert_eq!(wave_data.steepness, Steepness::VerySteep);
-        assert_eq!(wave_data.swell_wave_direction.value.unwrap_or(Direction::from_degree(270)).direction, CardinalDirection::East);
-        assert_eq!(wave_data.wind_wave_direction.value.unwrap_or(Direction::from_degree(270)).direction, CardinalDirection::East);
+        assert_eq!(
+            wave_data
+                .swell_wave_direction
+                .value
+                .unwrap_or(Direction::from_degree(270))
+                .direction,
+            CardinalDirection::East
+        );
+        assert_eq!(
+            wave_data
+                .wind_wave_direction
+                .value
+                .unwrap_or(Direction::from_degree(270))
+                .direction,
+            CardinalDirection::East
+        );
         assert!((wave_data.wave_height.value.unwrap_or(0.0) - 2.0).abs() < 0.0001);
         assert!((wave_data.swell_wave_height.value.unwrap_or(0.0) - 0.4).abs() < 0.0001);
     }

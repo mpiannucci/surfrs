@@ -1,4 +1,4 @@
-use super::parseable_data_record::ParseableDataRecord;
+use super::parseable_data_record::{ParseableDataRecord, DataRecordParsingError};
 
 #[derive(Clone, Debug)]
 pub struct DateRecord {
@@ -10,13 +10,13 @@ pub struct DateRecord {
 }
 
 impl ParseableDataRecord for DateRecord {
-    fn from_data_row(row: &Vec<&str>) -> DateRecord {
-        DateRecord {
+    fn from_data_row(row: &Vec<&str>) -> Result<DateRecord, DataRecordParsingError> {
+        Ok(DateRecord {
             year: row[0].clone().parse().unwrap(),
             month: row[1].clone().parse().unwrap(),
             day: row[2].clone().parse().unwrap(),
             hour: row[3].clone().parse().unwrap(),
             minute: row[4].clone().parse().unwrap(),
-        }
+        })
     }
 }

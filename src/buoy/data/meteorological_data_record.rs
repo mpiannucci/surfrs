@@ -2,7 +2,7 @@ use crate::dimensional_data::DimensionalData;
 use crate::units::*;
 
 use super::date_record::DateRecord;
-use super::parseable_data_record::ParseableDataRecord;
+use super::parseable_data_record::{ParseableDataRecord, DataRecordParsingError};
 
 #[derive(Clone, Debug)]
 pub struct MeteorologicalDataRecord {
@@ -24,9 +24,30 @@ pub struct MeteorologicalDataRecord {
 }
 
 impl ParseableDataRecord for MeteorologicalDataRecord {
-    fn from_data_row(row: &Vec<&str>) -> MeteorologicalDataRecord {
-        MeteorologicalDataRecord {
-            date: DateRecord::from_data_row(row),
+    fn from_data(data: &str) -> Result<Vec<MeteorologicalDataRecord>, DataRecordParsingError> {
+        let mut reader = csv::ReaderBuilder::new()
+            .delimiter(b' ')
+            .trim(csv::Trim::All)
+            .comment(Some(b'#'))
+            .has_headers(false)
+            .flexible(true)
+            .from_reader(data.as_bytes());
+
+        reader.records().map(|result| -> Result<MeteorologicalDataRecord, DataRecordParsingError> {
+            if let Ok(record) = result {
+                let filtered_record: Vec<&str> = record.iter().filter(|data| !data.is_empty()).collect();
+                let mut met_data = MeteorologicalDataRecord::from_data_row(&filtered_record)?;
+                met_data.to_units(&Units::Metric);
+                return Ok(met_data);
+            }
+            Err(DataRecordParsingError::InvalidData)
+        })
+        .collect()
+    }
+
+    fn from_data_row(row: &Vec<&str>) -> Result<MeteorologicalDataRecord, DataRecordParsingError> {
+        Ok(MeteorologicalDataRecord {
+            date: DateRecord::from_data_row(row)?,
             wind_direction: DimensionalData::from_raw_data(row[5], "wind direction", Measurement::Direction, Units::Metric),
             wind_speed: DimensionalData::from_raw_data(row[6], "wind speed", Measurement::Speed, Units::Metric),
             wind_gust_speed: DimensionalData::from_raw_data(row[7], "wind gust speed", Measurement::Speed, Units::Metric),
@@ -41,7 +62,7 @@ impl ParseableDataRecord for MeteorologicalDataRecord {
             visibility: DimensionalData::from_raw_data(row[16], "", Measurement::Visibility, Units::Metric),
             air_pressure_tendency: DimensionalData::from_raw_data(row[17], "air pressure tendency", Measurement::Pressure, Units::Metric),
             tide: DimensionalData::from_raw_data(row[18], "tide", Measurement::Length, Units::English),
-        }
+        })
     }
 }
 
