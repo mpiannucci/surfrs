@@ -84,3 +84,22 @@ impl UnitConvertible<MeteorologicalDataRecord> for MeteorologicalDataRecord {
         self.tide.to_units(new_units);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+
+    #[test]
+    fn test_wave_data_row_parse() {
+        let raw_data = "2018 09 25 00 50  80 12.0 14.0   2.2     7   5.4 101 1032.4  16.5  19.4  12.9   MM +0.3    MM";
+        let data_row: Vec<&str> = raw_data.split_whitespace().collect();
+
+        let met_data = MeteorologicalDataRecord::from_data_row(&data_row).unwrap();
+
+        assert_eq!(met_data.date.year, 2018);
+        assert_eq!(met_data.wind_speed.value.unwrap(), 12.0);
+        assert_eq!(met_data.wind_gust_speed.value.unwrap(), 14.0);
+        assert!(met_data.tide.value.is_none());
+    }
+}
