@@ -4,9 +4,9 @@ use std::fmt;
 
 #[derive(Clone, Debug)]
 pub struct Swell {
-    wave_height: DimensionalData<f64>,
-    period: DimensionalData<f64>,
-    direction: DimensionalData<Direction>,
+    pub wave_height: DimensionalData<f64>,
+    pub period: DimensionalData<f64>,
+    pub direction: DimensionalData<Direction>,
 }
 
 impl Swell {

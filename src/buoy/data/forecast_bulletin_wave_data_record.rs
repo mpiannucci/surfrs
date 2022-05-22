@@ -3,7 +3,7 @@ use std::str::FromStr;
 use regex::Regex;
 
 use crate::dimensional_data::DimensionalData;
-use crate::units::{Direction};
+use crate::units::{Direction, Measurement, Units};
 use crate::swell::{Swell};
 use crate::location::{Location};
 
@@ -28,7 +28,7 @@ impl FromStr for ForecastBulletinWaveRecordMetadata {
         let location_str = lines.next().ok_or(DataRecordParsingError::ParseFailure("Invalid data for location metadata".into()))?;
         let location = match location_parser.captures(location_str) {
             Some(captures) => {
-                let name = captures.get(1).unwrap().as_str();
+                let name = captures.get(1).unwrap().as_str().trim();
                 let latitude_str = captures.get(2).unwrap().as_str();
                 let longitude_str = captures.get(3).unwrap().as_str();
 
@@ -78,12 +78,48 @@ impl ParseableDataRecord for ForecastBulletinWaveRecord {
     type Metadata = ForecastBulletinWaveRecordMetadata;
 
     fn from_data(data: &str) -> Result<(Option<Self::Metadata>, Vec<ForecastBulletinWaveRecord>), DataRecordParsingError> {
+        let metadata = data.parse::<Self::Metadata>()?;
+
         Err(DataRecordParsingError::NotImplemented)
     }
 
     fn from_data_row(metadata: &Option<Self::Metadata>, row: &Vec<&str>) -> Result<Self, DataRecordParsingError>
     where Self: Sized {
-        Err(DataRecordParsingError::NotImplemented)
+        let timestep = row[0];
+        let day = timestep[0..2].parse::<i32>().map_err(|_| DataRecordParsingError::ParseFailure("Failed to parse day from timestep".into()))?;
+        let hour = timestep[2..].parse::<i32>().map_err(|_| DataRecordParsingError::ParseFailure("Failed to parse hour from timestep".into()))?;
+        let date = DateRecord {
+            year: metadata.as_ref().unwrap().model_run_date.year,
+            month: metadata.as_ref().unwrap().model_run_date.month,
+            day,
+            hour,
+            minute: 0,
+        };
+
+        let significant_wave_height = DimensionalData::from_raw_data(
+            row[1],
+            "significant wave height",
+            Measurement::Length,
+            Units::Metric,
+        );
+
+        let mut swell_components = Vec::new();
+
+        for i in (2..row.len()).step_by(3) {
+            let wave_height = row[i].parse::<f64>().map_err(|_| DataRecordParsingError::ParseFailure("Failed to parse height from row".into()))?;
+            let period = row[i + 1].parse::<f64>().map_err(|_| DataRecordParsingError::ParseFailure("Failed to parse period from row".into()))?;
+            let degrees = row[i + 2].parse::<i64>().map_err(|_| DataRecordParsingError::ParseFailure("Failed to parse direction from row".into()))?;
+
+            swell_components.push(Swell::new(&Units::Metric, wave_height, period, Direction::from_degree(degrees)));
+        }
+
+        Ok(
+            ForecastBulletinWaveRecord {
+                date,
+                significant_wave_height,
+                swell_components,
+            }
+        )
     }
 }
 
@@ -134,14 +170,38 @@ mod tests {
         Cycle    : 20220519 18 UTC
         ";
 
-        let metadata = ForecastBulletinWaveRecordMetadata::from_str(metadata);
+        let metadata = ForecastBulletinWaveRecordMetadata::from_str(metadata).unwrap();
 
-        println!("{:?}", metadata);
-        assert!(metadata.is_ok());
+        assert_eq!(metadata.location.name, "44097");
+        assert_eq!(metadata.location.latitude, 40.98);
+        assert_eq!(metadata.location.longitude, -71.12);
+        assert_eq!(metadata.model_run_date.year, 2022);
+        assert_eq!(metadata.model_run_date.month, 5);
+        assert_eq!(metadata.model_run_date.day, 19);
+        assert_eq!(metadata.model_run_date.hour, 18);
     }
 
     #[test]
     fn test_wave_bulletin_row_parse() {
+        let metadata = ForecastBulletinWaveRecordMetadata {
+            location: Location::new(40.98, -71.12, "".into()),
+            model_run_date: DateRecord{year: 2020, month: 5, day: 19, hour: 18, minute: 0},
+        };
 
+        let row = "1918  3  2 04 142  2 07 163                                        ";
+        let row = row.split_whitespace().collect();
+
+        let wave_bulletin_record = ForecastBulletinWaveRecord::from_data_row(&Some(metadata), &row).unwrap();
+    
+        assert_eq!(wave_bulletin_record.date.day, 19);
+        assert_eq!(wave_bulletin_record.date.hour, 18);
+        assert!((wave_bulletin_record.significant_wave_height.value.unwrap() - 3.0).abs() < 0.01);
+        assert_eq!(wave_bulletin_record.swell_components.len(), 2);
+        assert_eq!(wave_bulletin_record.swell_components[0].wave_height.value.unwrap(), 2.0);
+        assert_eq!(wave_bulletin_record.swell_components[0].period.value.unwrap(), 4.0);
+        assert_eq!(wave_bulletin_record.swell_components[0].direction.value.as_ref().unwrap().degree.unwrap(), 142);
+        assert_eq!(wave_bulletin_record.swell_components[1].wave_height.value.unwrap(), 2.0);
+        assert_eq!(wave_bulletin_record.swell_components[1].period.value.unwrap(), 7.0);
+        assert_eq!(wave_bulletin_record.swell_components[1].direction.value.as_ref().unwrap().degree.unwrap(), 163);
     }
 }
