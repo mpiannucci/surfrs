@@ -2,7 +2,7 @@ use crate::dimensional_data::DimensionalData;
 use crate::units::{Units, Measurement, Direction, UnitConvertible};
 use std::fmt;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Swell {
     wave_height: DimensionalData<f64>,
     period: DimensionalData<f64>,

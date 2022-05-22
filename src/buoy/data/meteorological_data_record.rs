@@ -24,7 +24,9 @@ pub struct MeteorologicalDataRecord {
 }
 
 impl ParseableDataRecord for MeteorologicalDataRecord {
-    fn from_data(data: &str) -> Result<Vec<MeteorologicalDataRecord>, DataRecordParsingError> {
+    type Metadata = ();
+
+    fn from_data(data: &str) -> Result<(Option<Self::Metadata>, Vec<MeteorologicalDataRecord>), DataRecordParsingError> {
         let mut reader = csv::ReaderBuilder::new()
             .delimiter(b' ')
             .trim(csv::Trim::All)
@@ -33,21 +35,26 @@ impl ParseableDataRecord for MeteorologicalDataRecord {
             .flexible(true)
             .from_reader(data.as_bytes());
 
-        reader.records().map(|result| -> Result<MeteorologicalDataRecord, DataRecordParsingError> {
+        let records: Result<Vec<MeteorologicalDataRecord>, DataRecordParsingError> = reader.records().map(|result| -> Result<MeteorologicalDataRecord, DataRecordParsingError> {
             if let Ok(record) = result {
                 let filtered_record: Vec<&str> = record.iter().filter(|data| !data.is_empty()).collect();
-                let mut met_data = MeteorologicalDataRecord::from_data_row(&filtered_record)?;
+                let mut met_data = MeteorologicalDataRecord::from_data_row(&None, &filtered_record)?;
                 met_data.to_units(&Units::Metric);
                 return Ok(met_data);
             }
             Err(DataRecordParsingError::InvalidData)
         })
-        .collect()
+        .collect();
+
+        match records {
+            Ok(records) => Ok((None, records)),
+            Err(err) => Err(err)
+        }
     }
 
-    fn from_data_row(row: &Vec<&str>) -> Result<MeteorologicalDataRecord, DataRecordParsingError> {
+    fn from_data_row(metadata: &Option<Self::Metadata>, row: &Vec<&str>) -> Result<MeteorologicalDataRecord, DataRecordParsingError> {
         Ok(MeteorologicalDataRecord {
-            date: DateRecord::from_data_row(row)?,
+            date: DateRecord::from_data_row(&None, row)?,
             wind_direction: DimensionalData::from_raw_data(row[5], "wind direction", Measurement::Direction, Units::Metric),
             wind_speed: DimensionalData::from_raw_data(row[6], "wind speed", Measurement::Speed, Units::Metric),
             wind_gust_speed: DimensionalData::from_raw_data(row[7], "wind gust speed", Measurement::Speed, Units::Metric),
@@ -95,7 +102,7 @@ mod tests {
         let raw_data = "2018 09 25 00 50  80 12.0 14.0   2.2     7   5.4 101 1032.4  16.5  19.4  12.9   MM +0.3    MM";
         let data_row: Vec<&str> = raw_data.split_whitespace().collect();
 
-        let met_data = MeteorologicalDataRecord::from_data_row(&data_row).unwrap();
+        let met_data = MeteorologicalDataRecord::from_data_row(&None, &data_row).unwrap();
 
         assert_eq!(met_data.date.year, 2018);
         assert_eq!(met_data.wind_speed.value.unwrap(), 12.0);

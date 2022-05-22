@@ -21,7 +21,9 @@ pub struct WaveDataRecord {
 }
 
 impl ParseableDataRecord for WaveDataRecord {
-    fn from_data(raw_data: &str) -> Result<Vec<Self>, DataRecordParsingError> {
+    type Metadata = ();
+
+    fn from_data(raw_data: &str) -> Result<(Option<Self::Metadata>, Vec<WaveDataRecord>), DataRecordParsingError> {
         let mut reader = csv::ReaderBuilder::new()
             .delimiter(b' ')
             .trim(csv::Trim::All)
@@ -30,24 +32,29 @@ impl ParseableDataRecord for WaveDataRecord {
             .flexible(true)
             .from_reader(raw_data.as_bytes());
 
-        reader
+        let records = reader
             .records()
             .map(|result| -> Result<WaveDataRecord, DataRecordParsingError> {
                 if let Ok(record) = result {
                     let filtered_record: Vec<&str> =
                         record.iter().filter(|data| !data.is_empty()).collect();
-                    let mut wave_data = WaveDataRecord::from_data_row(&filtered_record)?;
+                    let mut wave_data = WaveDataRecord::from_data_row(&None, &filtered_record)?;
                     wave_data.to_units(&Units::Metric);
                     return Ok(wave_data);
                 }
                 Err(DataRecordParsingError::InvalidData)
             })
-            .collect()
+            .collect();
+
+        match records {
+            Ok(records) => Ok((None, records)),
+            Err(err) => Err(err)
+        }
     }
 
-    fn from_data_row(row: &Vec<&str>) -> Result<WaveDataRecord, DataRecordParsingError> {
+    fn from_data_row(metadata: &Option<Self::Metadata>, row: &Vec<&str>) -> Result<WaveDataRecord, DataRecordParsingError> {
         Ok(WaveDataRecord {
-            date: DateRecord::from_data_row(row)?,
+            date: DateRecord::from_data_row(&None, row)?,
             wave_height: DimensionalData::from_raw_data(
                 row[5],
                 "wave height",
@@ -130,7 +137,7 @@ mod tests {
         let raw_data = "2018 09 25 00 43  2.0  0.4 12.5  1.9  6.2   E   E VERY_STEEP  5.0 101";
         let data_row: Vec<&str> = raw_data.split_whitespace().collect();
 
-        let wave_data = WaveDataRecord::from_data_row(&data_row).unwrap();
+        let wave_data = WaveDataRecord::from_data_row(&None, &data_row).unwrap();
 
         assert_eq!(wave_data.steepness, Steepness::VerySteep);
         assert_eq!(
