@@ -2,7 +2,7 @@ use crate::dimensional_data::DimensionalData;
 use crate::units::*;
 
 use super::date_record::DateRecord;
-use super::parseable_data_record::{ParseableDataRecord, DataRecordParsingError};
+use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
 
 #[derive(Clone, Debug)]
 pub struct MeteorologicalDataRecord {
@@ -26,7 +26,11 @@ pub struct MeteorologicalDataRecord {
 impl ParseableDataRecord for MeteorologicalDataRecord {
     type Metadata = ();
 
-    fn from_data(data: &str) -> Result<(Option<Self::Metadata>, Vec<MeteorologicalDataRecord>), DataRecordParsingError> {
+    fn from_data(
+        data: &str,
+        count: Option<usize>,
+    ) -> Result<(Option<Self::Metadata>, Vec<MeteorologicalDataRecord>), DataRecordParsingError>
+    {
         let mut reader = csv::ReaderBuilder::new()
             .delimiter(b' ')
             .trim(csv::Trim::All)
@@ -35,40 +39,125 @@ impl ParseableDataRecord for MeteorologicalDataRecord {
             .flexible(true)
             .from_reader(data.as_bytes());
 
-        let records: Result<Vec<MeteorologicalDataRecord>, DataRecordParsingError> = reader.records().map(|result| -> Result<MeteorologicalDataRecord, DataRecordParsingError> {
-            if let Ok(record) = result {
-                let filtered_record: Vec<&str> = record.iter().filter(|data| !data.is_empty()).collect();
-                let mut met_data = MeteorologicalDataRecord::from_data_row(&None, &filtered_record)?;
-                met_data.to_units(&Units::Metric);
-                return Ok(met_data);
-            }
-            Err(DataRecordParsingError::InvalidData)
-        })
-        .collect();
+        let count = match count {
+            Some(c) => c,
+            None => reader.records().count(),
+        };
+
+        let records = reader
+            .records()
+            .take(count)
+            .map(
+                |result| -> Result<MeteorologicalDataRecord, DataRecordParsingError> {
+                    if let Ok(record) = result {
+                        let filtered_record: Vec<&str> =
+                            record.iter().filter(|data| !data.is_empty()).collect();
+                        let mut met_data =
+                            MeteorologicalDataRecord::from_data_row(&None, &filtered_record)?;
+                        met_data.to_units(&Units::Metric);
+                        return Ok(met_data);
+                    }
+                    Err(DataRecordParsingError::InvalidData)
+                },
+            )
+            .collect();
 
         match records {
             Ok(records) => Ok((None, records)),
-            Err(err) => Err(err)
+            Err(err) => Err(err),
         }
     }
 
-    fn from_data_row(metadata: &Option<Self::Metadata>, row: &Vec<&str>) -> Result<MeteorologicalDataRecord, DataRecordParsingError> {
+    fn from_data_row(
+        metadata: &Option<Self::Metadata>,
+        row: &Vec<&str>,
+    ) -> Result<MeteorologicalDataRecord, DataRecordParsingError> {
         Ok(MeteorologicalDataRecord {
             date: DateRecord::from_data_row(&None, row)?,
-            wind_direction: DimensionalData::from_raw_data(row[5], "wind direction", Measurement::Direction, Units::Metric),
-            wind_speed: DimensionalData::from_raw_data(row[6], "wind speed", Measurement::Speed, Units::Metric),
-            wind_gust_speed: DimensionalData::from_raw_data(row[7], "wind gust speed", Measurement::Speed, Units::Metric),
-            wave_height: DimensionalData::from_raw_data(row[8], "wave height", Measurement::Length, Units::Metric),
-            dominant_wave_period: DimensionalData::from_raw_data(row[9], "dominant wave period", Measurement::Time, Units::Metric),
-            average_wave_period: DimensionalData::from_raw_data(row[10], "average wave period", Measurement::Time, Units::Metric),
-            mean_wave_direction: DimensionalData::from_raw_data(row[11], "mean wave direction", Measurement::Direction, Units::Metric),
-            air_pressure: DimensionalData::from_raw_data(row[12], "air pressure", Measurement::Pressure, Units::Metric),  
-            air_temperature: DimensionalData::from_raw_data(row[13], "air temperature", Measurement::Temperature, Units::Metric),
-            water_temperature: DimensionalData::from_raw_data(row[14], "water temperature", Measurement::Temperature, Units::Metric),
-            dewpoint_temperature: DimensionalData::from_raw_data(row[15], "dewpoint temperature", Measurement::Temperature, Units::Metric),
-            visibility: DimensionalData::from_raw_data(row[16], "", Measurement::Visibility, Units::Metric),
-            air_pressure_tendency: DimensionalData::from_raw_data(row[17], "air pressure tendency", Measurement::Pressure, Units::Metric),
-            tide: DimensionalData::from_raw_data(row[18], "tide", Measurement::Length, Units::English),
+            wind_direction: DimensionalData::from_raw_data(
+                row[5],
+                "wind direction",
+                Measurement::Direction,
+                Units::Metric,
+            ),
+            wind_speed: DimensionalData::from_raw_data(
+                row[6],
+                "wind speed",
+                Measurement::Speed,
+                Units::Metric,
+            ),
+            wind_gust_speed: DimensionalData::from_raw_data(
+                row[7],
+                "wind gust speed",
+                Measurement::Speed,
+                Units::Metric,
+            ),
+            wave_height: DimensionalData::from_raw_data(
+                row[8],
+                "wave height",
+                Measurement::Length,
+                Units::Metric,
+            ),
+            dominant_wave_period: DimensionalData::from_raw_data(
+                row[9],
+                "dominant wave period",
+                Measurement::Time,
+                Units::Metric,
+            ),
+            average_wave_period: DimensionalData::from_raw_data(
+                row[10],
+                "average wave period",
+                Measurement::Time,
+                Units::Metric,
+            ),
+            mean_wave_direction: DimensionalData::from_raw_data(
+                row[11],
+                "mean wave direction",
+                Measurement::Direction,
+                Units::Metric,
+            ),
+            air_pressure: DimensionalData::from_raw_data(
+                row[12],
+                "air pressure",
+                Measurement::Pressure,
+                Units::Metric,
+            ),
+            air_temperature: DimensionalData::from_raw_data(
+                row[13],
+                "air temperature",
+                Measurement::Temperature,
+                Units::Metric,
+            ),
+            water_temperature: DimensionalData::from_raw_data(
+                row[14],
+                "water temperature",
+                Measurement::Temperature,
+                Units::Metric,
+            ),
+            dewpoint_temperature: DimensionalData::from_raw_data(
+                row[15],
+                "dewpoint temperature",
+                Measurement::Temperature,
+                Units::Metric,
+            ),
+            visibility: DimensionalData::from_raw_data(
+                row[16],
+                "",
+                Measurement::Visibility,
+                Units::Metric,
+            ),
+            air_pressure_tendency: DimensionalData::from_raw_data(
+                row[17],
+                "air pressure tendency",
+                Measurement::Pressure,
+                Units::Metric,
+            ),
+            tide: DimensionalData::from_raw_data(
+                row[18],
+                "tide",
+                Measurement::Length,
+                Units::English,
+            ),
         })
     }
 }
@@ -95,7 +184,6 @@ impl UnitConvertible<MeteorologicalDataRecord> for MeteorologicalDataRecord {
 #[cfg(test)]
 mod tests {
     use super::*;
-
 
     #[test]
     fn test_wave_data_row_parse() {

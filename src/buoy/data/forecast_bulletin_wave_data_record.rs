@@ -134,6 +134,7 @@ impl ParseableDataRecord for ForecastBulletinWaveRecord {
 
     fn from_data(
         data: &str,
+        count: Option<usize>
     ) -> Result<(Option<Self::Metadata>, Vec<ForecastBulletinWaveRecord>), DataRecordParsingError>
     {
         let metadata = data.parse::<Self::Metadata>()?;
@@ -146,22 +147,30 @@ impl ParseableDataRecord for ForecastBulletinWaveRecord {
             .flexible(true)
             .from_reader(data.as_bytes());
 
-        let records = reader
-            .records()
+        let count = match count {
+            Some(c) => c,
+            None => reader
+            .records().count(),
+        };
+
+        let data_records = reader.records()
+            .take(count)    
             .map(|result| -> Result<ForecastBulletinWaveRecord, DataRecordParsingError> {
-                if let Ok(record) = result {
-                    let filtered_record: Vec<&str> =
+                match result {
+                    Ok(record) => {
+                        let filtered_record: Vec<&str> =
                         record.iter().filter(|data| !data.is_empty()).collect();
-                    let mut wave_data = ForecastBulletinWaveRecord::from_data_row(&None, &filtered_record)?;
-                    wave_data.to_units(&Units::Metric);
-                    return Ok(wave_data);
+                        let mut wave_data = ForecastBulletinWaveRecord::from_data_row(&None, &filtered_record)?;
+                        wave_data.to_units(&Units::Metric);
+                        Ok(wave_data)
+                    }, 
+                    Err(e) => Err(DataRecordParsingError::ParseFailure(format!("Failed to parse record: {}", e))),
                 }
-                Err(DataRecordParsingError::InvalidData)
             })
             .collect();
 
-        match records {
-            Ok(records) => Ok((Some(metadata), records)),
+        match data_records {
+            Ok(data_records) => Ok((Some(metadata), data_records)),
             Err(err) => Err(err),
         }
     }

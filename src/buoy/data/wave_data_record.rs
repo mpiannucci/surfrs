@@ -23,7 +23,10 @@ pub struct WaveDataRecord {
 impl ParseableDataRecord for WaveDataRecord {
     type Metadata = ();
 
-    fn from_data(raw_data: &str) -> Result<(Option<Self::Metadata>, Vec<WaveDataRecord>), DataRecordParsingError> {
+    fn from_data(
+        raw_data: &str,
+        count: Option<usize>,
+    ) -> Result<(Option<Self::Metadata>, Vec<WaveDataRecord>), DataRecordParsingError> {
         let mut reader = csv::ReaderBuilder::new()
             .delimiter(b' ')
             .trim(csv::Trim::All)
@@ -32,8 +35,14 @@ impl ParseableDataRecord for WaveDataRecord {
             .flexible(true)
             .from_reader(raw_data.as_bytes());
 
-        let records = reader
-            .records()
+        let count = match count {
+            Some(c) => c,
+            None => reader.records().count(),
+        };
+
+        let records = reader.
+            records()
+            .take(count)
             .map(|result| -> Result<WaveDataRecord, DataRecordParsingError> {
                 if let Ok(record) = result {
                     let filtered_record: Vec<&str> =
@@ -48,11 +57,14 @@ impl ParseableDataRecord for WaveDataRecord {
 
         match records {
             Ok(records) => Ok((None, records)),
-            Err(err) => Err(err)
+            Err(err) => Err(err),
         }
     }
 
-    fn from_data_row(metadata: &Option<Self::Metadata>, row: &Vec<&str>) -> Result<WaveDataRecord, DataRecordParsingError> {
+    fn from_data_row(
+        metadata: &Option<Self::Metadata>,
+        row: &Vec<&str>,
+    ) -> Result<WaveDataRecord, DataRecordParsingError> {
         Ok(WaveDataRecord {
             date: DateRecord::from_data_row(&None, row)?,
             wave_height: DimensionalData::from_raw_data(
