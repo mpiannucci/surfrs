@@ -2,7 +2,8 @@
 #[derive(Clone, Debug)]
 pub enum DataRecordParsingError {
     NotImplemented, 
-    InvalidData
+    InvalidData, 
+    ParseFailure(String),
 }
 
 pub trait ParseableDataRecord {

@@ -22,41 +22,42 @@ impl FromStr for ForecastBulletinWaveRecordMetadata {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut lines = s.lines();
 
-        let location_parser = Regex::new("Location : (.{0,10}) \\(([+-]?([0-9]*[.])?[0-9]+[N|S]) ([+-]?([0-9]*[.])?[0-9]+[E|W])\\)");
-        let location_parser = location_parser.map_err(|_| DataRecordParsingError::InvalidData)?;
+        let location_parser = Regex::new("Location\\s*:\\s*(.{0,10})\\s*\\(([+-]?[0-9]*[.]?[0-9]+[N|S])\\s*([+-]?[0-9]*[.]?[0-9]+[E|W])\\)");
+        let location_parser = location_parser.map_err(|e| DataRecordParsingError::ParseFailure(format!("Failed to create location regex: {}", e)))?;
 
-        let location = match location_parser.captures(lines.next().unwrap_or("")) {
+        let location_str = lines.next().ok_or(DataRecordParsingError::ParseFailure("Invalid data for location metadata".into()))?;
+        let location = match location_parser.captures(location_str) {
             Some(captures) => {
                 let name = captures.get(1).unwrap().as_str();
                 let latitude_str = captures.get(2).unwrap().as_str();
-                let longitude_str = captures.get(4).unwrap().as_str();
+                let longitude_str = captures.get(3).unwrap().as_str();
 
                 let latitude = parse_latitude(latitude_str)?;
                 let longitude = parse_longitude(longitude_str)?;
 
                 Ok(Location::new(latitude, longitude, name.into()))
             },
-            None => Err(DataRecordParsingError::InvalidData),
+            None => Err(DataRecordParsingError::ParseFailure("Failed to capture location data from regex".into())),
         }?;
 
         // Skip the second line
         lines.next();
 
         // The third has the model run date and time
-        let model_run_parser = Regex::new("Cycle    : ([0-9]{0,4})([0-9]{0,2})([0-9]{0,2}) ([0-9]{0,2})");
-        let model_run_parser = model_run_parser.map_err(|_| DataRecordParsingError::InvalidData)?;
+        let model_run_parser = Regex::new("Cycle\\s*:\\s*([0-9]{0,4})([0-9]{0,2})([0-9]{0,2})\\s*([0-9]{0,2})");
+        let model_run_parser = model_run_parser.map_err(|_| DataRecordParsingError::ParseFailure("Failed to create regex to parse model date run".into()))?;
 
         let model_run_date = match model_run_parser.captures(lines.next().unwrap_or("")) {
             Some(captures) => {
-                let year = captures.get(1).unwrap().as_str().parse::<i32>().map_err(|_| DataRecordParsingError::InvalidData)?;
-                let month = captures.get(2).unwrap().as_str().parse::<i32>().map_err(|_| DataRecordParsingError::InvalidData)?;
-                let day = captures.get(3).unwrap().as_str().parse::<i32>().map_err(|_| DataRecordParsingError::InvalidData)?;
-                let hour = captures.get(4).unwrap().as_str().parse::<i32>().map_err(|_| DataRecordParsingError::InvalidData)?;
+                let year = captures.get(1).unwrap().as_str().parse::<i32>().map_err(|_| DataRecordParsingError::ParseFailure("Failed to capture model date year".into()))?;
+                let month = captures.get(2).unwrap().as_str().parse::<i32>().map_err(|_| DataRecordParsingError::ParseFailure("Failed to capture model date month".into()))?;
+                let day = captures.get(3).unwrap().as_str().parse::<i32>().map_err(|_| DataRecordParsingError::ParseFailure("Failed to capture model date day".into()))?;
+                let hour = captures.get(4).unwrap().as_str().parse::<i32>().map_err(|_| DataRecordParsingError::ParseFailure("Failed to capture model date hour".into()))?;
                 let minute = 0;
 
                 Ok(DateRecord{year, month, day, hour, minute})
             },
-            None => Err(DataRecordParsingError::InvalidData),
+            None => Err(DataRecordParsingError::ParseFailure("Failed to capture model run date from regex".into())),
         }?;
 
         Ok(ForecastBulletinWaveRecordMetadata {
@@ -89,7 +90,7 @@ impl ParseableDataRecord for ForecastBulletinWaveRecord {
 fn parse_latitude(raw: &str) -> Result<f64, DataRecordParsingError> {
     let latitude = raw[0..raw.len() - 1]
         .parse::<f64>()
-        .map_err(|_| DataRecordParsingError::InvalidData)?;
+        .map_err(|e| DataRecordParsingError::ParseFailure(format!("Failed to parse latitude: {:?}", e)))?;
 
     if raw.contains('S') {
         Ok(-latitude)
@@ -101,7 +102,7 @@ fn parse_latitude(raw: &str) -> Result<f64, DataRecordParsingError> {
 fn parse_longitude(raw: &str) -> Result<f64, DataRecordParsingError> {
     let longitude = raw[0..raw.len() - 1]
         .parse::<f64>()
-        .map_err(|_| DataRecordParsingError::InvalidData)?;
+        .map_err(|e| DataRecordParsingError::ParseFailure(format!("Failed to parse longitude: {:?}", e)))?;
 
     if raw.contains('W') {
         Ok(-longitude)
@@ -128,14 +129,14 @@ mod tests {
 
     #[test]
     fn parse_wave_bulletin_metadata() {
-        let metadata = "
-        Location : 44097      (40.98N  71.12W)
+        let metadata = "Location : 44097      (40.98N  71.12W)
         Model    : spectral resolution for points
         Cycle    : 20220519 18 UTC
         ";
 
         let metadata = ForecastBulletinWaveRecordMetadata::from_str(metadata);
 
+        println!("{:?}", metadata);
         assert!(metadata.is_ok());
     }
 
