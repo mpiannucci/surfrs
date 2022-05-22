@@ -221,7 +221,7 @@ impl ParseableDataRecord for ForecastBulletinWaveRecord {
             let period = row[i + 1].parse::<f64>().map_err(|_| {
                 DataRecordParsingError::ParseFailure("Failed to parse period from row".into())
             })?;
-            let degrees = row[i + 2].parse::<i64>().map_err(|_| {
+            let degrees = row[i + 2].parse::<i32>().map_err(|_| {
                 DataRecordParsingError::ParseFailure("Failed to parse direction from row".into())
             })?;
 

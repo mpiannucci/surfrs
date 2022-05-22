@@ -9,11 +9,11 @@ use super::DataParseError;
 #[derive(Clone, Debug)]
 pub struct Direction {
     pub direction: CardinalDirection,
-    pub degree: Option<i64>,
+    pub degree: Option<i32>,
 }
 
 impl Direction {
-    pub fn from_degree(degree: i64) -> Direction {
+    pub fn from_degree(degree: i32) -> Direction {
         Direction {
             direction: CardinalDirection::from_degree(degree),
             degree: Some(degree),
@@ -47,7 +47,7 @@ impl FromStr for Direction {
                 degree: None,
             }),
             Err(_) => {
-                let parse_direction = s.parse::<i64>();
+                let parse_direction = s.parse::<i32>();
                 match parse_direction {
                     Ok(dir) => Ok(Direction::from_degree(dir)),
                     Err(_) => Err(DataParseError::InvalidString),
