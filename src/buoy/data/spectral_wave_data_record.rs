@@ -1,3 +1,5 @@
+use crate::swell::{Swell, SwellProvider, SwellProviderError};
+use crate::tools::{zero_spectral_moment, detect_peaks};
 use crate::units::*;
 
 use super::date_record::DateRecord;
@@ -88,6 +90,51 @@ impl ParseableDataRecord for SpectralWaveDataRecord {
 impl UnitConvertible<SpectralWaveDataRecord> for SpectralWaveDataRecord {
     fn to_units(&mut self, _: &Units) {
         // TODO: Maybe some conversion
+    }
+}
+
+pub struct DirectionalSpectralWaveDataRecord {
+    energy_spectra: SpectralWaveDataRecord, 
+    directional_spectra: SpectralWaveDataRecord,
+}
+
+impl SwellProvider for DirectionalSpectralWaveDataRecord {
+    fn wave_summary(&self) -> Result<Swell, SwellProviderError> {
+        if self.energy_spectra.frequency.len() != self.directional_spectra.frequency.len() {
+            return Err(SwellProviderError::InsufficientData("Frequencies are not the same length".to_string()));
+        }
+
+        Swell::from_spectra(&self.energy_spectra.frequency, &self.energy_spectra.value, &self.directional_spectra.value)
+    }
+
+    fn swell_components(&self) -> Result<Vec<Swell>, SwellProviderError> {
+        if self.energy_spectra.frequency.len() != self.directional_spectra.frequency.len() {
+            return Err(SwellProviderError::InsufficientData("Frequencies are not the same length".to_string()));
+        }
+
+        let (minima_indexes, maxima_indexes) = detect_peaks(&self.energy_spectra.value, 0.05);
+
+        maxima_indexes
+            .iter()
+            .enumerate()
+            .map(|(meta_index, i)| {
+                let start = if meta_index == 0 { 
+                    0 
+                } else if i > &minima_indexes[meta_index - 1] {
+                    minima_indexes[meta_index - 1]
+                } else {
+                    0
+                };
+
+                let end = if meta_index >= minima_indexes.len() {
+                    self.energy_spectra.value.len()
+                } else {
+                    minima_indexes[meta_index]
+                };
+
+                Swell::from_spectra(&self.energy_spectra.frequency[start..end], &self.energy_spectra.value[start..end], &self.directional_spectra.value[start..end])
+            })
+            .collect()
     }
 }
 
