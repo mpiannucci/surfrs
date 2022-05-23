@@ -12,7 +12,7 @@ pub struct DateRecord {
 impl ParseableDataRecord for DateRecord {
     type Metadata = ();
 
-    fn from_data_row(metadata: Option<&Self::Metadata>, row: &Vec<&str>) -> Result<DateRecord, DataRecordParsingError> {
+    fn from_data_row(_: Option<&Self::Metadata>, row: &Vec<&str>) -> Result<DateRecord, DataRecordParsingError> {
         Ok(DateRecord {
             year: row[0].clone().parse().unwrap(),
             month: row[1].clone().parse().unwrap(),

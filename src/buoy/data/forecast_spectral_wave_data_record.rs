@@ -4,7 +4,7 @@ use regex::Regex;
 
 use crate::dimensional_data::DimensionalData;
 use crate::location::Location;
-use crate::units::{direction, Direction, Measurement, Units, UnitConvertible};
+use crate::units::{Direction, Measurement, Units, UnitConvertible};
 
 use super::date_record::DateRecord;
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
@@ -192,28 +192,28 @@ impl ParseableDataRecord for ForecastSpectralWaveDataRecord {
 
             let month = line[4..6].parse::<i32>().map_err(|e| {
                 DataRecordParsingError::ParseFailure(format!(
-                    "Failed to parse year: {}",
+                    "Failed to parse month: {}",
                     e
                 ))
             })?;
 
             let day = line[6..8].parse::<i32>().map_err(|e| {
                 DataRecordParsingError::ParseFailure(format!(
-                    "Failed to parse year: {}",
+                    "Failed to parse day: {}",
                     e
                 ))
             })?;
 
-            let hour = line[11..13].parse::<i32>().map_err(|e| {
+            let hour = line[9..11].parse::<i32>().map_err(|e| {
                 DataRecordParsingError::ParseFailure(format!(
-                    "Failed to parse year: {}",
+                    "Failed to parse hour: {}",
                     e
                 ))
             })?;
 
-            let minute = line[13..15].parse::<i32>().map_err(|e| {
+            let minute = line[11..13].parse::<i32>().map_err(|e| {
                 DataRecordParsingError::ParseFailure(format!(
-                    "Failed to parse year: {}",
+                    "Failed to parse minute: {}",
                     e
                 ))
             })?; 
@@ -427,6 +427,5 @@ mod tests {
 
     #[test]
     fn parse_forecast_spectra_data() {
-        let data = "";
     }
 }
