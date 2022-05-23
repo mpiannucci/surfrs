@@ -4,7 +4,7 @@ use regex::Regex;
 
 use crate::dimensional_data::DimensionalData;
 use crate::location::Location;
-use crate::units::{direction, Direction};
+use crate::units::{direction, Direction, Measurement, Units, UnitConvertible};
 
 use super::date_record::DateRecord;
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
@@ -279,7 +279,7 @@ impl ParseableDataRecord for ForecastSpectralWaveDataRecord {
                                     "Failed to parse wind direction".into(),
                                 ))?
                                 .as_str()
-                                .parse::<f64>()
+                                .parse::<i32>()
                                 .map_err(|e| {
                                     DataRecordParsingError::ParseFailure(format!(
                                     "Failed to parse wind direction: {}", e
@@ -303,7 +303,7 @@ impl ParseableDataRecord for ForecastSpectralWaveDataRecord {
                                     "Failed to parse current direction".into(),
                                 ))?
                                 .as_str()
-                                .parse::<f64>()
+                                .parse::<i32>()
                                 .map_err(|e| {
                                     DataRecordParsingError::ParseFailure(format!(
                                     "Failed to parse current direction: {}", e
@@ -340,16 +340,49 @@ impl ParseableDataRecord for ForecastSpectralWaveDataRecord {
             records.push(ForecastSpectralWaveDataRecord{
                 date,
                 location: Location::new(latitude, longitude, "".into()), 
-                DimensionalData,
-                wind_speed, 
-                wind_direction, 
-                current_speed, 
-                current_direction, 
-                values
+                depth: DimensionalData {
+                    value: Some(depth), 
+                    variable_name: "depth".into(),
+                    measurement: Measurement::Length, 
+                    unit: Units::Metric,
+                },
+                wind_speed: DimensionalData {
+                    value: Some(wind_speed), 
+                    variable_name: "wind speed".into(),
+                    measurement: Measurement::Speed, 
+                    unit: Units::Metric,
+                },
+                wind_direction: DimensionalData {
+                    value: Some(Direction::from_degree(wind_direction)), 
+                    variable_name: "wind direction".into(),
+                    measurement: Measurement::Direction, 
+                    unit: Units::Metric,
+                },
+                current_speed: DimensionalData {
+                    value: Some(current_speed), 
+                    variable_name: "current speed".into(),
+                    measurement: Measurement::Speed, 
+                    unit: Units::Metric,
+                },
+                current_direction: DimensionalData {
+                    value: Some(Direction::from_degree(current_direction)), 
+                    variable_name: "current direction".into(),
+                    measurement: Measurement::Direction, 
+                    unit: Units::Metric,
+                },
+                values,
             });
         };
 
         Ok((Some(metadata), records))
+    }
+}
+
+impl UnitConvertible<ForecastSpectralWaveDataRecord> for ForecastSpectralWaveDataRecord {
+    fn to_units(&mut self, new_units: &Units) {
+        self.depth.to_units(new_units);
+        self.wind_speed.to_units(new_units);
+        self.current_speed.to_units(new_units);
     }
 }
 
