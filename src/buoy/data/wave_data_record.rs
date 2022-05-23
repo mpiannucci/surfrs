@@ -57,7 +57,7 @@ impl ParseableDataRecord for WaveDataRecord {
     }
 
     fn from_data_row(
-        metadata: Option<&Self::Metadata>,
+        _: Option<&Self::Metadata>,
         row: &Vec<&str>,
     ) -> Result<WaveDataRecord, DataRecordParsingError> {
         Ok(WaveDataRecord {

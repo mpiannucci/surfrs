@@ -1,5 +1,5 @@
 use crate::swell::{Swell, SwellProvider, SwellProviderError};
-use crate::tools::{zero_spectral_moment, detect_peaks};
+use crate::tools::detect_peaks;
 use crate::units::*;
 
 use super::date_record::DateRecord;

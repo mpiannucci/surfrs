@@ -4,7 +4,7 @@ use regex::Regex;
 
 use crate::dimensional_data::DimensionalData;
 use crate::location::Location;
-use crate::swell::Swell;
+use crate::swell::{Swell, SwellProvider};
 use crate::units::{Direction, Measurement, Units, UnitConvertible};
 
 use super::date_record::DateRecord;
@@ -241,6 +241,18 @@ impl UnitConvertible<ForecastBulletinWaveRecord> for ForecastBulletinWaveRecord 
         for swell in &mut self.swell_components {
             swell.to_units(new_units);
         }
+    }
+}
+
+impl SwellProvider for ForecastBulletinWaveRecord {
+    fn wave_summary(&self) -> Result<Swell, crate::swell::SwellProviderError> {
+        let mut dominant_swell = self.swell_components[0].clone();
+        dominant_swell.wave_height = self.significant_wave_height.clone();
+        Ok(dominant_swell)
+    }
+
+    fn swell_components(&self) -> Result<Vec<Swell>, crate::swell::SwellProviderError> {
+        Ok(self.swell_components.clone())
     }
 }
 

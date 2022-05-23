@@ -1,4 +1,5 @@
 use crate::dimensional_data::DimensionalData;
+use crate::swell::{SwellProvider, Swell};
 use crate::units::*;
 
 use super::date_record::DateRecord;
@@ -66,7 +67,7 @@ impl ParseableDataRecord for MeteorologicalDataRecord {
     }
 
     fn from_data_row(
-        metadata: Option<&Self::Metadata>,
+        _: Option<&Self::Metadata>,
         row: &Vec<&str>,
     ) -> Result<MeteorologicalDataRecord, DataRecordParsingError> {
         Ok(MeteorologicalDataRecord {
@@ -175,6 +176,23 @@ impl UnitConvertible<MeteorologicalDataRecord> for MeteorologicalDataRecord {
         self.dewpoint_temperature.to_units(new_units);
         self.visibility.to_units(new_units);
         self.tide.to_units(new_units);
+    }
+}
+
+impl SwellProvider for MeteorologicalDataRecord {
+    fn wave_summary(&self) -> Result<crate::swell::Swell, crate::swell::SwellProviderError> {
+        Ok(Swell {
+            wave_height: self.wave_height.clone(),
+            period: self.dominant_wave_period.clone(), 
+            direction: self.mean_wave_direction.clone(),
+        })
+    }
+
+    fn swell_components(&self) -> Result<Vec<Swell>, crate::swell::SwellProviderError> {
+        match self.wave_summary() {
+            Ok(summary) => Ok(vec![summary]),
+            Err(err) => Err(err),
+        }
     }
 }
 
