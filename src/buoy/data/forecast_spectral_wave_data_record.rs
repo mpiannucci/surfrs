@@ -283,7 +283,7 @@ impl ParseableDataRecord for ForecastSpectralWaveDataRecord {
                                     "Failed to parse wind direction".into(),
                                 ))?
                                 .as_str()
-                                .parse::<i32>()
+                                .parse::<f64>()
                                 .map_err(|e| {
                                     DataRecordParsingError::ParseFailure(format!(
                                     "Failed to parse wind direction: {}", e
@@ -307,7 +307,7 @@ impl ParseableDataRecord for ForecastSpectralWaveDataRecord {
                                     "Failed to parse current direction".into(),
                                 ))?
                                 .as_str()
-                                .parse::<i32>()
+                                .parse::<f64>()
                                 .map_err(|e| {
                                     DataRecordParsingError::ParseFailure(format!(
                                     "Failed to parse current direction: {}", e
@@ -357,7 +357,7 @@ impl ParseableDataRecord for ForecastSpectralWaveDataRecord {
                     unit: Units::Metric,
                 },
                 wind_direction: DimensionalData {
-                    value: Some(Direction::from_degree(wind_direction)), 
+                    value: Some(Direction::from_degree(wind_direction.round() as i32)), 
                     variable_name: "wind direction".into(),
                     measurement: Measurement::Direction, 
                     unit: Units::Metric,
@@ -369,7 +369,7 @@ impl ParseableDataRecord for ForecastSpectralWaveDataRecord {
                     unit: Units::Metric,
                 },
                 current_direction: DimensionalData {
-                    value: Some(Direction::from_degree(current_direction)), 
+                    value: Some(Direction::from_degree(current_direction.round() as i32)), 
                     variable_name: "current direction".into(),
                     measurement: Measurement::Direction, 
                     unit: Units::Metric,
