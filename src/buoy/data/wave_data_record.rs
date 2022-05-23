@@ -42,7 +42,7 @@ impl ParseableDataRecord for WaveDataRecord {
                 if let Ok(record) = result {
                     let filtered_record: Vec<&str> =
                         record.iter().filter(|data| !data.is_empty()).collect();
-                    let mut wave_data = WaveDataRecord::from_data_row(&None, &filtered_record)?;
+                    let mut wave_data = WaveDataRecord::from_data_row(None, &filtered_record)?;
                     wave_data.to_units(&Units::Metric);
                     return Ok(wave_data);
                 }
@@ -57,11 +57,11 @@ impl ParseableDataRecord for WaveDataRecord {
     }
 
     fn from_data_row(
-        metadata: &Option<Self::Metadata>,
+        metadata: Option<&Self::Metadata>,
         row: &Vec<&str>,
     ) -> Result<WaveDataRecord, DataRecordParsingError> {
         Ok(WaveDataRecord {
-            date: DateRecord::from_data_row(&None, row)?,
+            date: DateRecord::from_data_row(None, row)?,
             wave_height: DimensionalData::from_raw_data(
                 row[5],
                 "wave height",
@@ -144,7 +144,7 @@ mod tests {
         let raw_data = "2018 09 25 00 43  2.0  0.4 12.5  1.9  6.2   E   E VERY_STEEP  5.0 101";
         let data_row: Vec<&str> = raw_data.split_whitespace().collect();
 
-        let wave_data = WaveDataRecord::from_data_row(&None, &data_row).unwrap();
+        let wave_data = WaveDataRecord::from_data_row(None, &data_row).unwrap();
 
         assert_eq!(wave_data.steepness, Steepness::VerySteep);
         assert_eq!(

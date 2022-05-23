@@ -148,13 +148,14 @@ impl ParseableDataRecord for ForecastBulletinWaveRecord {
             .from_reader(data.as_bytes());
 
         let data_records = reader.records()
+            .skip(6)
             .take(count.unwrap_or(usize::MAX))    
             .map(|result| -> Result<ForecastBulletinWaveRecord, DataRecordParsingError> {
                 match result {
                     Ok(record) => {
                         let filtered_record: Vec<&str> =
                         record.iter().filter(|data| !data.is_empty()).collect();
-                        let mut wave_data = ForecastBulletinWaveRecord::from_data_row(&None, &filtered_record)?;
+                        let mut wave_data = ForecastBulletinWaveRecord::from_data_row(Some(&metadata), &filtered_record)?;
                         wave_data.to_units(&Units::Metric);
                         Ok(wave_data)
                     }, 
@@ -170,7 +171,7 @@ impl ParseableDataRecord for ForecastBulletinWaveRecord {
     }
 
     fn from_data_row(
-        metadata: &Option<Self::Metadata>,
+        metadata: Option<&Self::Metadata>,
         row: &Vec<&str>,
     ) -> Result<Self, DataRecordParsingError>
     where
@@ -184,15 +185,14 @@ impl ParseableDataRecord for ForecastBulletinWaveRecord {
             DataRecordParsingError::ParseFailure("Failed to parse hour from timestep".into())
         })?;
 
-        let metadata_ref = metadata.as_ref();
-        let month = if metadata.as_ref().unwrap().model_run_date.day > day {
-            metadata_ref.unwrap().model_run_date.month + 1
+        let month = if metadata.unwrap().model_run_date.day > day {
+            metadata.unwrap().model_run_date.month + 1
         } else {
-            metadata_ref.unwrap().model_run_date.month
+            metadata.unwrap().model_run_date.month
         };
 
         let date = DateRecord {
-            year: metadata_ref.unwrap().model_run_date.year,
+            year: metadata.unwrap().model_run_date.year,
             month: month,
             day,
             hour,
@@ -319,7 +319,7 @@ mod tests {
         let row = row.split_whitespace().collect();
 
         let wave_bulletin_record =
-            ForecastBulletinWaveRecord::from_data_row(&Some(metadata), &row).unwrap();
+            ForecastBulletinWaveRecord::from_data_row(Some(&metadata), &row).unwrap();
 
         assert_eq!(wave_bulletin_record.date.year, 2020);
         assert_eq!(wave_bulletin_record.date.month, 6);
