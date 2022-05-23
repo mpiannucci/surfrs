@@ -35,14 +35,9 @@ impl ParseableDataRecord for WaveDataRecord {
             .flexible(true)
             .from_reader(raw_data.as_bytes());
 
-        let count = match count {
-            Some(c) => c,
-            None => reader.records().count(),
-        };
-
         let records = reader.
             records()
-            .take(count)
+            .take(count.unwrap_or(usize::MAX))
             .map(|result| -> Result<WaveDataRecord, DataRecordParsingError> {
                 if let Ok(record) = result {
                     let filtered_record: Vec<&str> =

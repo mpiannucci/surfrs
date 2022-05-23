@@ -178,6 +178,10 @@ impl ParseableDataRecord for ForecastSpectralWaveDataRecord {
         })?;
 
         while let Some(line) = lines.next() {
+            if (count.unwrap_or(usize::MAX)) <= records.len() {
+                break;
+            }
+
             // First line is the date
             let year = line[0..4].parse::<i32>().map_err(|e| {
                 DataRecordParsingError::ParseFailure(format!(
@@ -419,5 +423,10 @@ mod tests {
 
         assert_eq!(metadata.direction[0].degree.unwrap(), 85);
         assert_eq!(metadata.direction[15].degree.unwrap(), 295);
+    }
+
+    #[test]
+    fn parse_forecast_spectra_data() {
+        let data = "";
     }
 }

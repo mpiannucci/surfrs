@@ -1,21 +1,28 @@
 extern crate surfrs;
 
 use std::fs;
-// use sur::data::buoy_data::BuoyDataRecord;
+use surfrs::buoy::data::meteorological_data_record::MeteorologicalDataRecord;
+use surfrs::buoy::data::parseable_data_record::ParseableDataRecord;
+use surfrs::buoy::data::wave_data_record::WaveDataRecord;
 
-// #[test]
-// fn read_meteorological_data() {
-//     let raw_data = fs::read_to_string("mock/44017.met.txt").unwrap();
-//     let read_data = BuoyDataRecord::parse_from_meteorological_data(raw_data.as_str());
-//     assert_ne!(read_data.is_none(), true);
-//     if let Some(met_data) = read_data {
-//         match met_data {
-//             BuoyDataRecord::Meteorological(d) => {
-//                 assert_eq!(d.tide.value.is_none(), true);
+fn read_mock_data(name: &str) -> String {
+    fs::read_to_string(format!("mock/{}", name)).unwrap()
+}
 
-//                 // TODO: More tests
-//             },
-//             _ => {}
-//         };
-//     }
-// }
+#[test]
+fn read_meteorological_data() {
+    let raw_data = read_mock_data("44017.met.txt");
+    let read_data = MeteorologicalDataRecord::from_data(raw_data.as_str(), None);
+    
+    assert_eq!(read_data.is_ok(), true);
+    assert!(read_data.unwrap().1.len() == 1099);
+}
+
+#[test]
+fn read_wave_data() {
+    let raw_data = read_mock_data("44097.spec");
+    let read_data = WaveDataRecord::from_data(raw_data.as_str(), Some(1));
+    
+    assert_eq!(read_data.is_ok(), true);
+    assert!(read_data.unwrap().1.len() == 1);
+}

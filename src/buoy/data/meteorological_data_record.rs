@@ -39,25 +39,22 @@ impl ParseableDataRecord for MeteorologicalDataRecord {
             .flexible(true)
             .from_reader(data.as_bytes());
 
-        let count = match count {
-            Some(c) => c,
-            None => reader.records().count(),
-        };
-
-        let records = reader
+        let records: Result<Vec<MeteorologicalDataRecord>, DataRecordParsingError> = reader
             .records()
-            .take(count)
+            .take(count.unwrap_or(usize::MAX))
             .map(
                 |result| -> Result<MeteorologicalDataRecord, DataRecordParsingError> {
-                    if let Ok(record) = result {
-                        let filtered_record: Vec<&str> =
-                            record.iter().filter(|data| !data.is_empty()).collect();
-                        let mut met_data =
-                            MeteorologicalDataRecord::from_data_row(&None, &filtered_record)?;
-                        met_data.to_units(&Units::Metric);
-                        return Ok(met_data);
+                    match result {
+                        Ok(record) => {
+                            let filtered_record: Vec<&str> =
+                                record.iter().filter(|data| !data.is_empty()).collect();
+                            let mut met_data =
+                                MeteorologicalDataRecord::from_data_row(&None, &filtered_record)?;
+                            met_data.to_units(&Units::Metric);
+                            Ok(met_data)
+                        }
+                        Err(e) => Err(DataRecordParsingError::ParseFailure(e.to_string())),
                     }
-                    Err(DataRecordParsingError::InvalidData)
                 },
             )
             .collect();

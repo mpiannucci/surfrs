@@ -147,14 +147,8 @@ impl ParseableDataRecord for ForecastBulletinWaveRecord {
             .flexible(true)
             .from_reader(data.as_bytes());
 
-        let count = match count {
-            Some(c) => c,
-            None => reader
-            .records().count(),
-        };
-
         let data_records = reader.records()
-            .take(count)    
+            .take(count.unwrap_or(usize::MAX))    
             .map(|result| -> Result<ForecastBulletinWaveRecord, DataRecordParsingError> {
                 match result {
                     Ok(record) => {
