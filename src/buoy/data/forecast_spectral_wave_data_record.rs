@@ -3,6 +3,7 @@ use std::str::FromStr;
 use regex::Regex;
 
 use crate::dimensional_data::DimensionalData;
+use crate::location::Location;
 use crate::units::{direction, Direction};
 
 use super::date_record::DateRecord;
@@ -146,6 +147,7 @@ impl FromStr for ForecastSpectralWaveDataRecordMetadata {
 #[derive(Clone, Debug)]
 pub struct ForecastSpectralWaveDataRecord {
     pub date: DateRecord,
+    pub location: Location,
     pub depth: DimensionalData<f64>,
     pub wind_speed: DimensionalData<f64>,
     pub wind_direction: DimensionalData<Direction>,
@@ -162,7 +164,192 @@ impl ParseableDataRecord for ForecastSpectralWaveDataRecord {
         count: Option<usize>,
     ) -> Result<(Option<Self::Metadata>, Vec<ForecastSpectralWaveDataRecord>), DataRecordParsingError>
     {
-        Err(DataRecordParsingError::NotImplemented)
+        let metadata = ForecastSpectralWaveDataRecordMetadata::from_str(data)?;
+
+        let mut lines = data.lines().skip(metadata.line_count);
+
+        let mut records: Vec<ForecastSpectralWaveDataRecord> = Vec::new();
+
+        let point_regex = Regex::new(".{0,12}\\s*([+-]?[0-9]*[.]?[0-9]+)\\s*([+-]?[0-9]*[.]?[0-9]+)\\s*([+-]?[0-9]*[.]?[0-9]+)\\s*([+-]?[0-9]*[.]?[0-9]+)\\s*([+-]?[0-9]*[.]?[0-9]+)\\s*([+-]?[0-9]*[.]?[0-9]+)\\s*([+-]?[0-9]*[.]?[0-9]+)");
+        let point_regex = point_regex.map_err(|e| {
+            DataRecordParsingError::ParseFailure(format!(
+                "Failed to create point regex: {}", e
+            ))
+        })?;
+
+        while let Some(line) = lines.next() {
+            // First line is the date
+            let year = line[0..4].parse::<i32>().map_err(|e| {
+                DataRecordParsingError::ParseFailure(format!(
+                    "Failed to parse year: {}",
+                    e
+                ))
+            })?;
+
+            let month = line[4..6].parse::<i32>().map_err(|e| {
+                DataRecordParsingError::ParseFailure(format!(
+                    "Failed to parse year: {}",
+                    e
+                ))
+            })?;
+
+            let day = line[6..8].parse::<i32>().map_err(|e| {
+                DataRecordParsingError::ParseFailure(format!(
+                    "Failed to parse year: {}",
+                    e
+                ))
+            })?;
+
+            let hour = line[11..13].parse::<i32>().map_err(|e| {
+                DataRecordParsingError::ParseFailure(format!(
+                    "Failed to parse year: {}",
+                    e
+                ))
+            })?;
+
+            let minute = line[13..15].parse::<i32>().map_err(|e| {
+                DataRecordParsingError::ParseFailure(format!(
+                    "Failed to parse year: {}",
+                    e
+                ))
+            })?; 
+
+            let date = DateRecord{year, month, day, hour, minute};
+
+            let line = lines.next().ok_or(DataRecordParsingError::ParseFailure(
+                "Failed to parse point data".into(),
+            ))?;
+
+            // Then the point data
+            let (latitude, longitude, depth, wind_speed, wind_direction, current_speed, current_direction) = match point_regex
+                .captures(line) {
+                    Some(captures) => {
+                        Ok((
+                            captures
+                                .get(1)
+                                .ok_or(DataRecordParsingError::ParseFailure(
+                                    "Failed to parse latitude".into(),
+                                ))?
+                                .as_str()
+                                .parse::<f64>()
+                                .map_err(|e| {
+                                    DataRecordParsingError::ParseFailure(format!(
+                                    "Failed to parse latitude: {}", e
+                                ))
+                            })?, 
+                            captures
+                                .get(2)
+                                .ok_or(DataRecordParsingError::ParseFailure(
+                                    "Failed to parse longitude".into(),
+                                ))?
+                                .as_str()
+                                .parse::<f64>()
+                                .map_err(|e| {
+                                    DataRecordParsingError::ParseFailure(format!(
+                                    "Failed to parse longitude: {}", e
+                                ))
+                            })?, 
+                            captures
+                                .get(3)
+                                .ok_or(DataRecordParsingError::ParseFailure(
+                                    "Failed to parse depth".into(),
+                                ))?
+                                .as_str()
+                                .parse::<f64>()
+                                .map_err(|e| {
+                                    DataRecordParsingError::ParseFailure(format!(
+                                    "Failed to parse depth: {}", e
+                                ))
+                            })?, 
+                            captures
+                                .get(4)
+                                .ok_or(DataRecordParsingError::ParseFailure(
+                                    "Failed to parse wind speed".into(),
+                                ))?
+                                .as_str()
+                                .parse::<f64>()
+                                .map_err(|e| {
+                                    DataRecordParsingError::ParseFailure(format!(
+                                    "Failed to parse wind speed: {}", e
+                                ))
+                            })?, 
+                            captures
+                                .get(5)
+                                .ok_or(DataRecordParsingError::ParseFailure(
+                                    "Failed to parse wind direction".into(),
+                                ))?
+                                .as_str()
+                                .parse::<f64>()
+                                .map_err(|e| {
+                                    DataRecordParsingError::ParseFailure(format!(
+                                    "Failed to parse wind direction: {}", e
+                                ))
+                            })?, 
+                            captures
+                                .get(6)
+                                .ok_or(DataRecordParsingError::ParseFailure(
+                                    "Failed to parse current speed".into(),
+                                ))?
+                                .as_str()
+                                .parse::<f64>()
+                                .map_err(|e| {
+                                    DataRecordParsingError::ParseFailure(format!(
+                                    "Failed to parse current speed: {}", e
+                                ))
+                            })?, 
+                            captures
+                                .get(7)
+                                .ok_or(DataRecordParsingError::ParseFailure(
+                                    "Failed to parse current direction".into(),
+                                ))?
+                                .as_str()
+                                .parse::<f64>()
+                                .map_err(|e| {
+                                    DataRecordParsingError::ParseFailure(format!(
+                                    "Failed to parse current direction: {}", e
+                                ))
+                            })?, 
+                        ))
+                    }, 
+                    None => {
+                        return Err(DataRecordParsingError::ParseFailure(
+                            "Invalid data for point data".into(),
+                        ));
+                    }
+                }?;
+
+            // Then the frequency * direction data
+            let energy_count = metadata.frequency.len() * metadata.direction.len();
+            let mut values: Vec<f64> = Vec::with_capacity(metadata.frequency.len() * metadata.direction.len());
+
+            while values.len() < energy_count {
+                let line = lines.next().ok_or(DataRecordParsingError::ParseFailure(
+                    "Failed to parse energy data".into(),
+                ))?;
+
+                line
+                    .split_whitespace()
+                    .map(f64::from_str)
+                    .for_each(|v| {
+                        if let Ok(v) = v {
+                            values.push(v);
+                        }
+                    });
+            }
+
+            records.push(ForecastSpectralWaveDataRecord{
+                date,
+                location: Location::new(latitude, longitude, "".into()), 
+                DimensionalData,
+                wind_speed, 
+                wind_direction, 
+                current_speed, 
+                current_direction, 
+                values
+            });
+        };
+
+        Ok((Some(metadata), records))
     }
 }
 
