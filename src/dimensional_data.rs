@@ -45,7 +45,7 @@ impl UnitConvertible<DimensionalData<i64>> for DimensionalData<i64> {
 }
 
 impl UnitConvertible<DimensionalData<Direction>> for DimensionalData<Direction> {
-    fn to_units(&mut self, new_units: &Units) {
+    fn to_units(&mut self, _: &Units) {
         // Do nothing
     }
 }

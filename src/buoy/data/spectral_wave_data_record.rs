@@ -14,7 +14,46 @@ pub struct SpectralWaveDataRecord {
 impl ParseableDataRecord for SpectralWaveDataRecord {
     type Metadata = ();
 
-    fn from_data_row(metadata: Option<&Self::Metadata>, row: &Vec<&str>) -> Result<SpectralWaveDataRecord, DataRecordParsingError> {
+    fn from_data(
+        data: &str,
+        count: Option<usize>,
+    ) -> Result<(Option<Self::Metadata>, Vec<Self>), DataRecordParsingError>
+    {
+        let mut reader = csv::ReaderBuilder::new()
+            .delimiter(b' ')
+            .trim(csv::Trim::All)
+            .comment(Some(b'#'))
+            .has_headers(false)
+            .flexible(true)
+            .from_reader(data.as_bytes());
+
+        let records: Result<Vec<Self>, DataRecordParsingError> = reader
+            .records()
+            .take(count.unwrap_or(usize::MAX))
+            .map(
+                |result| -> Result<Self, DataRecordParsingError> {
+                    match result {
+                        Ok(record) => {
+                            let filtered_record: Vec<&str> =
+                                record.iter().filter(|data| !data.is_empty()).collect();
+                            let mut met_data =
+                                Self::from_data_row(None, &filtered_record)?;
+                            met_data.to_units(&Units::Metric);
+                            Ok(met_data)
+                        }
+                        Err(e) => Err(DataRecordParsingError::ParseFailure(e.to_string())),
+                    }
+                },
+            )
+            .collect();
+
+        match records {
+            Ok(records) => Ok((None, records)),
+            Err(err) => Err(err),
+        }
+    }
+
+    fn from_data_row(_: Option<&Self::Metadata>, row: &Vec<&str>) -> Result<SpectralWaveDataRecord, DataRecordParsingError> {
         let has_sep_freq: bool = row.len() % 2 == 0;
         let start_index: usize = match has_sep_freq {
             true => 6,
@@ -47,7 +86,7 @@ impl ParseableDataRecord for SpectralWaveDataRecord {
 }
 
 impl UnitConvertible<SpectralWaveDataRecord> for SpectralWaveDataRecord {
-    fn to_units(&mut self, new_units: &Units) {
+    fn to_units(&mut self, _: &Units) {
         // TODO: Maybe some conversion
     }
 }

@@ -5,6 +5,7 @@ use surfrs::buoy::data::forecast_bulletin_wave_data_record::ForecastBulletinWave
 use surfrs::buoy::data::forecast_spectral_wave_data_record::ForecastSpectralWaveDataRecord;
 use surfrs::buoy::data::meteorological_data_record::MeteorologicalDataRecord;
 use surfrs::buoy::data::parseable_data_record::ParseableDataRecord;
+use surfrs::buoy::data::spectral_wave_data_record::SpectralWaveDataRecord;
 use surfrs::buoy::data::wave_data_record::WaveDataRecord;
 
 fn read_mock_data(name: &str) -> String {
@@ -27,6 +28,24 @@ fn read_wave_data() {
     
     assert_eq!(read_data.is_ok(), true);
     assert!(read_data.unwrap().1.len() == 1);
+}
+
+#[test]
+fn read_wave_energy_data() {
+    let raw_data = read_mock_data("44008.data_spec");
+    let read_data = SpectralWaveDataRecord::from_data(raw_data.as_str(), None);
+    
+    assert_eq!(read_data.is_ok(), true);
+    assert!(read_data.unwrap().1.len() == 1084);
+}
+
+#[test]
+fn read_wave_direction_data() {
+    let raw_data = read_mock_data("44097.swdir");
+    let read_data = SpectralWaveDataRecord::from_data(raw_data.as_str(), None);
+    
+    assert_eq!(read_data.is_ok(), true);
+    assert!(read_data.unwrap().1.len() == 1098);
 }
 
 #[test]
