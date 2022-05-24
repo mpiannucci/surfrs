@@ -1,6 +1,7 @@
 use super::date_record::DateRecord;
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
 use crate::dimensional_data::DimensionalData;
+use crate::swell::{SwellProvider, Swell};
 use crate::units::*;
 
 use std::str::FromStr;
@@ -132,6 +133,31 @@ impl UnitConvertible<WaveDataRecord> for WaveDataRecord {
         self.wind_wave_height.to_units(new_units);
         self.wind_wave_period.to_units(new_units);
         self.wind_wave_direction.to_units(new_units);
+    }
+}
+
+impl SwellProvider for WaveDataRecord {
+    fn wave_summary(&self) -> Result<crate::swell::Swell, crate::swell::SwellProviderError> {
+        Ok(Swell {
+            wave_height: self.wave_height.clone(),
+            period: self.average_wave_period.clone(),
+            direction: self.mean_wave_direction.clone(),
+        })
+    }
+
+    fn swell_components(&self) -> Result<Vec<Swell>, crate::swell::SwellProviderError> {
+        Ok(vec![
+            Swell {
+                wave_height: self.swell_wave_height.clone(),
+                period: self.swell_wave_period.clone(),
+                direction: self.swell_wave_direction.clone(),
+            },
+            Swell {
+                wave_height: self.wind_wave_height.clone(),
+                period: self.wind_wave_period.clone(),
+                direction: self.wind_wave_direction.clone(),
+            },
+        ])
     }
 }
 
