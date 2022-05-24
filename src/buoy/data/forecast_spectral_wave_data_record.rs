@@ -422,7 +422,9 @@ impl UnitConvertible<ForecastSpectralWaveDataRecord> for ForecastSpectralWaveDat
 
 impl SwellProvider for ForecastSpectralWaveDataRecord {
     fn wave_summary(&self) -> Result<crate::swell::Swell, crate::swell::SwellProviderError> {
-        todo!()
+        let (frequency, direction, energy) = self.dominant_spectra();
+
+        Swell::from_spectra(&frequency, &energy, &direction)
     }
 
     fn swell_components(&self) -> Result<Vec<crate::swell::Swell>, crate::swell::SwellProviderError> {
