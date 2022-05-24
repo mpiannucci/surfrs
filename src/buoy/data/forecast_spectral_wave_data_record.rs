@@ -4,6 +4,8 @@ use regex::Regex;
 
 use crate::dimensional_data::DimensionalData;
 use crate::location::Location;
+use crate::swell::{SwellProvider, Swell};
+use crate::tools::detect_peaks;
 use crate::units::{Direction, Measurement, Units, UnitConvertible};
 
 use super::date_record::DateRecord;
@@ -153,7 +155,33 @@ pub struct ForecastSpectralWaveDataRecord {
     pub wind_direction: DimensionalData<Direction>,
     pub current_speed: DimensionalData<f64>,
     pub current_direction: DimensionalData<Direction>,
-    pub values: Vec<f64>,
+    pub frequency: Vec<f64>,
+    pub direction: Vec<Direction>,
+    pub energy: Vec<f64>,
+}
+
+impl ForecastSpectralWaveDataRecord {
+    pub fn dominant_spectra(&self) -> (Vec<f64>, Vec<Direction>, Vec<f64>) {
+        let mut max_energies: Vec<f64> = Vec::with_capacity(self.frequency.len());
+        let mut max_directions: Vec<Direction> = Vec::with_capacity(self.frequency.len());
+
+        for (_frequency_index, energy) in self.energy.chunks(self.frequency.len()).enumerate() {
+            let mut max_value = 0.0;
+            let mut max_direction = Direction::from_degree(0);
+
+            for (direction_index, value) in energy.iter().enumerate() {
+                if *value > max_value {
+                    max_value = *value;
+                    max_direction = self.direction[direction_index].clone();
+                }
+            }
+
+            max_energies.push(max_value);
+            max_directions.push(max_direction);
+        }
+
+        (self.frequency.clone(), max_directions, max_energies)
+    }
 }
 
 impl ParseableDataRecord for ForecastSpectralWaveDataRecord {
@@ -324,9 +352,9 @@ impl ParseableDataRecord for ForecastSpectralWaveDataRecord {
 
             // Then the frequency * direction data
             let energy_count = metadata.frequency.len() * metadata.direction.len();
-            let mut values: Vec<f64> = Vec::with_capacity(metadata.frequency.len() * metadata.direction.len());
+            let mut energy: Vec<f64> = Vec::with_capacity(metadata.frequency.len() * metadata.direction.len());
 
-            while values.len() < energy_count {
+            while energy.len() < energy_count {
                 let line = lines.next().ok_or(DataRecordParsingError::ParseFailure(
                     "Failed to parse energy data".into(),
                 ))?;
@@ -336,7 +364,7 @@ impl ParseableDataRecord for ForecastSpectralWaveDataRecord {
                     .map(f64::from_str)
                     .for_each(|v| {
                         if let Ok(v) = v {
-                            values.push(v);
+                            energy.push(v);
                         }
                     });
             }
@@ -374,7 +402,9 @@ impl ParseableDataRecord for ForecastSpectralWaveDataRecord {
                     measurement: Measurement::Direction, 
                     unit: Units::Metric,
                 },
-                values,
+                frequency: metadata.frequency.clone(),
+                direction: metadata.direction.clone(),
+                energy,
             });
         };
 
@@ -387,6 +417,40 @@ impl UnitConvertible<ForecastSpectralWaveDataRecord> for ForecastSpectralWaveDat
         self.depth.to_units(new_units);
         self.wind_speed.to_units(new_units);
         self.current_speed.to_units(new_units);
+    }
+}
+
+impl SwellProvider for ForecastSpectralWaveDataRecord {
+    fn wave_summary(&self) -> Result<crate::swell::Swell, crate::swell::SwellProviderError> {
+        todo!()
+    }
+
+    fn swell_components(&self) -> Result<Vec<crate::swell::Swell>, crate::swell::SwellProviderError> {
+        let (frequency, direction, energy) = self.dominant_spectra();
+
+        let (minima_indexes, maxima_indexes) = detect_peaks(&energy, 0.05);
+
+        maxima_indexes
+            .iter()
+            .enumerate()
+            .map(|(meta_index, i)| {
+                let start = if meta_index == 0 { 
+                    0 
+                } else if i > &minima_indexes[meta_index - 1] {
+                    minima_indexes[meta_index - 1]
+                } else {
+                    0
+                };
+
+                let end = if meta_index >= minima_indexes.len() {
+                    energy.len()
+                } else {
+                    minima_indexes[meta_index]
+                };
+
+                Swell::from_spectra(&frequency[start..end], &energy[start..end], &direction[start..end])
+            })
+            .collect()
     }
 }
 
@@ -423,9 +487,5 @@ mod tests {
 
         assert_eq!(metadata.direction[0].degree.unwrap(), 85);
         assert_eq!(metadata.direction[15].degree.unwrap(), 295);
-    }
-
-    #[test]
-    fn parse_forecast_spectra_data() {
     }
 }

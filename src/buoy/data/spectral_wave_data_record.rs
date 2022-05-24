@@ -98,13 +98,30 @@ pub struct DirectionalSpectralWaveDataRecord {
     directional_spectra: SpectralWaveDataRecord,
 }
 
+impl DirectionalSpectralWaveDataRecord {
+    pub fn frequency(&self) -> Vec<f64> {
+        self.energy_spectra.frequency.clone()
+    }
+
+    pub fn energy(&self) -> Vec<f64> {
+        self.energy_spectra.value.clone()
+    }
+
+    pub fn direction(&self) -> Vec<Direction> {
+        self.directional_spectra.value
+            .iter()
+            .map(|d| Direction::from_degree(d.round() as i32))
+            .collect()
+    }
+}
+
 impl SwellProvider for DirectionalSpectralWaveDataRecord {
     fn wave_summary(&self) -> Result<Swell, SwellProviderError> {
         if self.energy_spectra.frequency.len() != self.directional_spectra.frequency.len() {
             return Err(SwellProviderError::InsufficientData("Frequencies are not the same length".to_string()));
         }
 
-        Swell::from_spectra(&self.energy_spectra.frequency, &self.energy_spectra.value, &self.directional_spectra.value)
+        Swell::from_spectra(&self.energy_spectra.frequency, &self.energy_spectra.value, &self.direction())
     }
 
     fn swell_components(&self) -> Result<Vec<Swell>, SwellProviderError> {
@@ -113,6 +130,8 @@ impl SwellProvider for DirectionalSpectralWaveDataRecord {
         }
 
         let (minima_indexes, maxima_indexes) = detect_peaks(&self.energy_spectra.value, 0.05);
+
+        let directions = self.direction();
 
         maxima_indexes
             .iter()
@@ -132,7 +151,7 @@ impl SwellProvider for DirectionalSpectralWaveDataRecord {
                     minima_indexes[meta_index]
                 };
 
-                Swell::from_spectra(&self.energy_spectra.frequency[start..end], &self.energy_spectra.value[start..end], &self.directional_spectra.value[start..end])
+                Swell::from_spectra(&self.energy_spectra.frequency[start..end], &self.energy_spectra.value[start..end], &directions[start..end])
             })
             .collect()
     }

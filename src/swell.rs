@@ -34,7 +34,7 @@ impl Swell {
         }
     }
 
-    pub fn from_spectra(frequency: &[f64], energy: &[f64], direction: &[f64]) -> Result<Self, SwellProviderError> {
+    pub fn from_spectra(frequency: &[f64], energy: &[f64], direction: &[Direction]) -> Result<Self, SwellProviderError> {
         let mut max_energy: Option<(usize, f64)> = None;
         let mut zero_moment = 0.0f64;
 
@@ -60,7 +60,7 @@ impl Swell {
             Some((max_energy_index, _)) => {
                 let wave_height = 4.0 * zero_moment.sqrt();
                 let period = 1.0 / frequency[max_energy_index];
-                let direction = Direction::from_degree(direction[max_energy_index].round() as i32);
+                let direction = direction[max_energy_index].clone();
                 Ok(Swell::new(&Units::Metric, wave_height, period, direction))
             }, 
             None => Err(SwellProviderError::InsufficientData("Failed to extract the max energy frequency".to_string()))
