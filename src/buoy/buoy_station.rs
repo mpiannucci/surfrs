@@ -3,6 +3,8 @@ use std::string::String;
 use serde::{Deserialize, Deserializer, Serialize};
 use quick_xml::de::from_reader;
 
+use crate::data::date_record::DateRecord;
+
 #[repr(C)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -98,6 +100,16 @@ impl BuoyStation {
 
     pub fn secondary_spectral_wave_energy_data_url(&self) -> String {
         format!("https://www.ndbc.noaa.gov/data/realtime2/{}.swr2", self.station_id)
+    }
+
+    pub fn gfswave_bulletin_data_url(&self, date: DateRecord) -> String {
+        format!("https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod/gfs.{}{}{}/{}/wave/station/bulls.t{}z/gfswave.{}.cbull", 
+            date.year, date.month, date.day, date.hour, date.hour, self.station_id)
+    }
+
+    pub fn gfswave_spectral_data_url(&self, date: DateRecord) -> String {
+        format!("https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod/gfs.{}{}{}/{}/wave/station/bulls.t{}z/gfswave.{}.spec", 
+            date.year, date.month, date.day, date.hour, date.hour, self.station_id)
     }
 }
 

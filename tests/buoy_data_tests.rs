@@ -1,12 +1,12 @@
 extern crate surfrs;
 
 use std::fs;
-use surfrs::buoy::data::forecast_bulletin_wave_data_record::ForecastBulletinWaveRecord;
-use surfrs::buoy::data::forecast_spectral_wave_data_record::ForecastSpectralWaveDataRecord;
-use surfrs::buoy::data::meteorological_data_record::MeteorologicalDataRecord;
-use surfrs::buoy::data::parseable_data_record::ParseableDataRecord;
-use surfrs::buoy::data::spectral_wave_data_record::SpectralWaveDataRecord;
-use surfrs::buoy::data::wave_data_record::WaveDataRecord;
+use surfrs::data::forecast_bulletin_wave_data_record::ForecastBulletinWaveRecord;
+use surfrs::data::forecast_spectral_wave_data_record::ForecastSpectralWaveDataRecord;
+use surfrs::data::meteorological_data_record::MeteorologicalDataRecord;
+use surfrs::data::parseable_data_record::ParseableDataRecord;
+use surfrs::data::spectral_wave_data_record::SpectralWaveDataRecord;
+use surfrs::data::wave_data_record::WaveDataRecord;
 
 fn read_mock_data(name: &str) -> String {
     fs::read_to_string(format!("mock/{}", name)).unwrap()
