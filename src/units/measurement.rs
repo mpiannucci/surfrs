@@ -1,5 +1,7 @@
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug)]
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Measurement {
     Length,
     Speed,

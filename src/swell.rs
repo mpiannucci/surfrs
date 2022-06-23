@@ -1,9 +1,11 @@
+use serde::{Serialize, Deserialize};
+
 use crate::dimensional_data::DimensionalData;
 use crate::tools::zero_spectral_moment;
 use crate::units::{Units, Measurement, Direction, UnitConvertible};
 use std::fmt;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Swell {
     pub wave_height: DimensionalData<f64>,
     pub period: DimensionalData<f64>,
@@ -15,19 +17,19 @@ impl Swell {
         Swell {
             wave_height: DimensionalData {
                 value: Some(wave_height),
-                variable_name: "wave height",
+                variable_name: "wave height".into(),
                 measurement: Measurement::Length,
                 unit: units.clone(),
             },
             period: DimensionalData {
                 value: Some(period),
-                variable_name: "period",
+                variable_name: "period".into(),
                 measurement: Measurement::Time,
                 unit: units.clone(),
             },
             direction: DimensionalData {
                 value: Some(direction),
-                variable_name: "direction",
+                variable_name: "direction".into(),
                 measurement: Measurement::Direction,
                 unit: units.clone(),
             }

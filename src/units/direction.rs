@@ -1,12 +1,15 @@
 use std::fmt;
 use std::str::FromStr;
 
+use serde::Deserialize;
+use serde::Serialize;
+
 use super::Measurement;
 use super::CardinalDirection;
 use super::Units;
 use super::DataParseError;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Direction {
     pub direction: CardinalDirection,
     pub degree: Option<i32>,

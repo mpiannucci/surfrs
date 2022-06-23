@@ -3,6 +3,7 @@ pub mod steepness;
 pub mod cardinal_direction;
 pub mod direction;
 
+use serde::{Serialize, Deserialize};
 pub use steepness::Steepness;
 pub use cardinal_direction::CardinalDirection;
 pub use measurement::Measurement;
@@ -10,7 +11,7 @@ pub use direction::Direction;
 
 use std::fmt;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Units {
     Metric,
     English,

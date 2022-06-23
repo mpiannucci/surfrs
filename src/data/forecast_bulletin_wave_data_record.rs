@@ -164,7 +164,7 @@ impl ParseableDataRecord for ForecastBulletinWaveRecord {
 
         let significant_wave_height = DimensionalData::from_raw_data(
             row[1],
-            "significant wave height",
+            "significant wave height".into(),
             Measurement::Length,
             Units::Metric,
         );

@@ -1,8 +1,10 @@
 use std::fmt;
 use std::str::FromStr;
+use serde::{Deserialize, Serialize};
+
 use super::DataParseError;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Steepness {
     VerySteep,
     Steep,

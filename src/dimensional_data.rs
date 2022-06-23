@@ -1,18 +1,20 @@
+use serde::{Serialize, Deserialize};
+
 use crate::units::{Direction, Measurement, UnitConvertible, Units};
 use std::fmt;
 use std::option::Option;
 use std::str::FromStr;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DimensionalData<T> {
     pub value: Option<T>,
-    pub variable_name: &'static str,
+    pub variable_name: String,
     pub measurement: Measurement,
     pub unit: Units,
 }
 
 impl <T> DimensionalData<T> where T: FromStr {
-    pub fn from_raw_data(raw_data: &str, variable_name: &'static str, measurement: Measurement, unit: Units) -> DimensionalData<T> {
+    pub fn from_raw_data(raw_data: &str, variable_name: String, measurement: Measurement, unit: Units) -> DimensionalData<T> {
         let parsed_value = raw_data.parse();
         DimensionalData {
             value: match parsed_value {
