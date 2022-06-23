@@ -1,9 +1,11 @@
+use csv::Reader;
+
 use crate::swell::{Swell, SwellProvider, SwellProviderError};
 use crate::tools::detect_peaks;
 use crate::units::*;
 
 use super::date_record::DateRecord;
-use super::parseable_data_record::{ParseableDataRecord, DataRecordParsingError};
+use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
 
 #[derive(Clone, Debug)]
 pub struct SpectralWaveDataRecord {
@@ -16,46 +18,10 @@ pub struct SpectralWaveDataRecord {
 impl ParseableDataRecord for SpectralWaveDataRecord {
     type Metadata = ();
 
-    fn from_data(
-        data: &str,
-        count: Option<usize>,
-    ) -> Result<(Option<Self::Metadata>, Vec<Self>), DataRecordParsingError>
-    {
-        let mut reader = csv::ReaderBuilder::new()
-            .delimiter(b' ')
-            .trim(csv::Trim::All)
-            .comment(Some(b'#'))
-            .has_headers(false)
-            .flexible(true)
-            .from_reader(data.as_bytes());
-
-        let records: Result<Vec<Self>, DataRecordParsingError> = reader
-            .records()
-            .take(count.unwrap_or(usize::MAX))
-            .map(
-                |result| -> Result<Self, DataRecordParsingError> {
-                    match result {
-                        Ok(record) => {
-                            let filtered_record: Vec<&str> =
-                                record.iter().filter(|data| !data.is_empty()).collect();
-                            let mut met_data =
-                                Self::from_data_row(None, &filtered_record)?;
-                            met_data.to_units(&Units::Metric);
-                            Ok(met_data)
-                        }
-                        Err(e) => Err(DataRecordParsingError::ParseFailure(e.to_string())),
-                    }
-                },
-            )
-            .collect();
-
-        match records {
-            Ok(records) => Ok((None, records)),
-            Err(err) => Err(err),
-        }
-    }
-
-    fn from_data_row(_: Option<&Self::Metadata>, row: &Vec<&str>) -> Result<SpectralWaveDataRecord, DataRecordParsingError> {
+    fn from_data_row(
+        _: Option<&Self::Metadata>,
+        row: &Vec<&str>,
+    ) -> Result<SpectralWaveDataRecord, DataRecordParsingError> {
         let has_sep_freq: bool = row.len() % 2 == 0;
         let start_index: usize = match has_sep_freq {
             true => 6,
@@ -70,7 +36,7 @@ impl ParseableDataRecord for SpectralWaveDataRecord {
             let index = start_index + i * 2;
 
             values[i] = row[index].parse().unwrap();
-            freqs[i] = row[index+1].replace(&['(', ')'][..], "").parse().unwrap();
+            freqs[i] = row[index + 1].replace(&['(', ')'][..], "").parse().unwrap();
         }
 
         let separation_frequency = match has_sep_freq {
@@ -82,7 +48,7 @@ impl ParseableDataRecord for SpectralWaveDataRecord {
             date: DateRecord::from_data_row(None, row)?,
             separation_frequency: separation_frequency,
             value: values,
-            frequency: freqs
+            frequency: freqs,
         })
     }
 }
@@ -94,7 +60,7 @@ impl UnitConvertible<SpectralWaveDataRecord> for SpectralWaveDataRecord {
 }
 
 pub struct DirectionalSpectralWaveDataRecord {
-    energy_spectra: SpectralWaveDataRecord, 
+    energy_spectra: SpectralWaveDataRecord,
     directional_spectra: SpectralWaveDataRecord,
 }
 
@@ -108,7 +74,8 @@ impl DirectionalSpectralWaveDataRecord {
     }
 
     pub fn direction(&self) -> Vec<Direction> {
-        self.directional_spectra.value
+        self.directional_spectra
+            .value
             .iter()
             .map(|d| Direction::from_degree(d.round() as i32))
             .collect()
@@ -118,15 +85,23 @@ impl DirectionalSpectralWaveDataRecord {
 impl SwellProvider for DirectionalSpectralWaveDataRecord {
     fn wave_summary(&self) -> Result<Swell, SwellProviderError> {
         if self.energy_spectra.frequency.len() != self.directional_spectra.frequency.len() {
-            return Err(SwellProviderError::InsufficientData("Frequencies are not the same length".to_string()));
+            return Err(SwellProviderError::InsufficientData(
+                "Frequencies are not the same length".to_string(),
+            ));
         }
 
-        Swell::from_spectra(&self.energy_spectra.frequency, &self.energy_spectra.value, &self.direction())
+        Swell::from_spectra(
+            &self.energy_spectra.frequency,
+            &self.energy_spectra.value,
+            &self.direction(),
+        )
     }
 
     fn swell_components(&self) -> Result<Vec<Swell>, SwellProviderError> {
         if self.energy_spectra.frequency.len() != self.directional_spectra.frequency.len() {
-            return Err(SwellProviderError::InsufficientData("Frequencies are not the same length".to_string()));
+            return Err(SwellProviderError::InsufficientData(
+                "Frequencies are not the same length".to_string(),
+            ));
         }
 
         let (minima_indexes, maxima_indexes) = detect_peaks(&self.energy_spectra.value, 0.05);
@@ -137,8 +112,8 @@ impl SwellProvider for DirectionalSpectralWaveDataRecord {
             .iter()
             .enumerate()
             .map(|(meta_index, i)| {
-                let start = if meta_index == 0 { 
-                    0 
+                let start = if meta_index == 0 {
+                    0
                 } else if i > &minima_indexes[meta_index - 1] {
                     minima_indexes[meta_index - 1]
                 } else {
@@ -151,9 +126,52 @@ impl SwellProvider for DirectionalSpectralWaveDataRecord {
                     minima_indexes[meta_index]
                 };
 
-                Swell::from_spectra(&self.energy_spectra.frequency[start..end], &self.energy_spectra.value[start..end], &directions[start..end])
+                Swell::from_spectra(
+                    &self.energy_spectra.frequency[start..end],
+                    &self.energy_spectra.value[start..end],
+                    &directions[start..end],
+                )
             })
             .collect()
+    }
+}
+
+pub struct SpectralWaveDataRecordCollection<'a> {
+    reader: Reader<&'a [u8]>,
+}
+
+impl<'a> SpectralWaveDataRecordCollection<'a> {
+    pub fn from_data(data: &'a str) -> Self {
+        let reader = csv::ReaderBuilder::new()
+            .delimiter(b' ')
+            .trim(csv::Trim::All)
+            .comment(Some(b'#'))
+            .has_headers(false)
+            .flexible(true)
+            .from_reader(data.as_bytes());
+
+        SpectralWaveDataRecordCollection { reader }
+    }
+
+    pub fn records(&'a mut self) -> impl Iterator<Item = SpectralWaveDataRecord> + 'a {
+        self.reader
+            .records()
+            .map(
+                |result| -> Result<SpectralWaveDataRecord, DataRecordParsingError> {
+                    match result {
+                        Ok(record) => {
+                            let filtered_record: Vec<&str> =
+                                record.iter().filter(|data| !data.is_empty()).collect();
+                            let mut met_data =
+                                SpectralWaveDataRecord::from_data_row(None, &filtered_record)?;
+                            met_data.to_units(&Units::Metric);
+                            Ok(met_data)
+                        }
+                        Err(e) => Err(DataRecordParsingError::ParseFailure(e.to_string())),
+                    }
+                },
+            )
+            .filter_map(|d| d.ok())
     }
 }
 
@@ -167,7 +185,7 @@ mod tests {
         let data_row: Vec<&str> = raw_data.split_whitespace().collect();
 
         let spectral_data = SpectralWaveDataRecord::from_data_row(None, &data_row).unwrap();
-        
+
         assert!((spectral_data.separation_frequency.unwrap() - 9.999).abs() < 0.0001);
         assert_eq!(spectral_data.frequency.len(), 46);
         assert_eq!(spectral_data.value.len(), 46);
@@ -181,7 +199,7 @@ mod tests {
         let data_row: Vec<&str> = raw_data.split_whitespace().collect();
 
         let spectral_data = SpectralWaveDataRecord::from_data_row(None, &data_row).unwrap();
-        
+
         assert!(spectral_data.separation_frequency.is_none());
     }
 }

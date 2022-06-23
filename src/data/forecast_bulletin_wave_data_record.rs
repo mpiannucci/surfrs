@@ -1,11 +1,12 @@
 use std::str::FromStr;
 
+use csv::Reader;
 use regex::Regex;
 
 use crate::dimensional_data::DimensionalData;
 use crate::location::Location;
 use crate::swell::{Swell, SwellProvider};
-use crate::units::{Direction, Measurement, Units, UnitConvertible};
+use crate::units::{Direction, Measurement, UnitConvertible, Units};
 
 use super::date_record::DateRecord;
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
@@ -132,44 +133,6 @@ pub struct ForecastBulletinWaveRecord {
 impl ParseableDataRecord for ForecastBulletinWaveRecord {
     type Metadata = ForecastBulletinWaveRecordMetadata;
 
-    fn from_data(
-        data: &str,
-        count: Option<usize>
-    ) -> Result<(Option<Self::Metadata>, Vec<ForecastBulletinWaveRecord>), DataRecordParsingError>
-    {
-        let metadata = data.parse::<Self::Metadata>()?;
-
-        let mut reader = csv::ReaderBuilder::new()
-            .delimiter(b' ')
-            .trim(csv::Trim::All)
-            .comment(Some(b'#'))
-            .has_headers(false)
-            .flexible(true)
-            .from_reader(data.as_bytes());
-
-        let data_records = reader.records()
-            .skip(6)
-            .take(count.unwrap_or(usize::MAX))    
-            .map(|result| -> Result<ForecastBulletinWaveRecord, DataRecordParsingError> {
-                match result {
-                    Ok(record) => {
-                        let filtered_record: Vec<&str> =
-                        record.iter().filter(|data| !data.is_empty()).collect();
-                        let mut wave_data = ForecastBulletinWaveRecord::from_data_row(Some(&metadata), &filtered_record)?;
-                        wave_data.to_units(&Units::Metric);
-                        Ok(wave_data)
-                    }, 
-                    Err(e) => Err(DataRecordParsingError::ParseFailure(format!("Failed to parse record: {}", e))),
-                }
-            })
-            .collect();
-
-        match data_records {
-            Ok(data_records) => Ok((Some(metadata), data_records)),
-            Err(err) => Err(err),
-        }
-    }
-
     fn from_data_row(
         metadata: Option<&Self::Metadata>,
         row: &Vec<&str>,
@@ -277,6 +240,65 @@ fn parse_longitude(raw: &str) -> Result<f64, DataRecordParsingError> {
         Ok(-longitude)
     } else {
         Ok(longitude)
+    }
+}
+
+pub struct ForecastBulletinWaveRecordCollection<'a> {
+    data: &'a str,
+    reader: Reader<&'a [u8]>,
+}
+
+impl<'a> ForecastBulletinWaveRecordCollection<'a> {
+    pub fn from_data(data: &'a str) -> Self {
+        let reader = csv::ReaderBuilder::new()
+            .delimiter(b' ')
+            .trim(csv::Trim::All)
+            .comment(Some(b'#'))
+            .has_headers(false)
+            .flexible(true)
+            .from_reader(data.as_bytes());
+
+        ForecastBulletinWaveRecordCollection { data, reader }
+    }
+
+    pub fn records(
+        &'a mut self,
+    ) -> Result<
+        (
+            ForecastBulletinWaveRecordMetadata,
+            impl Iterator<Item = ForecastBulletinWaveRecord> + 'a,
+        ),
+        DataRecordParsingError,
+    > {
+        let metadata = self.data.parse::<ForecastBulletinWaveRecordMetadata>()?;
+        let metadata_clone = metadata.clone();
+        let records = self
+            .reader
+            .records()
+            .skip(6)
+            .map(
+                move |result| -> Result<ForecastBulletinWaveRecord, DataRecordParsingError> {
+                    match result {
+                        Ok(record) => {
+                            let filtered_record: Vec<&str> =
+                                record.iter().filter(|data| !data.is_empty()).collect();
+                            let mut wave_data = ForecastBulletinWaveRecord::from_data_row(
+                                Some(&metadata),
+                                &filtered_record,
+                            )?;
+                            wave_data.to_units(&Units::Metric);
+                            Ok(wave_data)
+                        }
+                        Err(e) => Err(DataRecordParsingError::ParseFailure(format!(
+                            "Failed to parse record: {}",
+                            e
+                        ))),
+                    }
+                },
+            )
+            .filter_map(|d| d.ok());
+
+        Ok((metadata_clone, records))
     }
 }
 

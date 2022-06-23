@@ -1,5 +1,7 @@
+use csv::Reader;
+
 use crate::dimensional_data::DimensionalData;
-use crate::swell::{SwellProvider, Swell};
+use crate::swell::{Swell, SwellProvider};
 use crate::units::*;
 
 use super::date_record::DateRecord;
@@ -26,45 +28,6 @@ pub struct MeteorologicalDataRecord {
 
 impl ParseableDataRecord for MeteorologicalDataRecord {
     type Metadata = ();
-
-    fn from_data(
-        data: &str,
-        count: Option<usize>,
-    ) -> Result<(Option<Self::Metadata>, Vec<MeteorologicalDataRecord>), DataRecordParsingError>
-    {
-        let mut reader = csv::ReaderBuilder::new()
-            .delimiter(b' ')
-            .trim(csv::Trim::All)
-            .comment(Some(b'#'))
-            .has_headers(false)
-            .flexible(true)
-            .from_reader(data.as_bytes());
-
-        let records: Result<Vec<MeteorologicalDataRecord>, DataRecordParsingError> = reader
-            .records()
-            .take(count.unwrap_or(usize::MAX))
-            .map(
-                |result| -> Result<MeteorologicalDataRecord, DataRecordParsingError> {
-                    match result {
-                        Ok(record) => {
-                            let filtered_record: Vec<&str> =
-                                record.iter().filter(|data| !data.is_empty()).collect();
-                            let mut met_data =
-                                MeteorologicalDataRecord::from_data_row(None, &filtered_record)?;
-                            met_data.to_units(&Units::Metric);
-                            Ok(met_data)
-                        }
-                        Err(e) => Err(DataRecordParsingError::ParseFailure(e.to_string())),
-                    }
-                },
-            )
-            .collect();
-
-        match records {
-            Ok(records) => Ok((None, records)),
-            Err(err) => Err(err),
-        }
-    }
 
     fn from_data_row(
         _: Option<&Self::Metadata>,
@@ -183,7 +146,7 @@ impl SwellProvider for MeteorologicalDataRecord {
     fn wave_summary(&self) -> Result<crate::swell::Swell, crate::swell::SwellProviderError> {
         Ok(Swell {
             wave_height: self.wave_height.clone(),
-            period: self.dominant_wave_period.clone(), 
+            period: self.dominant_wave_period.clone(),
             direction: self.mean_wave_direction.clone(),
         })
     }
@@ -193,6 +156,45 @@ impl SwellProvider for MeteorologicalDataRecord {
             Ok(summary) => Ok(vec![summary]),
             Err(err) => Err(err),
         }
+    }
+}
+
+pub struct MeteorologicalDataRecordCollection<'a> {
+    reader: Reader<&'a [u8]>,
+}
+
+impl<'a> MeteorologicalDataRecordCollection<'a> {
+    pub fn from_data(data: &'a str) -> Self {
+        let reader = csv::ReaderBuilder::new()
+            .delimiter(b' ')
+            .trim(csv::Trim::All)
+            .comment(Some(b'#'))
+            .has_headers(false)
+            .flexible(true)
+            .from_reader(data.as_bytes());
+
+        MeteorologicalDataRecordCollection { reader }
+    }
+
+    pub fn records(
+        &'a mut self,
+    ) -> impl Iterator<Item = MeteorologicalDataRecord> + 'a {
+        self.reader.records().map(
+            |result| -> Result<MeteorologicalDataRecord, DataRecordParsingError> {
+                match result {
+                    Ok(record) => {
+                        let filtered_record: Vec<&str> =
+                            record.iter().filter(|data| !data.is_empty()).collect();
+                        let mut met_data =
+                            MeteorologicalDataRecord::from_data_row(None, &filtered_record)?;
+                        met_data.to_units(&Units::Metric);
+                        Ok(met_data)
+                    }
+                    Err(e) => Err(DataRecordParsingError::ParseFailure(e.to_string())),
+                }
+            },
+        )
+        .filter_map(|d| d.ok())
     }
 }
 

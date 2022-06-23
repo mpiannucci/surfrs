@@ -1,7 +1,9 @@
+use csv::Reader;
+
 use super::date_record::DateRecord;
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
 use crate::dimensional_data::DimensionalData;
-use crate::swell::{SwellProvider, Swell};
+use crate::swell::{Swell, SwellProvider};
 use crate::units::*;
 
 use std::str::FromStr;
@@ -23,39 +25,6 @@ pub struct WaveDataRecord {
 
 impl ParseableDataRecord for WaveDataRecord {
     type Metadata = ();
-
-    fn from_data(
-        raw_data: &str,
-        count: Option<usize>,
-    ) -> Result<(Option<Self::Metadata>, Vec<WaveDataRecord>), DataRecordParsingError> {
-        let mut reader = csv::ReaderBuilder::new()
-            .delimiter(b' ')
-            .trim(csv::Trim::All)
-            .comment(Some(b'#'))
-            .has_headers(false)
-            .flexible(true)
-            .from_reader(raw_data.as_bytes());
-
-        let records = reader.
-            records()
-            .take(count.unwrap_or(usize::MAX))
-            .map(|result| -> Result<WaveDataRecord, DataRecordParsingError> {
-                if let Ok(record) = result {
-                    let filtered_record: Vec<&str> =
-                        record.iter().filter(|data| !data.is_empty()).collect();
-                    let mut wave_data = WaveDataRecord::from_data_row(None, &filtered_record)?;
-                    wave_data.to_units(&Units::Metric);
-                    return Ok(wave_data);
-                }
-                Err(DataRecordParsingError::InvalidData)
-            })
-            .collect();
-
-        match records {
-            Ok(records) => Ok((None, records)),
-            Err(err) => Err(err),
-        }
-    }
 
     fn from_data_row(
         _: Option<&Self::Metadata>,
@@ -158,6 +127,40 @@ impl SwellProvider for WaveDataRecord {
                 direction: self.wind_wave_direction.clone(),
             },
         ])
+    }
+}
+
+pub struct WaveDataRecordCollection<'a> {
+    reader: Reader<&'a [u8]>,
+}
+
+impl<'a> WaveDataRecordCollection<'a> {
+    pub fn from_data(data: &'a str) -> Self {
+        let reader = csv::ReaderBuilder::new()
+            .delimiter(b' ')
+            .trim(csv::Trim::All)
+            .comment(Some(b'#'))
+            .has_headers(false)
+            .flexible(true)
+            .from_reader(data.as_bytes());
+
+        WaveDataRecordCollection { reader }
+    }
+
+    pub fn records(&'a mut self) -> impl Iterator<Item = WaveDataRecord> + 'a {
+        self.reader
+            .records()
+            .map(|result| -> Result<WaveDataRecord, DataRecordParsingError> {
+                if let Ok(record) = result {
+                    let filtered_record: Vec<&str> =
+                        record.iter().filter(|data| !data.is_empty()).collect();
+                    let mut wave_data = WaveDataRecord::from_data_row(None, &filtered_record)?;
+                    wave_data.to_units(&Units::Metric);
+                    return Ok(wave_data);
+                }
+                Err(DataRecordParsingError::InvalidData)
+            })
+            .filter_map(|d| d.ok())
     }
 }
 

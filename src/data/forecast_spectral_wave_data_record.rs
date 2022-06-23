@@ -1,15 +1,16 @@
-use std::str::FromStr;
+use std::iter::Skip;
+use std::str::{FromStr, Lines};
 
 use regex::Regex;
 
 use crate::dimensional_data::DimensionalData;
 use crate::location::Location;
-use crate::swell::{SwellProvider, Swell};
+use crate::swell::{Swell, SwellProvider};
 use crate::tools::detect_peaks;
-use crate::units::{Direction, Measurement, Units, UnitConvertible};
+use crate::units::{Direction, Measurement, UnitConvertible, Units};
 
 use super::date_record::DateRecord;
-use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
+use super::parseable_data_record::{DataRecordParsingError};
 
 #[derive(Clone, Debug)]
 pub struct ForecastSpectralWaveDataRecordMetadata {
@@ -184,234 +185,6 @@ impl ForecastSpectralWaveDataRecord {
     }
 }
 
-impl ParseableDataRecord for ForecastSpectralWaveDataRecord {
-    type Metadata = ForecastSpectralWaveDataRecordMetadata;
-
-    fn from_data(
-        data: &str,
-        count: Option<usize>,
-    ) -> Result<(Option<Self::Metadata>, Vec<ForecastSpectralWaveDataRecord>), DataRecordParsingError>
-    {
-        let metadata = ForecastSpectralWaveDataRecordMetadata::from_str(data)?;
-
-        let mut lines = data.lines().skip(metadata.line_count);
-
-        let mut records: Vec<ForecastSpectralWaveDataRecord> = Vec::new();
-
-        let point_regex = Regex::new(".{0,12}\\s*([+-]?[0-9]*[.]?[0-9]+)\\s*([+-]?[0-9]*[.]?[0-9]+)\\s*([+-]?[0-9]*[.]?[0-9]+)\\s*([+-]?[0-9]*[.]?[0-9]+)\\s*([+-]?[0-9]*[.]?[0-9]+)\\s*([+-]?[0-9]*[.]?[0-9]+)\\s*([+-]?[0-9]*[.]?[0-9]+)");
-        let point_regex = point_regex.map_err(|e| {
-            DataRecordParsingError::ParseFailure(format!(
-                "Failed to create point regex: {}", e
-            ))
-        })?;
-
-        while let Some(line) = lines.next() {
-            if (count.unwrap_or(usize::MAX)) <= records.len() {
-                break;
-            }
-
-            // First line is the date
-            let year = line[0..4].parse::<i32>().map_err(|e| {
-                DataRecordParsingError::ParseFailure(format!(
-                    "Failed to parse year: {}",
-                    e
-                ))
-            })?;
-
-            let month = line[4..6].parse::<i32>().map_err(|e| {
-                DataRecordParsingError::ParseFailure(format!(
-                    "Failed to parse month: {}",
-                    e
-                ))
-            })?;
-
-            let day = line[6..8].parse::<i32>().map_err(|e| {
-                DataRecordParsingError::ParseFailure(format!(
-                    "Failed to parse day: {}",
-                    e
-                ))
-            })?;
-
-            let hour = line[9..11].parse::<i32>().map_err(|e| {
-                DataRecordParsingError::ParseFailure(format!(
-                    "Failed to parse hour: {}",
-                    e
-                ))
-            })?;
-
-            let minute = line[11..13].parse::<i32>().map_err(|e| {
-                DataRecordParsingError::ParseFailure(format!(
-                    "Failed to parse minute: {}",
-                    e
-                ))
-            })?; 
-
-            let date = DateRecord{year, month, day, hour, minute};
-
-            let line = lines.next().ok_or(DataRecordParsingError::ParseFailure(
-                "Failed to parse point data".into(),
-            ))?;
-
-            // Then the point data
-            let (latitude, longitude, depth, wind_speed, wind_direction, current_speed, current_direction) = match point_regex
-                .captures(line) {
-                    Some(captures) => {
-                        Ok((
-                            captures
-                                .get(1)
-                                .ok_or(DataRecordParsingError::ParseFailure(
-                                    "Failed to parse latitude".into(),
-                                ))?
-                                .as_str()
-                                .parse::<f64>()
-                                .map_err(|e| {
-                                    DataRecordParsingError::ParseFailure(format!(
-                                    "Failed to parse latitude: {}", e
-                                ))
-                            })?, 
-                            captures
-                                .get(2)
-                                .ok_or(DataRecordParsingError::ParseFailure(
-                                    "Failed to parse longitude".into(),
-                                ))?
-                                .as_str()
-                                .parse::<f64>()
-                                .map_err(|e| {
-                                    DataRecordParsingError::ParseFailure(format!(
-                                    "Failed to parse longitude: {}", e
-                                ))
-                            })?, 
-                            captures
-                                .get(3)
-                                .ok_or(DataRecordParsingError::ParseFailure(
-                                    "Failed to parse depth".into(),
-                                ))?
-                                .as_str()
-                                .parse::<f64>()
-                                .map_err(|e| {
-                                    DataRecordParsingError::ParseFailure(format!(
-                                    "Failed to parse depth: {}", e
-                                ))
-                            })?, 
-                            captures
-                                .get(4)
-                                .ok_or(DataRecordParsingError::ParseFailure(
-                                    "Failed to parse wind speed".into(),
-                                ))?
-                                .as_str()
-                                .parse::<f64>()
-                                .map_err(|e| {
-                                    DataRecordParsingError::ParseFailure(format!(
-                                    "Failed to parse wind speed: {}", e
-                                ))
-                            })?, 
-                            captures
-                                .get(5)
-                                .ok_or(DataRecordParsingError::ParseFailure(
-                                    "Failed to parse wind direction".into(),
-                                ))?
-                                .as_str()
-                                .parse::<f64>()
-                                .map_err(|e| {
-                                    DataRecordParsingError::ParseFailure(format!(
-                                    "Failed to parse wind direction: {}", e
-                                ))
-                            })?, 
-                            captures
-                                .get(6)
-                                .ok_or(DataRecordParsingError::ParseFailure(
-                                    "Failed to parse current speed".into(),
-                                ))?
-                                .as_str()
-                                .parse::<f64>()
-                                .map_err(|e| {
-                                    DataRecordParsingError::ParseFailure(format!(
-                                    "Failed to parse current speed: {}", e
-                                ))
-                            })?, 
-                            captures
-                                .get(7)
-                                .ok_or(DataRecordParsingError::ParseFailure(
-                                    "Failed to parse current direction".into(),
-                                ))?
-                                .as_str()
-                                .parse::<f64>()
-                                .map_err(|e| {
-                                    DataRecordParsingError::ParseFailure(format!(
-                                    "Failed to parse current direction: {}", e
-                                ))
-                            })?, 
-                        ))
-                    }, 
-                    None => {
-                        return Err(DataRecordParsingError::ParseFailure(
-                            "Invalid data for point data".into(),
-                        ));
-                    }
-                }?;
-
-            // Then the frequency * direction data
-            let energy_count = metadata.frequency.len() * metadata.direction.len();
-            let mut energy: Vec<f64> = Vec::with_capacity(metadata.frequency.len() * metadata.direction.len());
-
-            while energy.len() < energy_count {
-                let line = lines.next().ok_or(DataRecordParsingError::ParseFailure(
-                    "Failed to parse energy data".into(),
-                ))?;
-
-                line
-                    .split_whitespace()
-                    .map(f64::from_str)
-                    .for_each(|v| {
-                        if let Ok(v) = v {
-                            energy.push(v);
-                        }
-                    });
-            }
-
-            records.push(ForecastSpectralWaveDataRecord{
-                date,
-                location: Location::new(latitude, longitude, "".into()), 
-                depth: DimensionalData {
-                    value: Some(depth), 
-                    variable_name: "depth".into(),
-                    measurement: Measurement::Length, 
-                    unit: Units::Metric,
-                },
-                wind_speed: DimensionalData {
-                    value: Some(wind_speed), 
-                    variable_name: "wind speed".into(),
-                    measurement: Measurement::Speed, 
-                    unit: Units::Metric,
-                },
-                wind_direction: DimensionalData {
-                    value: Some(Direction::from_degree(wind_direction.round() as i32)), 
-                    variable_name: "wind direction".into(),
-                    measurement: Measurement::Direction, 
-                    unit: Units::Metric,
-                },
-                current_speed: DimensionalData {
-                    value: Some(current_speed), 
-                    variable_name: "current speed".into(),
-                    measurement: Measurement::Speed, 
-                    unit: Units::Metric,
-                },
-                current_direction: DimensionalData {
-                    value: Some(Direction::from_degree(current_direction.round() as i32)), 
-                    variable_name: "current direction".into(),
-                    measurement: Measurement::Direction, 
-                    unit: Units::Metric,
-                },
-                frequency: metadata.frequency.clone(),
-                direction: metadata.direction.clone(),
-                energy,
-            });
-        };
-
-        Ok((Some(metadata), records))
-    }
-}
-
 impl UnitConvertible<ForecastSpectralWaveDataRecord> for ForecastSpectralWaveDataRecord {
     fn to_units(&mut self, new_units: &Units) {
         self.depth.to_units(new_units);
@@ -427,7 +200,9 @@ impl SwellProvider for ForecastSpectralWaveDataRecord {
         Swell::from_spectra(&frequency, &energy, &direction)
     }
 
-    fn swell_components(&self) -> Result<Vec<crate::swell::Swell>, crate::swell::SwellProviderError> {
+    fn swell_components(
+        &self,
+    ) -> Result<Vec<crate::swell::Swell>, crate::swell::SwellProviderError> {
         let (frequency, direction, energy) = self.dominant_spectra();
 
         let (minima_indexes, maxima_indexes) = detect_peaks(&energy, 0.05);
@@ -436,8 +211,8 @@ impl SwellProvider for ForecastSpectralWaveDataRecord {
             .iter()
             .enumerate()
             .map(|(meta_index, i)| {
-                let start = if meta_index == 0 { 
-                    0 
+                let start = if meta_index == 0 {
+                    0
                 } else if i > &minima_indexes[meta_index - 1] {
                     minima_indexes[meta_index - 1]
                 } else {
@@ -450,9 +225,274 @@ impl SwellProvider for ForecastSpectralWaveDataRecord {
                     minima_indexes[meta_index]
                 };
 
-                Swell::from_spectra(&frequency[start..end], &energy[start..end], &direction[start..end])
+                Swell::from_spectra(
+                    &frequency[start..end],
+                    &energy[start..end],
+                    &direction[start..end],
+                )
             })
             .collect()
+    }
+}
+
+pub struct ForecastBulletinWaveRecordIterator<'a> {
+    lines: Skip<Lines<'a>>,
+    point_regex: Regex,
+    metadata: ForecastSpectralWaveDataRecordMetadata,
+}
+
+impl<'a> ForecastBulletinWaveRecordIterator<'a> {
+    pub fn from_data(data: &'a str) -> Result<Self, DataRecordParsingError> {
+        let metadata = ForecastSpectralWaveDataRecordMetadata::from_str(data)?;
+        let lines = data.lines().skip(metadata.line_count);
+
+        let point_regex = Regex::new(".{0,12}\\s*([+-]?[0-9]*[.]?[0-9]+)\\s*([+-]?[0-9]*[.]?[0-9]+)\\s*([+-]?[0-9]*[.]?[0-9]+)\\s*([+-]?[0-9]*[.]?[0-9]+)\\s*([+-]?[0-9]*[.]?[0-9]+)\\s*([+-]?[0-9]*[.]?[0-9]+)\\s*([+-]?[0-9]*[.]?[0-9]+)");
+        let point_regex = point_regex.map_err(|e| {
+            DataRecordParsingError::ParseFailure(format!("Failed to create point regex: {}", e))
+        })?;
+
+        Ok(Self {
+            lines,
+            point_regex,
+            metadata,
+        })
+    }
+
+    fn parse_next(&mut self) -> Result<ForecastSpectralWaveDataRecord, DataRecordParsingError> {
+        let line = self.lines.next().ok_or(DataRecordParsingError::EOF)?;
+
+        // First line is the date
+        let year = line[0..4].parse::<i32>().map_err(|e| {
+            DataRecordParsingError::ParseFailure(format!("Failed to parse year: {}", e))
+        })?;
+
+        let month = line[4..6].parse::<i32>().map_err(|e| {
+            DataRecordParsingError::ParseFailure(format!("Failed to parse month: {}", e))
+        })?;
+
+        let day = line[6..8].parse::<i32>().map_err(|e| {
+            DataRecordParsingError::ParseFailure(format!("Failed to parse day: {}", e))
+        })?;
+
+        let hour = line[9..11].parse::<i32>().map_err(|e| {
+            DataRecordParsingError::ParseFailure(format!("Failed to parse hour: {}", e))
+        })?;
+
+        let minute = line[11..13].parse::<i32>().map_err(|e| {
+            DataRecordParsingError::ParseFailure(format!("Failed to parse minute: {}", e))
+        })?;
+
+        let date = DateRecord {
+            year,
+            month,
+            day,
+            hour,
+            minute,
+        };
+
+        let line = self.lines.next().ok_or(DataRecordParsingError::EOF)?;
+
+        // Then the point data
+        let (
+            latitude,
+            longitude,
+            depth,
+            wind_speed,
+            wind_direction,
+            current_speed,
+            current_direction,
+        ) = match self.point_regex.captures(line) {
+            Some(captures) => Ok((
+                captures
+                    .get(1)
+                    .ok_or(DataRecordParsingError::ParseFailure(
+                        "Failed to parse latitude".into(),
+                    ))?
+                    .as_str()
+                    .parse::<f64>()
+                    .map_err(|e| {
+                        DataRecordParsingError::ParseFailure(format!(
+                            "Failed to parse latitude: {}",
+                            e
+                        ))
+                    })?,
+                captures
+                    .get(2)
+                    .ok_or(DataRecordParsingError::ParseFailure(
+                        "Failed to parse longitude".into(),
+                    ))?
+                    .as_str()
+                    .parse::<f64>()
+                    .map_err(|e| {
+                        DataRecordParsingError::ParseFailure(format!(
+                            "Failed to parse longitude: {}",
+                            e
+                        ))
+                    })?,
+                captures
+                    .get(3)
+                    .ok_or(DataRecordParsingError::ParseFailure(
+                        "Failed to parse depth".into(),
+                    ))?
+                    .as_str()
+                    .parse::<f64>()
+                    .map_err(|e| {
+                        DataRecordParsingError::ParseFailure(format!(
+                            "Failed to parse depth: {}",
+                            e
+                        ))
+                    })?,
+                captures
+                    .get(4)
+                    .ok_or(DataRecordParsingError::ParseFailure(
+                        "Failed to parse wind speed".into(),
+                    ))?
+                    .as_str()
+                    .parse::<f64>()
+                    .map_err(|e| {
+                        DataRecordParsingError::ParseFailure(format!(
+                            "Failed to parse wind speed: {}",
+                            e
+                        ))
+                    })?,
+                captures
+                    .get(5)
+                    .ok_or(DataRecordParsingError::ParseFailure(
+                        "Failed to parse wind direction".into(),
+                    ))?
+                    .as_str()
+                    .parse::<f64>()
+                    .map_err(|e| {
+                        DataRecordParsingError::ParseFailure(format!(
+                            "Failed to parse wind direction: {}",
+                            e
+                        ))
+                    })?,
+                captures
+                    .get(6)
+                    .ok_or(DataRecordParsingError::ParseFailure(
+                        "Failed to parse current speed".into(),
+                    ))?
+                    .as_str()
+                    .parse::<f64>()
+                    .map_err(|e| {
+                        DataRecordParsingError::ParseFailure(format!(
+                            "Failed to parse current speed: {}",
+                            e
+                        ))
+                    })?,
+                captures
+                    .get(7)
+                    .ok_or(DataRecordParsingError::ParseFailure(
+                        "Failed to parse current direction".into(),
+                    ))?
+                    .as_str()
+                    .parse::<f64>()
+                    .map_err(|e| {
+                        DataRecordParsingError::ParseFailure(format!(
+                            "Failed to parse current direction: {}",
+                            e
+                        ))
+                    })?,
+            )),
+            None => {
+                return Err(DataRecordParsingError::ParseFailure(
+                    "Invalid data for point data".into(),
+                ));
+            }
+        }?;
+
+        // Then the frequency * direction data
+        let energy_count = self.metadata.frequency.len() * self.metadata.direction.len();
+        let mut energy: Vec<f64> =
+            Vec::with_capacity(self.metadata.frequency.len() * self.metadata.direction.len());
+
+        while energy.len() < energy_count {
+            let line = self.lines.next().ok_or(DataRecordParsingError::EOF)?;
+
+            line.split_whitespace().map(f64::from_str).for_each(|v| {
+                if let Ok(v) = v {
+                    energy.push(v);
+                }
+            });
+        }
+
+        Ok(ForecastSpectralWaveDataRecord {
+            date,
+            location: Location::new(latitude, longitude, "".into()),
+            depth: DimensionalData {
+                value: Some(depth),
+                variable_name: "depth".into(),
+                measurement: Measurement::Length,
+                unit: Units::Metric,
+            },
+            wind_speed: DimensionalData {
+                value: Some(wind_speed),
+                variable_name: "wind speed".into(),
+                measurement: Measurement::Speed,
+                unit: Units::Metric,
+            },
+            wind_direction: DimensionalData {
+                value: Some(Direction::from_degree(wind_direction.round() as i32)),
+                variable_name: "wind direction".into(),
+                measurement: Measurement::Direction,
+                unit: Units::Metric,
+            },
+            current_speed: DimensionalData {
+                value: Some(current_speed),
+                variable_name: "current speed".into(),
+                measurement: Measurement::Speed,
+                unit: Units::Metric,
+            },
+            current_direction: DimensionalData {
+                value: Some(Direction::from_degree(current_direction.round() as i32)),
+                variable_name: "current direction".into(),
+                measurement: Measurement::Direction,
+                unit: Units::Metric,
+            },
+            frequency: self.metadata.frequency.clone(),
+            direction: self.metadata.direction.clone(),
+            energy,
+        })
+    }
+}
+
+impl<'a> Iterator for ForecastBulletinWaveRecordIterator<'a> {
+    type Item = Result<ForecastSpectralWaveDataRecord, DataRecordParsingError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.parse_next() {
+            Ok(v) => Some(Ok(v)),
+            Err(e) => match e {
+                DataRecordParsingError::EOF => None, 
+                _ => Some(Err(e)),
+            }
+        }
+    }
+}
+
+pub struct ForecastSpectralWaveDataRecordCollection<'a> {
+    data: &'a str,
+}
+
+impl<'a> ForecastSpectralWaveDataRecordCollection<'a> {
+    pub fn from_data(data: &'a str) -> Self {
+        ForecastSpectralWaveDataRecordCollection { data }
+    }
+
+    pub fn records(
+        &'a mut self,
+    ) -> Result<
+        (
+            ForecastSpectralWaveDataRecordMetadata,
+            impl Iterator<Item = ForecastSpectralWaveDataRecord> + 'a,
+        ),
+        DataRecordParsingError,
+    > {
+        match ForecastBulletinWaveRecordIterator::from_data(self.data) {
+            Ok(iter) => Ok((iter.metadata.clone(), iter.filter_map(|d| d.ok()))),
+            Err(e) => Err(e),
+        }
     }
 }
 
