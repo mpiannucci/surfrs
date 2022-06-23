@@ -63,4 +63,5 @@ fn read_forecast_spectral_data() {
     let records = data_collection.records();
     
     assert!(records.is_ok());
+    assert_eq!(records.unwrap().1.count(), 385);
 }
