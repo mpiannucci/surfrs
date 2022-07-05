@@ -1,9 +1,8 @@
 use crate::{location::Location, station::Station};
 use std::string::String;
+use chrono::{Utc, DateTime, Datelike, Timelike};
 use serde::{Deserialize, Deserializer, Serialize};
 use quick_xml::de::from_reader;
-
-use crate::data::date_record::DateRecord;
 
 #[repr(C)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -102,14 +101,14 @@ impl BuoyStation {
         format!("https://www.ndbc.noaa.gov/data/realtime2/{}.swr2", self.station_id)
     }
 
-    pub fn gfswave_bulletin_data_url(&self, date: DateRecord) -> String {
+    pub fn gfswave_bulletin_data_url(&self, date: DateTime<Utc>) -> String {
         format!("https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod/gfs.{}{}{}/{}/wave/station/bulls.t{}z/gfswave.{}.cbull", 
-            date.year, date.month, date.day, date.hour, date.hour, self.station_id)
+            date.year(), date.month(), date.day(), date.hour(), date.hour(), self.station_id)
     }
 
-    pub fn gfswave_spectral_data_url(&self, date: DateRecord) -> String {
+    pub fn gfswave_spectral_data_url(&self, date: DateTime<Utc>) -> String {
         format!("https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod/gfs.{}{}{}/{}/wave/station/bulls.t{}z/gfswave.{}.spec", 
-            date.year, date.month, date.day, date.hour, date.hour, self.station_id)
+            date.year(), date.month(), date.day(), date.hour(), date.hour(), self.station_id)
     }
 }
 

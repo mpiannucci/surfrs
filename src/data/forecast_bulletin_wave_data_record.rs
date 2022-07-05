@@ -325,13 +325,10 @@ mod tests {
         assert_eq!(metadata.location.latitude, 40.98);
         assert_eq!(metadata.location.longitude, -71.12);
 
-        let model_run_date = metadata.model_run_date.date();
-        assert_eq!(model_run_date.year(), 2022);
-        assert_eq!(model_run_date.month(), 5);
-        assert_eq!(model_run_date.day(), 19);
-
-        let model_run_time = metadata.model_run_date.time();
-        assert_eq!(model_run_time.hour(), 18);
+        assert_eq!(metadata.model_run_date.year(), 2022);
+        assert_eq!(metadata.model_run_date.month(), 5);
+        assert_eq!(metadata.model_run_date.day(), 19);
+        assert_eq!(metadata.model_run_date.hour(), 18);
     }
 
     #[test]
@@ -347,13 +344,10 @@ mod tests {
         let wave_bulletin_record =
             ForecastBulletinWaveRecord::from_data_row(Some(&metadata), &row).unwrap();
 
-        let wave_bulletin_date = wave_bulletin_record.date.date();
-        assert_eq!(wave_bulletin_date.year(), 2020);
-        assert_eq!(wave_bulletin_date.month(), 6);
-        assert_eq!(wave_bulletin_date.day(), 01);
-
-        let wave_bulletin_time = wave_bulletin_record.date.time();
-        assert_eq!(wave_bulletin_time.hour(), 18);
+        assert_eq!(wave_bulletin_record.date.year(), 2020);
+        assert_eq!(wave_bulletin_record.date.month(), 6);
+        assert_eq!(wave_bulletin_record.date.day(), 01);
+        assert_eq!(wave_bulletin_record.date.hour(), 18);
         assert!((wave_bulletin_record.significant_wave_height.value.unwrap() - 3.0).abs() < 0.01);
         assert_eq!(wave_bulletin_record.swell_components.len(), 2);
         assert_eq!(
