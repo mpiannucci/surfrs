@@ -1,6 +1,7 @@
 use std::iter::Skip;
 use std::str::{FromStr, Lines};
 
+use chrono::{DateTime, Utc, TimeZone};
 use regex::Regex;
 
 use crate::dimensional_data::DimensionalData;
@@ -9,7 +10,6 @@ use crate::swell::{Swell, SwellProvider};
 use crate::tools::detect_peaks;
 use crate::units::{Direction, Measurement, UnitConvertible, Units};
 
-use super::date_record::DateRecord;
 use super::parseable_data_record::{DataRecordParsingError};
 
 #[derive(Clone, Debug)]
@@ -149,7 +149,7 @@ impl FromStr for ForecastSpectralWaveDataRecordMetadata {
 
 #[derive(Clone, Debug)]
 pub struct ForecastSpectralWaveDataRecord {
-    pub date: DateRecord,
+    pub date: DateTime<Utc>,
     pub location: Location,
     pub depth: DimensionalData<f64>,
     pub wind_speed: DimensionalData<f64>,
@@ -266,29 +266,23 @@ impl<'a> ForecastBulletinWaveRecordIterator<'a> {
             DataRecordParsingError::ParseFailure(format!("Failed to parse year: {}", e))
         })?;
 
-        let month = line[4..6].parse::<i32>().map_err(|e| {
+        let month = line[4..6].parse::<u32>().map_err(|e| {
             DataRecordParsingError::ParseFailure(format!("Failed to parse month: {}", e))
         })?;
 
-        let day = line[6..8].parse::<i32>().map_err(|e| {
+        let day = line[6..8].parse::<u32>().map_err(|e| {
             DataRecordParsingError::ParseFailure(format!("Failed to parse day: {}", e))
         })?;
 
-        let hour = line[9..11].parse::<i32>().map_err(|e| {
+        let hour = line[9..11].parse::<u32>().map_err(|e| {
             DataRecordParsingError::ParseFailure(format!("Failed to parse hour: {}", e))
         })?;
 
-        let minute = line[11..13].parse::<i32>().map_err(|e| {
+        let minute = line[11..13].parse::<u32>().map_err(|e| {
             DataRecordParsingError::ParseFailure(format!("Failed to parse minute: {}", e))
         })?;
 
-        let date = DateRecord {
-            year,
-            month,
-            day,
-            hour,
-            minute,
-        };
+        let date = Utc.ymd(year, month, day).and_hms(hour, minute, 0);
 
         let line = self.lines.next().ok_or(DataRecordParsingError::EOF)?;
 

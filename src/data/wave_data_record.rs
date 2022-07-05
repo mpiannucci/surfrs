@@ -1,6 +1,6 @@
+use chrono::{Utc, TimeZone, DateTime};
 use csv::Reader;
 
-use super::date_record::DateRecord;
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
 use crate::dimensional_data::DimensionalData;
 use crate::swell::{Swell, SwellProvider};
@@ -10,7 +10,7 @@ use std::str::FromStr;
 
 #[derive(Clone, Debug)]
 pub struct WaveDataRecord {
-    pub date: DateRecord,
+    pub date: DateTime<Utc>,
     pub wave_height: DimensionalData<f64>,
     pub swell_wave_height: DimensionalData<f64>,
     pub swell_wave_period: DimensionalData<f64>,
@@ -30,8 +30,12 @@ impl ParseableDataRecord for WaveDataRecord {
         _: Option<&Self::Metadata>,
         row: &Vec<&str>,
     ) -> Result<WaveDataRecord, DataRecordParsingError> {
+        let date = Utc
+            .ymd(row[0].parse().unwrap(), row[1].parse().unwrap(), row[2].parse().unwrap())
+            .and_hms(row[3].parse().unwrap(), row[4].parse().unwrap(), 0);
+        
         Ok(WaveDataRecord {
-            date: DateRecord::from_data_row(None, row)?,
+            date,
             wave_height: DimensionalData::from_raw_data(
                 row[5],
                 "wave height".into(),

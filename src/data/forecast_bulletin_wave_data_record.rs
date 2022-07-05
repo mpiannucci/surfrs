@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use chrono::{DateTime, Utc, Datelike, TimeZone};
 use csv::Reader;
 use regex::Regex;
 
@@ -8,13 +9,12 @@ use crate::location::Location;
 use crate::swell::{Swell, SwellProvider};
 use crate::units::{Direction, Measurement, UnitConvertible, Units};
 
-use super::date_record::DateRecord;
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
 
 #[derive(Clone, Debug)]
 pub struct ForecastBulletinWaveRecordMetadata {
     pub location: Location,
-    pub model_run_date: DateRecord,
+    pub model_run_date: DateTime<Utc>,
 }
 
 impl FromStr for ForecastBulletinWaveRecordMetadata {
@@ -75,7 +75,7 @@ impl FromStr for ForecastBulletinWaveRecordMetadata {
                     .get(2)
                     .unwrap()
                     .as_str()
-                    .parse::<i32>()
+                    .parse::<u32>()
                     .map_err(|_| {
                         DataRecordParsingError::ParseFailure(
                             "Failed to capture model date month".into(),
@@ -85,7 +85,7 @@ impl FromStr for ForecastBulletinWaveRecordMetadata {
                     .get(3)
                     .unwrap()
                     .as_str()
-                    .parse::<i32>()
+                    .parse::<u32>()
                     .map_err(|_| {
                         DataRecordParsingError::ParseFailure(
                             "Failed to capture model date day".into(),
@@ -95,7 +95,7 @@ impl FromStr for ForecastBulletinWaveRecordMetadata {
                     .get(4)
                     .unwrap()
                     .as_str()
-                    .parse::<i32>()
+                    .parse::<u32>()
                     .map_err(|_| {
                         DataRecordParsingError::ParseFailure(
                             "Failed to capture model date hour".into(),
@@ -103,13 +103,7 @@ impl FromStr for ForecastBulletinWaveRecordMetadata {
                     })?;
                 let minute = 0;
 
-                Ok(DateRecord {
-                    year,
-                    month,
-                    day,
-                    hour,
-                    minute,
-                })
+                Ok(Utc.ymd(year, month, day).and_hms(hour, minute, 0))
             }
             None => Err(DataRecordParsingError::ParseFailure(
                 "Failed to capture model run date from regex".into(),
@@ -125,7 +119,7 @@ impl FromStr for ForecastBulletinWaveRecordMetadata {
 
 #[derive(Clone, Debug)]
 pub struct ForecastBulletinWaveRecord {
-    pub date: DateRecord,
+    pub date: DateTime<Utc>,
     pub significant_wave_height: DimensionalData<f64>,
     pub swell_components: Vec<Swell>,
 }
@@ -141,26 +135,25 @@ impl ParseableDataRecord for ForecastBulletinWaveRecord {
         Self: Sized,
     {
         let timestep = row[0];
-        let day = timestep[0..2].parse::<i32>().map_err(|_| {
+        let day = timestep[0..2].parse::<u32>().map_err(|_| {
             DataRecordParsingError::ParseFailure("Failed to parse day from timestep".into())
         })?;
-        let hour = timestep[2..].parse::<i32>().map_err(|_| {
+        let hour = timestep[2..].parse::<u32>().map_err(|_| {
             DataRecordParsingError::ParseFailure("Failed to parse hour from timestep".into())
         })?;
 
-        let month = if metadata.unwrap().model_run_date.day > day {
-            metadata.unwrap().model_run_date.month + 1
+        let model_date = match metadata {
+            Some(m) => Ok(m.model_run_date.date()), 
+            None => Err(DataRecordParsingError::InvalidData),
+        }?;
+
+        let month = if model_date.day() > day {
+            model_date.month() + 1
         } else {
-            metadata.unwrap().model_run_date.month
+            model_date.month()
         };
 
-        let date = DateRecord {
-            year: metadata.unwrap().model_run_date.year,
-            month: month,
-            day,
-            hour,
-            minute: 0,
-        };
+        let date = Utc.ymd(model_date.year(), month, day).and_hms(hour, 0, 0);
 
         let significant_wave_height = DimensionalData::from_raw_data(
             row[1],
@@ -304,6 +297,8 @@ impl<'a> ForecastBulletinWaveRecordCollection<'a> {
 
 #[cfg(test)]
 mod tests {
+    use chrono::Timelike;
+
     use super::*;
 
     #[test]
@@ -326,27 +321,24 @@ mod tests {
         ";
 
         let metadata = ForecastBulletinWaveRecordMetadata::from_str(metadata).unwrap();
-
         assert_eq!(metadata.location.name, "44097");
         assert_eq!(metadata.location.latitude, 40.98);
         assert_eq!(metadata.location.longitude, -71.12);
-        assert_eq!(metadata.model_run_date.year, 2022);
-        assert_eq!(metadata.model_run_date.month, 5);
-        assert_eq!(metadata.model_run_date.day, 19);
-        assert_eq!(metadata.model_run_date.hour, 18);
+
+        let model_run_date = metadata.model_run_date.date();
+        assert_eq!(model_run_date.year(), 2022);
+        assert_eq!(model_run_date.month(), 5);
+        assert_eq!(model_run_date.day(), 19);
+
+        let model_run_time = metadata.model_run_date.time();
+        assert_eq!(model_run_time.hour(), 18);
     }
 
     #[test]
     fn test_wave_bulletin_row_parse() {
         let metadata = ForecastBulletinWaveRecordMetadata {
             location: Location::new(40.98, -71.12, "".into()),
-            model_run_date: DateRecord {
-                year: 2020,
-                month: 5,
-                day: 19,
-                hour: 18,
-                minute: 0,
-            },
+            model_run_date: Utc.ymd(2020, 5, 19).and_hms(18, 0, 0),
         };
 
         let row = "0118  3  2 04 142  2 07 163                                        ";
@@ -355,10 +347,13 @@ mod tests {
         let wave_bulletin_record =
             ForecastBulletinWaveRecord::from_data_row(Some(&metadata), &row).unwrap();
 
-        assert_eq!(wave_bulletin_record.date.year, 2020);
-        assert_eq!(wave_bulletin_record.date.month, 6);
-        assert_eq!(wave_bulletin_record.date.day, 01);
-        assert_eq!(wave_bulletin_record.date.hour, 18);
+        let wave_bulletin_date = wave_bulletin_record.date.date();
+        assert_eq!(wave_bulletin_date.year(), 2020);
+        assert_eq!(wave_bulletin_date.month(), 6);
+        assert_eq!(wave_bulletin_date.day(), 01);
+
+        let wave_bulletin_time = wave_bulletin_record.date.time();
+        assert_eq!(wave_bulletin_time.hour(), 18);
         assert!((wave_bulletin_record.significant_wave_height.value.unwrap() - 3.0).abs() < 0.01);
         assert_eq!(wave_bulletin_record.swell_components.len(), 2);
         assert_eq!(

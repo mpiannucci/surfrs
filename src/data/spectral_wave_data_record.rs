@@ -1,15 +1,15 @@
+use chrono::{DateTime, Utc, TimeZone};
 use csv::Reader;
 
 use crate::swell::{Swell, SwellProvider, SwellProviderError};
 use crate::tools::detect_peaks;
 use crate::units::*;
 
-use super::date_record::DateRecord;
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
 
 #[derive(Clone, Debug)]
 pub struct SpectralWaveDataRecord {
-    pub date: DateRecord,
+    pub date: DateTime<Utc>,
     pub separation_frequency: Option<f64>,
     pub value: Vec<f64>,
     pub frequency: Vec<f64>,
@@ -44,8 +44,12 @@ impl ParseableDataRecord for SpectralWaveDataRecord {
             false => None,
         };
 
+        let date = Utc
+            .ymd(row[0].parse().unwrap(), row[1].parse().unwrap(), row[2].parse().unwrap())
+            .and_hms(row[3].parse().unwrap(), row[4].parse().unwrap(), 0);
+
         Ok(SpectralWaveDataRecord {
-            date: DateRecord::from_data_row(None, row)?,
+            date,
             separation_frequency: separation_frequency,
             value: values,
             frequency: freqs,

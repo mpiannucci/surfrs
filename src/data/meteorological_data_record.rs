@@ -1,15 +1,16 @@
+use chrono::Utc;
+use chrono::prelude::*;
 use csv::Reader;
 
 use crate::dimensional_data::DimensionalData;
 use crate::swell::{Swell, SwellProvider};
 use crate::units::*;
 
-use super::date_record::DateRecord;
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
 
 #[derive(Clone, Debug)]
 pub struct MeteorologicalDataRecord {
-    pub date: DateRecord,
+    pub date: chrono::DateTime<Utc>,
     pub wind_direction: DimensionalData<Direction>,
     pub wind_speed: DimensionalData<f64>,
     pub wind_gust_speed: DimensionalData<f64>,
@@ -33,8 +34,12 @@ impl ParseableDataRecord for MeteorologicalDataRecord {
         _: Option<&Self::Metadata>,
         row: &Vec<&str>,
     ) -> Result<MeteorologicalDataRecord, DataRecordParsingError> {
+        let date = Utc
+            .ymd(row[0].parse().unwrap(), row[1].parse().unwrap(), row[2].parse().unwrap())
+            .and_hms(row[3].parse().unwrap(), row[4].parse().unwrap(), 0);
+
         Ok(MeteorologicalDataRecord {
-            date: DateRecord::from_data_row(None, row)?,
+            date,
             wind_direction: DimensionalData::from_raw_data(
                 row[5],
                 "wind direction".into(),
@@ -209,7 +214,7 @@ mod tests {
 
         let met_data = MeteorologicalDataRecord::from_data_row(None, &data_row).unwrap();
 
-        assert_eq!(met_data.date.year, 2018);
+        assert_eq!(met_data.date.year(), 2018);
         assert_eq!(met_data.wind_speed.value.unwrap(), 12.0);
         assert_eq!(met_data.wind_gust_speed.value.unwrap(), 14.0);
         assert!(met_data.tide.value.is_none());
