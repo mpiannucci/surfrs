@@ -1,10 +1,10 @@
 use crate::{location::Location, station::Station};
 use chrono::{DateTime, Datelike, Timelike, Utc};
-use geojson::{Feature, Geometry, Value, GeoJson, FeatureCollection};
+use geojson::{Feature, Geometry, Value, FeatureCollection};
 use quick_xml::de::from_reader;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Map;
-use std::{string::String, convert::TryInto};
+use std::{string::String, convert::{TryInto, From}};
 
 #[repr(C)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
