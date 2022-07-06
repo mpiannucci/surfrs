@@ -176,6 +176,10 @@ impl Station for BuoyStation {
 
         name
     }
+
+    fn as_feature(&self) -> Feature {
+        self.clone().into()
+    }
 }
 
 impl Into<Feature> for BuoyStation {
