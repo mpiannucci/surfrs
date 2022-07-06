@@ -190,7 +190,7 @@ impl Into<Feature> for BuoyStation {
         let mut properties: Map<String, serde_json::Value> = Map::new();
         properties.insert("id".to_string(), serde_json::Value::String(self.id().to_string()));
         properties.insert("name".to_string(), serde_json::Value::String(self.name()));
-        properties.insert("isActive".to_string(), serde_json::Value::Bool(self.is_active()));
+        //properties.insert("isActive".to_string(), serde_json::Value::Bool(self.is_active()));
 
         Feature {
             bbox: None,
