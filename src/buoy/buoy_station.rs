@@ -4,7 +4,7 @@ use geojson::{Feature, Geometry, Value, FeatureCollection};
 use quick_xml::de::from_reader;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Map;
-use std::{string::String, convert::{TryInto, From}};
+use std::{string::String, convert::{Into, TryInto}};
 
 #[repr(C)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -178,15 +178,15 @@ impl Station for BuoyStation {
     }
 }
 
-impl From<&BuoyStation> for Feature {
-    fn from(station: &BuoyStation) -> Self {
-        let lnglat: Vec<f64> = vec![station.location.longitude, station.location.latitude];
+impl Into<Feature> for &BuoyStation {
+    fn into(self) -> Feature {
+        let lnglat: Vec<f64> = vec![self.location.longitude, self.location.latitude];
         let geometry = Geometry::new(Value::Point(lnglat));
 
         let mut properties: Map<String, serde_json::Value> = Map::new();
-        properties.insert("id".to_string(), serde_json::Value::String(station.id().to_string()));
-        properties.insert("name".to_string(), serde_json::Value::String(station.name()));
-        properties.insert("isActive".to_string(), serde_json::Value::Bool(station.is_active()));
+        properties.insert("id".to_string(), serde_json::Value::String(self.id().to_string()));
+        properties.insert("name".to_string(), serde_json::Value::String(self.name()));
+        properties.insert("isActive".to_string(), serde_json::Value::Bool(self.is_active()));
 
         Feature {
             bbox: None,
@@ -248,11 +248,11 @@ impl From<Vec<BuoyStation>> for BuoyStations {
     }
 }
 
-impl From<BuoyStations> for FeatureCollection {
-    fn from(stations: BuoyStations) -> Self {
+impl Into<FeatureCollection> for BuoyStations {
+    fn into(self) -> FeatureCollection {
         FeatureCollection {
             bbox: None, 
-            features: stations.stations.iter().map(|s| Feature::from(s)).collect(),
+            features: self.stations.iter().map(|s| s.into()).collect::<Vec<Feature>>(),
             foreign_members: None }
     }
 }
