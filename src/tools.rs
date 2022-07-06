@@ -1,6 +1,8 @@
 use std::f64::consts::PI;
 use std::f64::{INFINITY, NEG_INFINITY};
 
+use chrono::{DateTime, Utc, Timelike};
+
 pub enum Error {
     ConvergenceFailure,
 }
@@ -189,6 +191,21 @@ pub fn detect_peaks(data: &Vec<f64>, delta: f64) -> (Vec<usize>, Vec<usize>) {
     }
 
     (min_indexes, max_indexes)
+}
+
+pub fn closest_model_datetime(datetime: DateTime<Utc>) -> DateTime<Utc> {
+    let hour = datetime.hour();
+    let model_hour = if hour < 6 {
+        0
+    } else if hour < 12 {
+        6
+    } else if hour < 18 {
+        12
+    } else {
+        18
+    };
+
+    datetime.date().and_hms(model_hour, 0, 0)
 }
 
 #[cfg(test)]
