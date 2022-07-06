@@ -5,7 +5,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use quick_xml::de::from_reader;
 
 #[repr(C)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "lowercase")]
 pub enum BuoyType {
     None,
