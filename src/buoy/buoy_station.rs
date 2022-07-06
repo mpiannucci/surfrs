@@ -1,6 +1,6 @@
 use crate::{location::Location, station::Station};
 use chrono::{DateTime, Datelike, Timelike, Utc};
-use geojson::{Feature, Geometry, Value, FeatureCollection};
+use geojson::{Feature, Geometry, Value, FeatureCollection, JsonObject, JsonValue};
 use quick_xml::de::from_reader;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Map;
@@ -187,10 +187,10 @@ impl Into<Feature> for BuoyStation {
         let lnglat: Vec<f64> = vec![self.location.longitude, self.location.latitude];
         let geometry = Geometry::new(Value::Point(lnglat));
 
-        let mut properties: Map<String, serde_json::Value> = Map::new();
-        properties.insert("id".to_string(), serde_json::Value::String(self.id().to_string()));
-        properties.insert("name".to_string(), serde_json::Value::String(self.name()));
-        properties.insert("isActive".to_string(), serde_json::Value::Bool(self.is_active()));
+        let mut properties = JsonObject::new();
+        properties.insert("id".to_string(), JsonValue::from(self.id().to_string()));
+        properties.insert("name".to_string(), JsonValue::from(self.name()));
+        properties.insert("isActive".to_string(), JsonValue::from(self.is_active()));
 
         Feature {
             bbox: None,
