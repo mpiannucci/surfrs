@@ -178,7 +178,7 @@ impl Station for BuoyStation {
     }
 }
 
-impl Into<Feature> for &BuoyStation {
+impl Into<Feature> for BuoyStation {
     fn into(self) -> Feature {
         let lnglat: Vec<f64> = vec![self.location.longitude, self.location.latitude];
         let geometry = Geometry::new(Value::Point(lnglat));
@@ -252,7 +252,7 @@ impl Into<FeatureCollection> for BuoyStations {
     fn into(self) -> FeatureCollection {
         FeatureCollection {
             bbox: None, 
-            features: self.stations.iter().map(|s| s.into()).collect::<Vec<Feature>>(),
+            features: self.stations.iter().map(|s| s.clone().into()).collect::<Vec<Feature>>(),
             foreign_members: None }
     }
 }
