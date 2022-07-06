@@ -242,6 +242,12 @@ impl Default for BuoyStations {
     }
 }
 
+impl From<Vec<BuoyStation>> for BuoyStations {
+    fn from(stations: Vec<BuoyStation>) -> Self {
+        BuoyStations::from_stations(stations)
+    }
+}
+
 impl From<BuoyStations> for FeatureCollection {
     fn from(stations: BuoyStations) -> Self {
         FeatureCollection {
