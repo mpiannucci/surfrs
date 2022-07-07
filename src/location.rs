@@ -1,21 +1,16 @@
 use crate::units::Units;
+use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize};
-use std::f64;
+use std::{f64, fmt};
 use std::string::String;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Location {
     #[serde(default)]
     pub name: String,
-
-    #[serde(rename = "lat", deserialize_with = "f64_from_str")]
     pub latitude: f64,
-
-    #[serde(rename = "lon", deserialize_with = "f64_from_str")]
     pub longitude: f64,
-
-    #[serde(rename = "elev", deserialize_with = "f64_from_str", default)]
-    pub altitude: f64,
+    pub elevation: f64,
 }
 
 impl Location {
@@ -24,7 +19,7 @@ impl Location {
             name: name,
             latitude: lat,
             longitude: lon,
-            altitude: 0.0,
+            elevation: 0.0,
         }
     }
 
@@ -79,10 +74,3 @@ impl Location {
     }
 }
 
-fn f64_from_str<'de, D>(deserializer: D) -> Result<f64, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s = String::deserialize(deserializer)?;
-    s.parse::<f64>().map_err(serde::de::Error::custom)
-}

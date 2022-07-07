@@ -20,7 +20,6 @@ fn read_stations_mock() -> String {
 fn read_stations_xml() {
     let raw_station_data = read_stations_mock();
     let buoy_stations: BuoyStations = BuoyStations::from_raw_data(raw_station_data.as_ref());
-    //println!("{:?}", buoy_stations);
     assert_eq!(
         buoy_stations.station_count,
         buoy_stations.stations.len() as i64 - 1
@@ -35,8 +34,8 @@ fn read_stations_xml() {
 
     let serialized = serde_json::to_string(&buoy_stations);
     assert_eq!(serialized.is_ok(), true);
-    let restored_stations = serde_json::from_str::<BuoyStations>(serialized.unwrap().as_str());
-    println!("{:?}", restored_stations);
+    let serialized = serialized.unwrap();
+    let restored_stations = serde_json::from_str::<BuoyStations>(serialized.as_str());
     assert_eq!(restored_stations.is_ok(), true);
 
     let restored_stations = restored_stations.unwrap();

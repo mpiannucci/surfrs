@@ -24,6 +24,9 @@ pub struct BuoyStation {
     #[serde(rename = "id")]
     pub station_id: String,
 
+    #[serde(rename = "name")]
+    pub raw_name: String,
+
     pub owner: String,
 
     #[serde(rename = "pgm")]
@@ -52,15 +55,23 @@ pub struct BuoyStation {
     #[serde(default, rename = "dart", deserialize_with = "bool_from_simple_str")]
     pub has_tsnuami_data: bool,
 
-    #[serde(flatten)]
-    pub location: Location,
+    #[serde(rename = "lat", deserialize_with = "f64_from_str")]
+    pub latitude: f64,
+
+    #[serde(rename = "lon", deserialize_with = "f64_from_str")]
+    pub longitude: f64,
+
+    #[serde(rename = "elev", deserialize_with = "f64_from_str", default)]
+    pub elevation: f64,
 }
 
 impl BuoyStation {
-    pub fn new(station_id: String, location: Location) -> BuoyStation {
+    pub fn new(station_id: String, latitude: f64, longitude: f64) -> BuoyStation {
         BuoyStation {
             station_id: station_id,
-            location: location,
+            latitude, 
+            longitude,
+            raw_name: "".into(),
             owner: String::from(""),
             program: String::from(""),
             buoy_type: BuoyType::Buoy,
@@ -68,6 +79,7 @@ impl BuoyStation {
             has_currents_data: false,
             has_water_quality_data: false,
             has_tsnuami_data: false,
+            elevation: 0.0, 
         }
     }
 
@@ -150,14 +162,13 @@ impl Station for BuoyStation {
         &self.station_id
     }
 
-    fn location(&self) -> &Location {
-        &self.location
+    fn location(&self) -> Location {
+        Location::new(self.latitude, self.longitude, self.name())
     }
 
     fn name(&self) -> String {
         let mut name = self
-            .location
-            .name
+            .raw_name
             .split("-")
             .map(|s| s.trim())
             .filter(|s| match s.parse::<i64>() {
@@ -183,7 +194,7 @@ impl Station for BuoyStation {
 
 impl Into<Feature> for BuoyStation {
     fn into(self) -> Feature {
-        let lnglat: Vec<f64> = vec![self.location.longitude, self.location.latitude];
+        let lnglat: Vec<f64> = vec![self.longitude, self.latitude];
         let geometry = Geometry::new(Value::Point(lnglat));
 
         let mut properties = JsonObject::new();
@@ -291,4 +302,47 @@ where
     D: Deserializer<'de>,
 {
     deserializer.deserialize_bool(NDBCBoolVisitor)
+}
+
+struct F64Visitor;
+
+impl<'de> Visitor<'de> for F64Visitor {
+    type Value = f64;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a float string or as a floating point number")
+    }
+
+    fn visit_f64<E>(self, v: f64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error, {
+        Ok(v)
+    }
+
+    fn visit_f32<E>(self, v: f32) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error, {
+        Ok(v.into())
+    }
+
+    fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error, {
+        println!("HERRRREEEE");
+        v.parse::<f64>().map_err(serde::de::Error::custom)
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error, {
+        println!("HERRRREEEE 2222222");
+        v.parse::<f64>().map_err(serde::de::Error::custom)
+    }
+}
+
+fn f64_from_str<'de, D>(deserializer: D) -> Result<f64, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    deserializer.deserialize_f64(F64Visitor)
 }
