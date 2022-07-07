@@ -2,9 +2,8 @@ use crate::{location::Location, station::Station};
 use chrono::{DateTime, Datelike, Timelike, Utc};
 use geojson::{Feature, Geometry, Value, FeatureCollection, JsonObject, JsonValue};
 use quick_xml::de::from_reader;
-use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::Map;
-use std::{string::String, convert::{Into, TryInto}};
+use serde::{Deserialize, Deserializer, Serialize, de::Visitor};
+use std::{string::String, convert::{Into, TryInto}, fmt};
 
 #[repr(C)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -261,13 +260,35 @@ impl Into<FeatureCollection> for BuoyStations {
     }
 }
 
+struct NDBCBoolVisitor;
+
+impl<'de> Visitor<'de> for NDBCBoolVisitor {
+    type Value = bool;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a boolean or a string containing 'y' or 'n'")
+    }
+
+    fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error, {
+        Ok(v)
+    }
+
+    fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error, {
+        match v.as_ref() {
+            "y" => Ok(true), 
+            "n" => Ok(false),
+            _ => Err(E::custom::<String>("Invalid string value for deserializer".into()))
+        }
+    }
+}
+
 fn bool_from_simple_str<'de, D>(deserializer: D) -> Result<bool, D::Error>
 where
     D: Deserializer<'de>,
 {
-    let s = String::deserialize(deserializer)?;
-    match s.as_ref() {
-        "y" => Ok(true),
-        _ => Ok(false),
-    }
+    deserializer.deserialize_bool(NDBCBoolVisitor)
 }

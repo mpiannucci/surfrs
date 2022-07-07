@@ -32,4 +32,20 @@ fn read_stations_xml() {
     if let Some(bi_station) = bi_station_res {
         assert_eq!(bi_station.name().as_str(), "Block Island, RI")
     }
+
+    let serialized = serde_json::to_string(&buoy_stations);
+    assert_eq!(serialized.is_ok(), true);
+    let restored_stations = serde_json::from_str::<BuoyStations>(serialized.unwrap().as_str());
+    println!("{:?}", restored_stations);
+    assert_eq!(restored_stations.is_ok(), true);
+
+    let restored_stations = restored_stations.unwrap();
+    assert_eq!(
+        buoy_stations.station_count,
+        restored_stations.station_count
+    );
+    assert_eq!(
+        restored_stations.stations.len(),
+        buoy_stations.stations.len()
+    );
 }
