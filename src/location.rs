@@ -1,12 +1,10 @@
 use crate::units::Units;
-use serde::de::Visitor;
-use serde::{Deserialize, Deserializer, Serialize};
-use std::{f64, fmt};
+use serde::{Deserialize, Serialize};
+use std::{f64};
 use std::string::String;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Location {
-    #[serde(default)]
     pub name: String,
     pub latitude: f64,
     pub longitude: f64,
