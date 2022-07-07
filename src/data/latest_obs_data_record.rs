@@ -1,7 +1,7 @@
 use chrono::{DateTime, TimeZone, Utc};
 use csv::Reader;
 
-use crate::{dimensional_data::DimensionalData, units::{Direction, Measurement, Units, UnitConvertible}, swell::{Swell, SwellProvider}};
+use crate::{dimensional_data::DimensionalData, units::{Direction, Measurement, Units, UnitConvertible}, swell::{Swell, SwellProvider}, buoy::BuoyStation};
 
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
 
@@ -25,6 +25,12 @@ pub struct LatestObsDataRecord {
     pub dewpoint_temperature: DimensionalData<f64>,
     pub visibility: DimensionalData<f64>,
     pub tide: DimensionalData<f64>,
+}
+
+impl LatestObsDataRecord {
+    pub fn station(&self) -> BuoyStation {
+        BuoyStation::new(self.station_id.clone(), self.latitude, self.longitude)
+    }
 }
 
 impl ParseableDataRecord for LatestObsDataRecord {
@@ -172,7 +178,6 @@ impl SwellProvider for LatestObsDataRecord {
         }
     }
 }
-
 
 pub struct LatestObsDataRecordCollection<'a> {
     reader: Reader<&'a [u8]>,
