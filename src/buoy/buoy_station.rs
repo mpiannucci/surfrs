@@ -222,8 +222,12 @@ pub struct BuoyStations {
 }
 
 impl BuoyStations {
-    pub fn active_stations_url() -> String {
-        String::from("https://www.ndbc.noaa.gov/activestations.xml")
+    pub fn active_stations_url() -> &'static str {
+        "https://www.ndbc.noaa.gov/activestations.xml"
+    }
+
+    pub fn latest_obs_url() -> &'static str {
+        "https://www.ndbc.noaa.gov/data/latest_obs/latest_obs.txt"
     }
 
     pub fn from_raw_data(raw_data: &str) -> Self {
