@@ -1,11 +1,12 @@
 use chrono::{DateTime, TimeZone, Utc};
 use csv::Reader;
+use serde::{Serialize, Deserialize};
 
 use crate::{dimensional_data::DimensionalData, units::{Direction, Measurement, Units, UnitConvertible}, swell::{Swell, SwellProvider}, buoy::BuoyStation};
 
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LatestObsDataRecord {
     pub station_id: String,
     pub latitude: f64,

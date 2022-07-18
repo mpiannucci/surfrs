@@ -3,6 +3,7 @@ use std::str::{FromStr, Lines};
 
 use chrono::{DateTime, Utc, TimeZone};
 use regex::Regex;
+use serde::{Serialize, Deserialize};
 
 use crate::dimensional_data::DimensionalData;
 use crate::location::Location;
@@ -12,7 +13,7 @@ use crate::units::{Direction, Measurement, UnitConvertible, Units};
 
 use super::parseable_data_record::{DataRecordParsingError};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ForecastSpectralWaveDataRecordMetadata {
     pub frequency: Vec<f64>,
     pub direction: Vec<Direction>,
@@ -147,7 +148,7 @@ impl FromStr for ForecastSpectralWaveDataRecordMetadata {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ForecastSpectralWaveDataRecord {
     pub date: DateTime<Utc>,
     pub location: Location,

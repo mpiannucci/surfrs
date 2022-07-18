@@ -3,6 +3,7 @@ use std::str::FromStr;
 use chrono::{DateTime, Utc, Datelike, TimeZone};
 use csv::Reader;
 use regex::Regex;
+use serde::{Serialize, Deserialize};
 
 use crate::dimensional_data::DimensionalData;
 use crate::location::Location;
@@ -11,7 +12,7 @@ use crate::units::{Direction, Measurement, UnitConvertible, Units};
 
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ForecastBulletinWaveRecordMetadata {
     pub location: Location,
     pub model_run_date: DateTime<Utc>,
@@ -117,7 +118,7 @@ impl FromStr for ForecastBulletinWaveRecordMetadata {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ForecastBulletinWaveRecord {
     pub date: DateTime<Utc>,
     pub significant_wave_height: DimensionalData<f64>,

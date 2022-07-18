@@ -1,5 +1,6 @@
 use chrono::{Utc, TimeZone, DateTime};
 use csv::Reader;
+use serde::{Serialize, Deserialize};
 
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
 use crate::dimensional_data::DimensionalData;
@@ -8,7 +9,7 @@ use crate::units::*;
 
 use std::str::FromStr;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct WaveDataRecord {
     pub date: DateTime<Utc>,
     pub wave_height: DimensionalData<f64>,

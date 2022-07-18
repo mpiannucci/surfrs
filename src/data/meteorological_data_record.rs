@@ -1,6 +1,8 @@
 use chrono::Utc;
 use chrono::prelude::*;
 use csv::Reader;
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::dimensional_data::DimensionalData;
 use crate::swell::{Swell, SwellProvider};
@@ -8,7 +10,7 @@ use crate::units::*;
 
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MeteorologicalDataRecord {
     pub date: chrono::DateTime<Utc>,
     pub wind_direction: DimensionalData<Direction>,

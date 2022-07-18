@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc, TimeZone};
 use csv::Reader;
+use serde::{Deserialize, Serialize};
 
 use crate::swell::{Swell, SwellProvider, SwellProviderError};
 use crate::tools::detect_peaks;
@@ -7,7 +8,7 @@ use crate::units::*;
 
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct SpectralWaveDataRecord {
     pub date: DateTime<Utc>,
     pub separation_frequency: Option<f64>,
@@ -63,6 +64,7 @@ impl UnitConvertible<SpectralWaveDataRecord> for SpectralWaveDataRecord {
     }
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct DirectionalSpectralWaveDataRecord {
     energy_spectra: SpectralWaveDataRecord,
     directional_spectra: SpectralWaveDataRecord,
