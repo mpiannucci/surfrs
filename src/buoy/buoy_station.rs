@@ -1,9 +1,13 @@
-use crate::{location::Location, station::Station};
+use crate::{location::Location, station::Station, tools::closest_model_datetime};
 use chrono::{DateTime, Datelike, Timelike, Utc};
-use geojson::{Feature, Geometry, Value, FeatureCollection, JsonObject, JsonValue};
+use geojson::{Feature, FeatureCollection, Geometry, JsonObject, JsonValue, Value};
 use quick_xml::de::from_reader;
-use serde::{Deserialize, Deserializer, Serialize, de::Visitor};
-use std::{string::String, convert::{Into, TryInto}, fmt};
+use serde::{de::Visitor, Deserialize, Deserializer, Serialize};
+use std::{
+    convert::{Into, TryInto},
+    fmt,
+    string::String,
+};
 
 #[repr(C)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -69,7 +73,7 @@ impl BuoyStation {
     pub fn new(station_id: String, latitude: f64, longitude: f64) -> BuoyStation {
         BuoyStation {
             station_id: station_id,
-            latitude, 
+            latitude,
             longitude,
             raw_name: "".into(),
             owner: String::from(""),
@@ -79,7 +83,7 @@ impl BuoyStation {
             has_currents_data: false,
             has_water_quality_data: false,
             has_tsnuami_data: false,
-            elevation: 0.0, 
+            elevation: 0.0,
         }
     }
 
@@ -147,13 +151,15 @@ impl BuoyStation {
     }
 
     pub fn gfswave_bulletin_data_url(&self, date: DateTime<Utc>) -> String {
+        let model_date = closest_model_datetime(date);
         format!("https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod/gfs.{}{}{}/{}/wave/station/bulls.t{}z/gfswave.{}.cbull", 
-            date.year(), date.month(), date.day(), date.hour(), date.hour(), self.station_id)
+        model_date.year(), model_date.month(), model_date.day(), model_date.hour(), model_date.hour(), self.station_id)
     }
 
     pub fn gfswave_spectral_data_url(&self, date: DateTime<Utc>) -> String {
+        let model_date = closest_model_datetime(date);
         format!("https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod/gfs.{}{}{}/{}/wave/station/bulls.t{}z/gfswave.{}.spec", 
-            date.year(), date.month(), date.day(), date.hour(), date.hour(), self.station_id)
+        model_date.year(), model_date.month(), model_date.day(), model_date.hour(), model_date.hour(), self.station_id)
     }
 }
 
@@ -236,7 +242,10 @@ impl BuoyStations {
 
     pub fn from_stations(stations: Vec<BuoyStation>) -> Self {
         let stations_count = stations.len().try_into().unwrap();
-        BuoyStations { stations: stations, station_count: stations_count }
+        BuoyStations {
+            stations: stations,
+            station_count: stations_count,
+        }
     }
 
     pub fn find_station(&self, station_id: &str) -> Option<BuoyStation> {
@@ -269,9 +278,14 @@ impl From<Vec<BuoyStation>> for BuoyStations {
 impl Into<FeatureCollection> for BuoyStations {
     fn into(self) -> FeatureCollection {
         FeatureCollection {
-            bbox: None, 
-            features: self.stations.iter().map(|s| s.clone().into()).collect::<Vec<Feature>>(),
-            foreign_members: None }
+            bbox: None,
+            features: self
+                .stations
+                .iter()
+                .map(|s| s.clone().into())
+                .collect::<Vec<Feature>>(),
+            foreign_members: None,
+        }
     }
 }
 
@@ -285,18 +299,22 @@ impl<'de> Visitor<'de> for NDBCBoolVisitor {
     }
 
     fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error, {
+    where
+        E: serde::de::Error,
+    {
         Ok(v)
     }
 
     fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error, {
+    where
+        E: serde::de::Error,
+    {
         match v.as_ref() {
-            "y" => Ok(true), 
+            "y" => Ok(true),
             "n" => Ok(false),
-            _ => Err(E::custom::<String>("Invalid string value for deserializer".into()))
+            _ => Err(E::custom::<String>(
+                "Invalid string value for deserializer".into(),
+            )),
         }
     }
 }
@@ -318,27 +336,31 @@ impl<'de> Visitor<'de> for F64Visitor {
     }
 
     fn visit_f64<E>(self, v: f64) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error, {
+    where
+        E: serde::de::Error,
+    {
         Ok(v)
     }
 
     fn visit_f32<E>(self, v: f32) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error, {
+    where
+        E: serde::de::Error,
+    {
         Ok(v.into())
     }
 
     fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error, {
+    where
+        E: serde::de::Error,
+    {
         println!("HERRRREEEE");
         v.parse::<f64>().map_err(serde::de::Error::custom)
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error, {
+    where
+        E: serde::de::Error,
+    {
         println!("HERRRREEEE 2222222");
         v.parse::<f64>().map_err(serde::de::Error::custom)
     }
