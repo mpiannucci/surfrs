@@ -196,7 +196,7 @@ pub fn detect_peaks(data: &Vec<f64>, delta: f64) -> (Vec<usize>, Vec<usize>) {
 pub fn closest_model_datetime(datetime: DateTime<Utc>) -> DateTime<Utc> {
     let adjusted = datetime + Duration::hours(-5);
     let latest_model_hour = adjusted.hour() - (adjusted.hour() % 6);
-    adjusted + Duration::hours(adjusted.hour() - latest_model_hour.into())
+    adjusted + Duration::hours(adjusted.hour() as i64 - latest_model_hour as i64)
 }
 
 #[cfg(test)]
