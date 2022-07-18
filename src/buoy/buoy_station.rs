@@ -152,13 +152,13 @@ impl BuoyStation {
 
     pub fn gfswave_bulletin_data_url(&self, date: DateTime<Utc>) -> String {
         let model_date = closest_model_datetime(date);
-        format!("https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod/gfs.{}{}{}/{}/wave/station/bulls.t{}z/gfswave.{}.cbull", 
+        format!("https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod/gfs.{}{:02}{:02}/{:02}/wave/station/bulls.t{:02}z/gfswave.{}.cbull", 
         model_date.year(), model_date.month(), model_date.day(), model_date.hour(), model_date.hour(), self.station_id)
     }
 
     pub fn gfswave_spectral_data_url(&self, date: DateTime<Utc>) -> String {
         let model_date = closest_model_datetime(date);
-        format!("https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod/gfs.{}{}{}/{}/wave/station/bulls.t{}z/gfswave.{}.spec", 
+        format!("https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod/gfs.{}{:02}{:02}/{:02}/wave/station/bulls.t{:02}z/gfswave.{}.spec", 
         model_date.year(), model_date.month(), model_date.day(), model_date.hour(), model_date.hour(), self.station_id)
     }
 }
