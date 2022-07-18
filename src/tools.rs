@@ -196,12 +196,10 @@ pub fn detect_peaks(data: &Vec<f64>, delta: f64) -> (Vec<usize>, Vec<usize>) {
 pub fn closest_model_datetime(datetime: DateTime<Utc>) -> DateTime<Utc> {
     let adjusted = datetime + Duration::hours(-6);
     let latest_model_hour = adjusted.hour() - (adjusted.hour() % 6);
-    adjusted + Duration::hours(adjusted.hour() as i64 - latest_model_hour as i64)
+    adjusted - Duration::hours(latest_model_hour as i64)
 }
 
 #[cfg(test)]
 mod tests {
 
 }
-
-//https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod/gfs.20220718/18/wave/station/bulls.t18z/gfswave.44097.spec
