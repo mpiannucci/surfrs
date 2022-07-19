@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc, TimeZone};
+use chrono::{DateTime, TimeZone, Utc};
 use csv::Reader;
 use serde::{Deserialize, Serialize};
 
@@ -46,7 +46,11 @@ impl ParseableDataRecord for SpectralWaveDataRecord {
         };
 
         let date = Utc
-            .ymd(row[0].parse().unwrap(), row[1].parse().unwrap(), row[2].parse().unwrap())
+            .ymd(
+                row[0].parse().unwrap(),
+                row[1].parse().unwrap(),
+                row[2].parse().unwrap(),
+            )
             .and_hms(row[3].parse().unwrap(), row[4].parse().unwrap(), 0);
 
         Ok(SpectralWaveDataRecord {
@@ -66,53 +70,41 @@ impl UnitConvertible<SpectralWaveDataRecord> for SpectralWaveDataRecord {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct DirectionalSpectralWaveDataRecord {
-    energy_spectra: SpectralWaveDataRecord,
-    directional_spectra: SpectralWaveDataRecord,
+    pub date: DateTime<Utc>,
+    pub frequency: Vec<f64>,
+    pub energy: Vec<f64>,
+    pub direction: Vec<Direction>,
 }
 
 impl DirectionalSpectralWaveDataRecord {
-    pub fn frequency(&self) -> Vec<f64> {
-        self.energy_spectra.frequency.clone()
-    }
-
-    pub fn energy(&self) -> Vec<f64> {
-        self.energy_spectra.value.clone()
-    }
-
-    pub fn direction(&self) -> Vec<Direction> {
-        self.directional_spectra
-            .value
-            .iter()
-            .map(|d| Direction::from_degree(d.round() as i32))
-            .collect()
+    pub fn from_data(
+        energy_spectra: SpectralWaveDataRecord,
+        directional_spectra: SpectralWaveDataRecord,
+    ) -> Self {
+        DirectionalSpectralWaveDataRecord {
+            date: energy_spectra.date.clone(),
+            frequency: energy_spectra.frequency.clone(),
+            energy: energy_spectra.value.clone(),
+            direction: directional_spectra
+                .value
+                .iter()
+                .map(|d| Direction::from_degree(d.round() as i32))
+                .collect()
+        }
     }
 }
 
 impl SwellProvider for DirectionalSpectralWaveDataRecord {
     fn wave_summary(&self) -> Result<Swell, SwellProviderError> {
-        if self.energy_spectra.frequency.len() != self.directional_spectra.frequency.len() {
-            return Err(SwellProviderError::InsufficientData(
-                "Frequencies are not the same length".to_string(),
-            ));
-        }
-
         Swell::from_spectra(
-            &self.energy_spectra.frequency,
-            &self.energy_spectra.value,
-            &self.direction(),
+            &self.frequency,
+            &&self.energy,
+            &self.direction,
         )
     }
 
     fn swell_components(&self) -> Result<Vec<Swell>, SwellProviderError> {
-        if self.energy_spectra.frequency.len() != self.directional_spectra.frequency.len() {
-            return Err(SwellProviderError::InsufficientData(
-                "Frequencies are not the same length".to_string(),
-            ));
-        }
-
-        let (minima_indexes, maxima_indexes) = detect_peaks(&self.energy_spectra.value, 0.05);
-
-        let directions = self.direction();
+        let (minima_indexes, maxima_indexes) = detect_peaks(&&self.energy, 0.05);
 
         maxima_indexes
             .iter()
@@ -127,15 +119,15 @@ impl SwellProvider for DirectionalSpectralWaveDataRecord {
                 };
 
                 let end = if meta_index >= minima_indexes.len() {
-                    self.energy_spectra.value.len()
+                    self.energy.len()
                 } else {
                     minima_indexes[meta_index]
                 };
 
                 Swell::from_spectra(
-                    &self.energy_spectra.frequency[start..end],
-                    &self.energy_spectra.value[start..end],
-                    &directions[start..end],
+                    &self.frequency[start..end],
+                    &&self.energy[start..end],
+                    &self.direction[start..end],
                 )
             })
             .collect()
