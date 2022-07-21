@@ -51,7 +51,7 @@ impl Swell {
             let bandwidth = if i > 0 {
                 (freq - frequency[i-1]).abs()
             } else {
-                (frequency[i-1] - freq).abs()
+                (frequency[i+1] - freq).abs()
             };
 
             zero_moment += zero_spectral_moment(energy[i], bandwidth);

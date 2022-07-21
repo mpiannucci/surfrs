@@ -6,6 +6,7 @@ use surfrs::data::forecast_spectral_wave_data_record::{ForecastSpectralWaveDataR
 use surfrs::data::meteorological_data_record::MeteorologicalDataRecordCollection;
 use surfrs::data::spectral_wave_data_record::{SpectralWaveDataRecordCollection};
 use surfrs::data::wave_data_record::{WaveDataRecordCollection};
+use surfrs::swell::SwellProvider;
 
 fn read_mock_data(name: &str) -> String {
     fs::read_to_string(format!("mock/{}", name)).unwrap()
@@ -66,5 +67,6 @@ fn read_forecast_spectral_data() {
     let records: Vec<ForecastSpectralWaveDataRecord> = records_iter.unwrap().1.collect();
     assert_eq!(records.len(), 385);
 
-    records[0].dominant_spectra();
+    assert!(records[0].wave_summary().is_ok());
+    assert!(records[0].swell_components().is_ok());
 }
