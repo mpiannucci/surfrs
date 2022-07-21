@@ -1,8 +1,8 @@
 extern crate surfrs;
 
 use std::fs;
-use surfrs::data::forecast_bulletin_wave_data_record::{ForecastBulletinWaveRecordCollection};
-use surfrs::data::forecast_spectral_wave_data_record::{ForecastSpectralWaveDataRecordCollection};
+use surfrs::data::forecast_bulletin_wave_data_record::{ForecastBulletinWaveRecordCollection, ForecastBulletinWaveRecord};
+use surfrs::data::forecast_spectral_wave_data_record::{ForecastSpectralWaveDataRecordCollection, ForecastSpectralWaveDataRecord};
 use surfrs::data::meteorological_data_record::MeteorologicalDataRecordCollection;
 use surfrs::data::spectral_wave_data_record::{SpectralWaveDataRecordCollection};
 use surfrs::data::wave_data_record::{WaveDataRecordCollection};
@@ -60,8 +60,11 @@ fn read_forecast_bulletin_data() {
 fn read_forecast_spectral_data() {
     let raw_data = read_mock_data("gfswave.44097.spec");
     let mut data_collection = ForecastSpectralWaveDataRecordCollection::from_data(raw_data.as_str());
-    let records = data_collection.records();
-    
-    assert!(records.is_ok());
-    assert_eq!(records.unwrap().1.count(), 385);
+    let records_iter = data_collection.records();
+    assert!(records_iter.is_ok());
+
+    let records: Vec<ForecastSpectralWaveDataRecord> = records_iter.unwrap().1.collect();
+    assert_eq!(records.len(), 385);
+
+    records[0].dominant_spectra();
 }

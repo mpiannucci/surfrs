@@ -167,7 +167,7 @@ impl ForecastSpectralWaveDataRecord {
         let mut max_energies: Vec<f64> = Vec::with_capacity(self.frequency.len());
         let mut max_directions: Vec<Direction> = Vec::with_capacity(self.frequency.len());
 
-        for (_frequency_index, energy) in self.energy.chunks(self.frequency.len()).enumerate() {
+        for (_frequency_index, energy) in self.energy.chunks(self.direction.len()).enumerate() {
             let mut max_value = 0.0;
             let mut max_direction = Direction::from_degree(0);
 
