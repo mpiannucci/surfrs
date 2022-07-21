@@ -3,7 +3,7 @@ use serde::{Serialize, Deserialize};
 use crate::dimensional_data::DimensionalData;
 use crate::tools::zero_spectral_moment;
 use crate::units::{Units, Measurement, Direction, UnitConvertible};
-use std::fmt::{self, Display};
+use std::fmt::{self, Display, Debug};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Swell {
@@ -91,6 +91,7 @@ impl fmt::Display for Swell {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SwellProviderError {
     NotImplemented, 
     InsufficientData(String),
