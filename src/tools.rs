@@ -1,13 +1,13 @@
 use std::f64::consts::PI;
 use std::f64::{INFINITY, NEG_INFINITY};
 
-use chrono::{DateTime, Utc, Timelike, Datelike, Duration};
+use chrono::{DateTime, Datelike, Duration, Timelike, Utc};
 
 pub enum Error {
     ConvergenceFailure,
 }
 
-/// Calculates the scalar magnitude and heading angle in degrees from uv vector components 
+/// Calculates the scalar magnitude and heading angle in degrees from uv vector components
 pub fn scalar_from_uv(u: f64, v: f64) -> (f64, f64) {
     let angle = (270.0 - (v.atan2(u) * (180.0 / PI))) as i32 % 360;
     let speed = (v.abs().powi(2) + u.abs().powi(2)).sqrt();
@@ -19,10 +19,10 @@ pub fn ldis(period: f64, depth: f64) -> Result<f64, Error> {
     const GRAVITY: f64 = 9.81;
     const EPS: f64 = 0.000001;
     const MAX_ITERATION: usize = 50;
-    
+
     let omega = 2.0 * PI / period;
     let d = omega.powi(2) * depth * GRAVITY;
-    
+
     let mut iter: usize = 0;
     let mut err: f64 = 1.0;
 
@@ -56,9 +56,15 @@ pub fn ldis(period: f64, depth: f64) -> Result<f64, Error> {
 }
 
 /// Solves for the Breaking Wave Height and Breaking Water Depth given a swell and beach conditions. All units are metric, degrees, and gravity is 9.81 m/s.
-pub fn break_wave(period: f64, incident_angle: f64, deep_water_wave_height: f64, beach_slope: f64, water_depth: f64) -> Result<(f64, f64), Error> {
+pub fn break_wave(
+    period: f64,
+    incident_angle: f64,
+    deep_water_wave_height: f64,
+    beach_slope: f64,
+    water_depth: f64,
+) -> Result<(f64, f64), Error> {
     const GRAVITY: f64 = 9.81;
-    
+
     // We need the angle in radians
     let incident_angle = incident_angle.to_radians();
 
@@ -78,14 +84,14 @@ pub fn break_wave(period: f64, incident_angle: f64, deep_water_wave_height: f64,
     // Finally calculate the breaking wave height
     let breaking_wave_height = w * deep_refracted_wave_height;
 
-    // And the breaking wave depth 
-    let k = b - a * (breaking_wave_height/(GRAVITY * period.powi(2)));
+    // And the breaking wave depth
+    let k = b - a * (breaking_wave_height / (GRAVITY * period.powi(2)));
     let breaking_water_depth = breaking_wave_height / k;
 
     Ok((breaking_wave_height, breaking_water_depth))
 }
 
-/// Calculate the refraction coefficient Kr with given inputs on a straight beach with parrellel bottom contours. 
+/// Calculate the refraction coefficient Kr with given inputs on a straight beach with parrellel bottom contours.
 /// Assumes angles in degrees and metric units
 /// Returns the refraction coefficient and the shallow incident angle in degrees
 pub fn refraction_coefficient(wavelength: f64, depth: f64, incident_angle: f64) -> (f64, f64) {
@@ -101,7 +107,7 @@ pub fn refraction_coefficient(wavelength: f64, depth: f64, incident_angle: f64) 
 pub fn shoaling_coefficient(wavelength: f64, depth: f64) -> f64 {
     const GRAVITY: f64 = 9.81;
 
-    // Solve basic dispersion relationships 
+    // Solve basic dispersion relationships
     let wavenumber = (2.0 * PI) / wavelength;
     let deep_wavelength = wavelength / (wavenumber * depth).tanh();
     let w = (wavenumber * GRAVITY).sqrt();
@@ -109,11 +115,12 @@ pub fn shoaling_coefficient(wavelength: f64, depth: f64) -> f64 {
 
     // Solve celerity
     let initial_celerity = deep_wavelength / period;
-    let celerity = initial_celerity * (wavenumber*depth).tanh();
-    let group_velocity = 0.5 * celerity * (1.0 + ((2.0 * wavenumber * depth) / (2.0 * wavenumber * depth).sinh()));
+    let celerity = initial_celerity * (wavenumber * depth).tanh();
+    let group_velocity =
+        0.5 * celerity * (1.0 + ((2.0 * wavenumber * depth) / (2.0 * wavenumber * depth).sinh()));
     (initial_celerity / (2.0 * group_velocity)).sqrt()
 }
- 
+
 /// Calculates the zero moment of a wave spectra point given energy and bandwidth
 pub fn zero_spectral_moment(energy: f64, bandwidth: f64) -> f64 {
     energy * bandwidth
@@ -132,7 +139,7 @@ pub fn steepness_coefficient(zero_moment: f64, second_moment: f64) -> f64 {
 /// Converted from MATLAB script at http://billauer.co.il/peakdet.html
 ///     
 /// Returns two arrays
-/// 
+///
 /// function [maxtab, mintab]=peakdet(v, delta, x)
 /// %PEAKDET Detect peaks in a vector
 /// %        [MAXTAB, MINTAB] = PEAKDET(V, DELTA) finds the local
@@ -147,7 +154,7 @@ pub fn steepness_coefficient(zero_moment: f64, second_moment: f64) -> f64 {
 /// %        A point is considered a maximum peak if it has the maximal
 /// %        value, and was preceded (to the left) by a value lower by
 /// %        DELTA.
-/// 
+///
 /// % Eli Billauer, 3.4.05 (Explicitly not copyrighted).
 /// % This function is released to the public domain; Any use is allowed.
 ///
@@ -186,7 +193,7 @@ pub fn detect_peaks(data: &Vec<f64>, delta: f64) -> (Vec<usize>, Vec<usize>) {
                 max_val = val;
                 max_pos = i;
                 look_for_max = true;
-            } 
+            }
         }
     }
 
@@ -196,10 +203,14 @@ pub fn detect_peaks(data: &Vec<f64>, delta: f64) -> (Vec<usize>, Vec<usize>) {
 pub fn closest_model_datetime(datetime: DateTime<Utc>) -> DateTime<Utc> {
     let adjusted = datetime + Duration::hours(-6);
     let latest_model_hour = adjusted.hour() % 6;
-    adjusted - Duration::hours(latest_model_hour as i64)
+    (adjusted - Duration::hours(latest_model_hour as i64))
+        .with_minute(0)
+        .unwrap()
+        .with_second(0)
+        .unwrap()
+        .with_nanosecond(0)
+        .unwrap()
 }
 
 #[cfg(test)]
-mod tests {
-
-}
+mod tests {}
