@@ -10,10 +10,11 @@ pub struct Swell {
     pub wave_height: DimensionalData<f64>,
     pub period: DimensionalData<f64>,
     pub direction: DimensionalData<Direction>,
+    pub energy: Option<DimensionalData<f64>>,
 }
 
 impl Swell {
-    pub fn new(units: &Units, wave_height: f64, period: f64, direction: Direction) -> Swell {
+    pub fn new(units: &Units, wave_height: f64, period: f64, direction: Direction, energy: Option<f64>) -> Swell {
         Swell {
             wave_height: DimensionalData {
                 value: Some(wave_height),
@@ -32,7 +33,13 @@ impl Swell {
                 variable_name: "direction".into(),
                 measurement: Measurement::Direction,
                 unit: units.clone(),
-            }
+            }, 
+            energy: energy.map(|v| DimensionalData {
+                value: Some(v),
+                variable_name: "energy".into(),
+                measurement: Measurement::WaveEnergy,
+                unit: units.clone(),
+            }),
         }
     }
 
@@ -59,11 +66,11 @@ impl Swell {
         }
 
         match max_energy {
-            Some((max_energy_index, _)) => {
+            Some((max_energy_index, energy)) => {
                 let wave_height = 4.0 * zero_moment.sqrt();
                 let period = 1.0 / frequency[max_energy_index];
                 let direction = direction[max_energy_index].clone();
-                Ok(Swell::new(&Units::Metric, wave_height, period, direction))
+                Ok(Swell::new(&Units::Metric, wave_height, period, direction, Some(energy)))
             }, 
             None => Err(SwellProviderError::InsufficientData("Failed to extract the max energy frequency".to_string()))
         }

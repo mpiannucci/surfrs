@@ -10,6 +10,7 @@ pub enum Measurement {
     Visibility,
     Direction,
     Time,
+    WaveEnergy,
 }
 
 impl Measurement {
@@ -22,6 +23,7 @@ impl Measurement {
             Measurement::Visibility => "visibility",
             Measurement::Direction => "direction",
             Measurement::Time => "time",
+            Measurement::WaveEnergy => "wave_energy"
         }
     }
 }

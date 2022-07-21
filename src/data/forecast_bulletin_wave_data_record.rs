@@ -181,6 +181,7 @@ impl ParseableDataRecord for ForecastBulletinWaveRecord {
                 wave_height,
                 period,
                 Direction::from_degree(degrees),
+                None,
             ));
         }
 

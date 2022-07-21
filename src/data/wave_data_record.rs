@@ -116,6 +116,7 @@ impl SwellProvider for WaveDataRecord {
             wave_height: self.wave_height.clone(),
             period: self.average_wave_period.clone(),
             direction: self.mean_wave_direction.clone(),
+            energy: None,
         })
     }
 
@@ -125,11 +126,13 @@ impl SwellProvider for WaveDataRecord {
                 wave_height: self.swell_wave_height.clone(),
                 period: self.swell_wave_period.clone(),
                 direction: self.swell_wave_direction.clone(),
+                energy: None,
             },
             Swell {
                 wave_height: self.wind_wave_height.clone(),
                 period: self.wind_wave_period.clone(),
                 direction: self.wind_wave_direction.clone(),
+                energy: None,
             },
         ])
     }

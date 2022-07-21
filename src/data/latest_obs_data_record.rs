@@ -169,6 +169,7 @@ impl SwellProvider for LatestObsDataRecord {
             wave_height: self.wave_height.clone(),
             period: self.dominant_wave_period.clone(),
             direction: self.mean_wave_direction.clone(),
+            energy: None,
         })
     }
 
