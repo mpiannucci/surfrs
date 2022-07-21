@@ -13,6 +13,12 @@ pub struct DimensionalData<T> {
     pub unit: Units,
 }
 
+impl <T> DimensionalData<T> {
+    pub fn unit_label(&self, abbrev: bool) -> &'static str {
+        self.unit.label(&self.measurement, abbrev).into()
+    }
+}
+
 impl <T> DimensionalData<T> where T: FromStr {
     pub fn from_raw_data(raw_data: &str, variable_name: String, measurement: Measurement, unit: Units) -> DimensionalData<T> {
         let parsed_value = raw_data.parse();
