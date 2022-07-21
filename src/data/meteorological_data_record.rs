@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use chrono::Utc;
 use chrono::prelude::*;
 use csv::Reader;
@@ -164,6 +166,29 @@ impl SwellProvider for MeteorologicalDataRecord {
             Ok(summary) => Ok(vec![summary]),
             Err(err) => Err(err),
         }
+    }
+}
+
+impl From<MeteorologicalDataRecord> for HashMap<String, Option<String>> {
+    fn from(m: MeteorologicalDataRecord) -> Self {
+        HashMap::from([
+            (m.wind_direction.variable_name.clone(), m.wind_direction.try_string()), 
+            (m.wind_speed.variable_name.clone(), m.wind_speed.try_string()),
+            (m.wind_gust_speed.variable_name.clone(), m.wind_gust_speed.try_string()),
+            (m.wave_height.variable_name.clone(), m.wave_height.try_string()),
+            (m.dominant_wave_period.variable_name.clone(), m.dominant_wave_period.try_string()),
+            (m.average_wave_period.variable_name.clone(), m.average_wave_period.try_string()),
+            (m.mean_wave_direction.variable_name.clone(), m.mean_wave_direction.try_string()),
+            (m.air_pressure.variable_name.clone(), m.air_pressure.try_string()),
+            (m.air_temperature.variable_name.clone(), m.air_temperature.try_string()),
+            (m.water_temperature.variable_name.clone(), m.water_temperature.try_string()),
+            (m.dewpoint_temperature.variable_name.clone(), m.dewpoint_temperature.try_string()),
+            (m.visibility.variable_name.clone(), m.visibility.try_string()),
+            (m.tide.variable_name.clone(), m.tide.try_string()),
+        ])
+        .into_iter()
+        .filter(|v| v.1.is_some())
+        .collect()
     }
 }
 

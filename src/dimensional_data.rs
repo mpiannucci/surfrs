@@ -1,7 +1,7 @@
 use serde::{Serialize, Deserialize};
 
 use crate::units::{Direction, Measurement, UnitConvertible, Units};
-use std::fmt;
+use std::fmt::{self, Display};
 use std::option::Option;
 use std::str::FromStr;
 
@@ -13,9 +13,16 @@ pub struct DimensionalData<T> {
     pub unit: Units,
 }
 
-impl <T> DimensionalData<T> {
+impl <T> DimensionalData<T> where T: Display {
     pub fn unit_label(&self, abbrev: bool) -> &'static str {
         self.unit.label(&self.measurement, abbrev).into()
+    }
+
+    pub fn try_string(&self) -> Option<String> {
+        match self.value {
+            Some(_) => Some(self.to_string()),
+            None => None,
+        }
     }
 }
 
