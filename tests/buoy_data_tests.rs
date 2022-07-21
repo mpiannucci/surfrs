@@ -68,5 +68,7 @@ fn read_forecast_spectral_data() {
     assert_eq!(records.len(), 385);
 
     assert!(records[0].wave_summary().is_ok());
-    assert!(records[0].swell_components().is_ok());
+    for (i, record) in records.iter().enumerate() {
+        assert!(record.swell_components().is_ok());
+    }
 }

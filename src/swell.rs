@@ -50,6 +50,8 @@ impl Swell {
         for (i, freq) in frequency.iter().enumerate() {
             let bandwidth = if i > 0 {
                 (freq - frequency[i-1]).abs()
+            } else if frequency.len() == 1 {
+                *freq
             } else {
                 (frequency[i+1] - freq).abs()
             };
