@@ -47,6 +47,7 @@ impl UnitConvertible<DimensionalData<f64>> for DimensionalData<f64> {
             Some(val) => Some(self.unit.convert(&self.measurement, new_units, val)),
             None => None,
         };
+        self.unit = new_units.clone();
     }
 }
 
@@ -56,12 +57,14 @@ impl UnitConvertible<DimensionalData<i64>> for DimensionalData<i64> {
             Some(val) => Some(self.unit.convert(&self.measurement, new_units, val as f64) as i64),
             None => None,
         };
+        self.unit = new_units.clone();
     }
 }
 
 impl UnitConvertible<DimensionalData<Direction>> for DimensionalData<Direction> {
-    fn to_units(&mut self, _: &Units) {
+    fn to_units(&mut self, new_units: &Units) {
         // Do nothing
+        self.unit = new_units.clone();
     }
 }
 
