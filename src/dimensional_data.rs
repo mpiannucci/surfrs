@@ -73,8 +73,13 @@ where
     T: fmt::Display,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut label = self.unit.label(&self.measurement, true);
+        if label == "°" {
+            label = "";
+        }
+        
         match self.value {
-            Some(ref val) => write!(f, "{:.1} {}", val, self.unit.label(&self.measurement, true)),
+            Some(ref val) => write!(f, "{:.1} {}", val, label),
             None => write!(f, "N/A"),
         }
     }
