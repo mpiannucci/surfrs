@@ -74,7 +74,7 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.value {
-            Some(ref val) => write!(f, "{} {}", val, self.unit.label(&self.measurement, true)),
+            Some(ref val) => write!(f, "{:.1} {}", val, self.unit.label(&self.measurement, true)),
             None => write!(f, "N/A"),
         }
     }
