@@ -82,8 +82,6 @@ impl Swell {
 impl UnitConvertible<Swell> for Swell {
     fn to_units(&mut self, new_units: &Units) {
         self.wave_height.to_units(new_units);
-        self.wave_height.to_units(new_units);
-        self.wave_height.to_units(new_units);
     }
 }
 
