@@ -49,26 +49,36 @@ fn read_wave_direction_data() {
 }
 
 #[test]
-fn read_forecast_bulletin_data() {
-    let raw_data = read_mock_data("gfswave.44097.cbull");
-    let mut data_collection = ForecastBulletinWaveRecordCollection::from_data(raw_data.as_str());
-    let records = data_collection.records();
-    
-    assert!(records.is_ok());
-}
-
-#[test]
-fn read_forecast_spectral_data() {
+fn read_forecast_station_data() {
     let raw_data = read_mock_data("gfswave.44097.spec");
     let mut data_collection = ForecastSpectralWaveDataRecordCollection::from_data(raw_data.as_str());
-    let records_iter = data_collection.records();
-    assert!(records_iter.is_ok());
+    let spectral_records_iter = data_collection.records();
+    assert!(spectral_records_iter.is_ok());
 
-    let records: Vec<ForecastSpectralWaveDataRecord> = records_iter.unwrap().1.collect();
-    assert_eq!(records.len(), 385);
+    let spectral_records: Vec<ForecastSpectralWaveDataRecord> = spectral_records_iter.unwrap().1.collect();
+    assert_eq!(spectral_records.len(), 385);
 
-    assert!(records[0].wave_summary().is_ok());
-    for (_, record) in records.iter().enumerate() {
+    assert!(spectral_records[0].wave_summary().is_ok());
+    for (_, record) in spectral_records.iter().enumerate() {
         assert!(record.swell_components().is_ok());
+    }
+
+    let raw_data = read_mock_data("gfswave.44097.cbull");
+    let mut data_collection = ForecastBulletinWaveRecordCollection::from_data(raw_data.as_str());
+    let bulletin_records_iter = data_collection.records();
+    assert!(bulletin_records_iter.is_ok());
+
+    let bulletin_records: Vec<ForecastBulletinWaveRecord> = bulletin_records_iter.unwrap().1.collect();
+    assert!(bulletin_records[0].wave_summary().is_ok());
+    for (_, record) in bulletin_records.iter().enumerate() {
+        assert!(record.swell_components().is_ok());
+    }
+
+    let zipped = bulletin_records.iter().zip(spectral_records.iter());
+    for (bulletin, spectral) in zipped {
+        println!("b: {}", bulletin.wave_summary().unwrap());
+        println!("s: {}", spectral.wave_summary().unwrap());
+
+        println!("-----------------------------------------------")
     }
 }

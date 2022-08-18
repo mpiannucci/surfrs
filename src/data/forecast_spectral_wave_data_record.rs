@@ -163,9 +163,38 @@ pub struct ForecastSpectralWaveDataRecord {
 }
 
 impl ForecastSpectralWaveDataRecord {
+    // Fortan arrays
+    // E(f, theta)
+    // f is row
+    // theta is columns
+    // fortran stores in column major
+    //      dir dir dir dir dir dir dir 
+    // freq  E   E   E   E   E   E   E
+    // freq  E   E   E   E   E   E   E
+    // freq  E   E   E   E   E   E   E
+    // 
+    // So to get 
+    // E(2, 0) = 2
+    // E(2, 3) = 11
+    // E(2, 4) = 14
     pub fn dominant_spectra(&self) -> (Vec<f64>, Vec<Direction>, Vec<f64>) {
         let mut max_energies: Vec<f64> = Vec::with_capacity(self.frequency.len());
         let mut max_directions: Vec<Direction> = Vec::with_capacity(self.frequency.len());
+
+        println!("{}", self.frequency.len());
+        println!("{}", self.direction.len());
+        // for i in 0..self.frequency.len() {
+        //     let mut max_value = 0.0;
+        //     let mut max_direction = Direction::from_degree(0);
+        //     for j in 0..self.direction.len() {
+        //         // println!("{}", i + (self.frequency.len() * j))
+        //         let index = i + (self.frequency.len() * j);
+        //         if self.energy[index] > max_value {
+        //             max_value = self.energy[index];
+        //             max_direction = self.direction[j].clone();
+        //         }
+        //     }
+        // }
 
         for (_frequency_index, energy) in self.energy.chunks(self.direction.len()).enumerate() {
             let mut max_value = 0.0;
