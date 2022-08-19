@@ -183,35 +183,46 @@ impl ForecastSpectralWaveDataRecord {
 
         println!("{}", self.frequency.len());
         println!("{}", self.direction.len());
-        // for i in 0..self.frequency.len() {
-        //     let mut max_value = 0.0;
-        //     let mut max_direction = Direction::from_degree(0);
-        //     for j in 0..self.direction.len() {
-        //         // println!("{}", i + (self.frequency.len() * j))
-        //         let index = i + (self.frequency.len() * j);
-        //         if self.energy[index] > max_value {
-        //             max_value = self.energy[index];
-        //             max_direction = self.direction[j].clone();
-        //         }
-        //     }
-        // }
 
-        for (_frequency_index, energy) in self.energy.chunks(self.direction.len()).enumerate() {
+        let mut spec_energy_sum: Vec<f64> = Vec::with_capacity(self.frequency.len());
+
+        for i in 0..self.frequency.len() {
+            let mut energy_sum = 0.0;
             let mut max_value = 0.0;
             let mut max_direction = Direction::from_degree(0);
+            for j in 0..self.direction.len() {
+                let index = i + (self.frequency.len() * j);
+                energy_sum += self.energy[index];
 
-            for (direction_index, value) in energy.iter().enumerate() {
-                if *value > max_value {
-                    max_value = *value;
-                    max_direction = self.direction[direction_index].clone();
+                if self.energy[index] > max_value {
+                    max_value = self.energy[index];
+                    max_direction = self.direction[j].clone();
                 }
             }
 
-            max_energies.push(max_value);
+            spec_energy_sum.push(energy_sum);
             max_directions.push(max_direction);
         }
 
-        (self.frequency.clone(), max_directions, max_energies)
+        // for (_frequency_index, energy) in self.energy.chunks(self.direction.len()).enumerate() {
+        //     let mut energy_sum = 0.0;
+        //     let mut max_value = 0.0;
+        //     let mut max_direction = Direction::from_degree(0);
+
+        //     for (direction_index, value) in energy.iter().enumerate() {
+        //         energy_sum += *value;
+        //         if *value > max_value {
+        //             max_value = *value;
+        //             max_direction = self.direction[direction_index].clone();
+        //         }
+        //     }
+
+        //     spec_energy_sum.push(energy_sum);
+        //     max_energies.push(max_value);
+        //     max_directions.push(max_direction);
+        // }
+
+        (self.frequency.clone(), max_directions, spec_energy_sum)
     }
 }
 
