@@ -4,7 +4,7 @@ use std::fs;
 use surfrs::data::forecast_bulletin_wave_data_record::{ForecastBulletinWaveRecordCollection, ForecastBulletinWaveRecord};
 use surfrs::data::forecast_spectral_wave_data_record::{ForecastSpectralWaveDataRecordCollection, ForecastSpectralWaveDataRecord};
 use surfrs::data::meteorological_data_record::MeteorologicalDataRecordCollection;
-use surfrs::data::spectral_wave_data_record::{SpectralWaveDataRecordCollection};
+use surfrs::data::spectral_wave_data_record::{SpectralWaveDataRecordCollection, DirectionalSpectralWaveDataRecord};
 use surfrs::data::wave_data_record::{WaveDataRecordCollection};
 use surfrs::swell::SwellProvider;
 
@@ -45,7 +45,34 @@ fn read_wave_direction_data() {
     let mut data_collection = SpectralWaveDataRecordCollection::from_data(raw_data.as_str());
     let records = data_collection.records();
 
-    assert!(records.count() == 1098);
+    assert!(records.count() == 1099);
+}
+
+#[test]
+fn read_wave_spectra_data() {
+    let raw_energy_data = read_mock_data("44097.data_spec");
+    let raw_direction_data = read_mock_data("44097.swdir");
+
+    let mut energy_data_collection = SpectralWaveDataRecordCollection::from_data(raw_energy_data.as_str());
+    let mut direction_data_collection = SpectralWaveDataRecordCollection::from_data(raw_direction_data.as_str());
+
+    let mut records = energy_data_collection.records()
+        .zip(direction_data_collection.records())
+        .map(|(e, d)| DirectionalSpectralWaveDataRecord::from_data(e, d));
+
+    let swell_components = records
+        .next()
+        .unwrap()
+        .swell_components()
+        .unwrap()
+        .iter()
+        .map(|s| s.to_string())
+        .collect::<Vec<String>>();
+
+    let control = "0.5 m @ 6.2 s 156° sse, 0.4 m @ 4.5 s 220° sw, 0.2 m @ 13.3 s 136° se";
+    let out = swell_components.join(", ");
+
+    assert_eq!(out, control);
 }
 
 #[test]

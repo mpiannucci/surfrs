@@ -11,7 +11,7 @@ pub use direction::Direction;
 
 use std::fmt;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Units {
     Metric,
     English,

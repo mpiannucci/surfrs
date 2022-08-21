@@ -106,7 +106,7 @@ impl SwellProvider for DirectionalSpectralWaveDataRecord {
     fn swell_components(&self) -> Result<Vec<Swell>, SwellProviderError> {
         let (minima_indexes, maxima_indexes) = detect_peaks(&&self.energy, 0.05);
 
-        maxima_indexes
+        let mut components = maxima_indexes
             .iter()
             .enumerate()
             .map(|(meta_index, i)| {
@@ -130,7 +130,11 @@ impl SwellProvider for DirectionalSpectralWaveDataRecord {
                     &self.direction[start..end],
                 )
             })
-            .collect()
+            .collect::<Result<Vec<_>, SwellProviderError>>()?;
+
+            components.sort_by(|s1, s2| s2.energy.clone().unwrap().value.unwrap().total_cmp(&s1.energy.clone().unwrap().value.unwrap()));
+
+            Ok(components)
     }
 }
 

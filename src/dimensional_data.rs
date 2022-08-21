@@ -5,7 +5,7 @@ use std::fmt::{self, Display};
 use std::option::Option;
 use std::str::FromStr;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, PartialOrd, Eq, Ord)]
 pub struct DimensionalData<T> {
     pub value: Option<T>,
     pub variable_name: String,
@@ -73,13 +73,15 @@ where
     T: fmt::Display,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut label = self.unit.label(&self.measurement, true);
+        let mut label = self.unit.label(&self.measurement, true).to_owned();
         if label == "°" {
-            label = "";
+            label = "".to_owned();
+        } else {
+            label = format!(" {label}");
         }
         
         match self.value {
-            Some(ref val) => write!(f, "{:.1} {}", val, label),
+            Some(ref val) => write!(f, "{:.1}{}", val, label),
             None => write!(f, "N/A"),
         }
     }
