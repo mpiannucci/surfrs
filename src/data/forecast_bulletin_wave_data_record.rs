@@ -180,7 +180,7 @@ impl ParseableDataRecord for ForecastBulletinWaveRecord {
                 &Units::Metric,
                 wave_height,
                 period,
-                Direction::from_degree(degrees),
+                Direction::from_degrees(degrees),
                 None,
             ));
         }
@@ -375,8 +375,7 @@ mod tests {
                 .value
                 .as_ref()
                 .unwrap()
-                .degree
-                .unwrap(),
+                .degrees,
             142
         );
         assert_eq!(
@@ -399,8 +398,7 @@ mod tests {
                 .value
                 .as_ref()
                 .unwrap()
-                .degree
-                .unwrap(),
+                .degrees,
             163
         );
     }

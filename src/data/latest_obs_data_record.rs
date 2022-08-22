@@ -231,7 +231,7 @@ mod tests {
 
         assert_eq!(met_data.date.year(), 2022);
         assert_eq!(met_data.wave_height.value.unwrap(), 1.3);
-        assert_eq!(met_data.mean_wave_direction.value.unwrap().degree.unwrap(), 153);
+        assert_eq!(met_data.mean_wave_direction.value.unwrap().degrees, 153);
         assert!(met_data.tide.value.is_none());
     }
 }

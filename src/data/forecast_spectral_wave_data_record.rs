@@ -133,7 +133,7 @@ impl FromStr for ForecastSpectralWaveDataRecordMetadata {
                 if direction.len() < direction_count {
                     let value = v.parse::<f64>();
                     if let Ok(value) = value {
-                        direction.push(Direction::from_degree(value.to_degrees().round() as i32));
+                        direction.push(Direction::from_degrees(value.to_degrees().round() as i32));
                     }
                 }
             })
@@ -189,7 +189,7 @@ impl ForecastSpectralWaveDataRecord {
         for i in 0..self.frequency.len() {
             let mut energy_sum = 0.0;
             let mut max_value = 0.0;
-            let mut max_direction = Direction::from_degree(0);
+            let mut max_direction = Direction::from_degrees(0);
             for j in 0..self.direction.len() {
                 let index = i + (self.frequency.len() * j);
                 energy_sum += self.energy[index];
@@ -487,7 +487,7 @@ impl<'a> ForecastBulletinWaveRecordIterator<'a> {
                 unit: Units::Metric,
             },
             wind_direction: DimensionalData {
-                value: Some(Direction::from_degree(wind_direction.round() as i32)),
+                value: Some(Direction::from_degrees(wind_direction.round() as i32)),
                 variable_name: "wind direction".into(),
                 measurement: Measurement::Direction,
                 unit: Units::Metric,
@@ -499,7 +499,7 @@ impl<'a> ForecastBulletinWaveRecordIterator<'a> {
                 unit: Units::Metric,
             },
             current_direction: DimensionalData {
-                value: Some(Direction::from_degree(current_direction.round() as i32)),
+                value: Some(Direction::from_degrees(current_direction.round() as i32)),
                 variable_name: "current direction".into(),
                 measurement: Measurement::Direction,
                 unit: Units::Metric,
@@ -581,7 +581,7 @@ mod tests {
         assert_eq!(metadata.frequency[0], 0.035);
         assert_eq!(metadata.frequency[11], 0.0737);
 
-        assert_eq!(metadata.direction[0].degree.unwrap(), 85);
-        assert_eq!(metadata.direction[15].degree.unwrap(), 295);
+        assert_eq!(metadata.direction[0].degrees, 85);
+        assert_eq!(metadata.direction[15].degrees, 295);
     }
 }

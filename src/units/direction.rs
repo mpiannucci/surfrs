@@ -11,31 +11,55 @@ use super::DataParseError;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Direction {
-    pub direction: CardinalDirection,
-    pub degree: Option<i32>,
+    pub degrees: i32,
+    direction: CardinalDirection,
 }
 
 impl Direction {
-    pub fn from_degree(degree: i32) -> Direction {
+    pub fn from_cardinal_direction(direction: CardinalDirection) -> Direction {
         Direction {
-            direction: CardinalDirection::from_degree(degree),
-            degree: Some(degree),
+            direction: direction.clone(),
+            degrees: direction.to_degrees(),
         }
+    }
+
+    pub fn from_degrees(degree: i32) -> Direction {
+        Direction {
+            direction: CardinalDirection::from_degrees(&degree),
+            degrees: degree.clone(),
+        }
+    }
+
+    pub fn from_radians(radians: f64) -> Direction {
+        let degrees = radians.to_degrees() as i32;
+        Direction { 
+            direction: CardinalDirection::from_degrees(&degrees), 
+            degrees
+        }
+    }
+
+    pub fn cardinal_direction(&self) -> &CardinalDirection {
+        &self.direction
+    }
+
+    pub fn radian(&self) -> f64 {
+        (self.degrees as f64).to_radians()
+    }
+
+    pub fn invert(&self) -> Direction {
+        Direction::from_degrees((self.degrees + 180) % 360)
     }
 }
 
 impl fmt::Display for Direction {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.degree {
-            Some(degree) => write!(
-                f,
-                "{}{} {}",
-                degree,
-                Units::Metric.label(&Measurement::Direction, true),
-                self.direction
-            ),
-            None => write!(f, "{}", self.direction),
-        }
+        write!(
+            f,
+            "{}{} {}",
+            self.degrees,
+            Units::Metric.label(&Measurement::Direction, true),
+            self.direction
+        )
     }
 }
 
@@ -47,12 +71,13 @@ impl FromStr for Direction {
         match parse_cardinal {
             Ok(dir) => Ok(Direction {
                 direction: dir,
-                degree: None,
+                // TODO
+                degrees: 0,
             }),
             Err(_) => {
                 let parse_direction = s.parse::<i32>();
                 match parse_direction {
-                    Ok(dir) => Ok(Direction::from_degree(dir)),
+                    Ok(dir) => Ok(Direction::from_degrees(dir)),
                     Err(_) => Err(DataParseError::InvalidString),
                 }
             }

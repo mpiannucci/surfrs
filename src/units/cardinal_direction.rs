@@ -27,7 +27,7 @@ pub enum CardinalDirection {
 }
 
 impl CardinalDirection {
-    pub fn from_degree(degree: i32) -> CardinalDirection {
+    pub fn from_degrees(degree: &i32) -> CardinalDirection {
         match degree {
             349..=360 | 0..=11 => CardinalDirection::North,
             12..=33 => CardinalDirection::NorthNorthEast,
@@ -46,6 +46,28 @@ impl CardinalDirection {
             304..=326 => CardinalDirection::NorthWest,
             327..=348 => CardinalDirection::NorthNorthWest,
             _ => CardinalDirection::Invalid,
+        }
+    }
+
+    pub fn to_degrees(&self) -> i32 {
+        match self {
+            CardinalDirection::North => 0,
+            CardinalDirection::NorthNorthEast => 23,
+            CardinalDirection::NorthEast => 45,
+            CardinalDirection::EastNorthEast => 69,
+            CardinalDirection::East => 90,
+            CardinalDirection::EastSouthEast => 112,
+            CardinalDirection::SouthEast => 135,
+            CardinalDirection::SouthSouthEast => 158,
+            CardinalDirection::South => 180,
+            CardinalDirection::SouthSouthWest => 203,
+            CardinalDirection::SouthWest => 225,
+            CardinalDirection::WestSouthWest => 247,
+            CardinalDirection::West => 270,
+            CardinalDirection::WestNorthWest => 292,
+            CardinalDirection::NorthWest => 315,
+            CardinalDirection::NorthNorthWest => 338,
+            CardinalDirection::Invalid => 0,
         }
     }
 }

@@ -191,16 +191,16 @@ mod tests {
             wave_data
                 .swell_wave_direction
                 .value
-                .unwrap_or(Direction::from_degree(270))
-                .direction,
+                .unwrap_or(Direction::from_degrees(270))
+                .cardinal_direction().clone(),
             CardinalDirection::East
         );
         assert_eq!(
             wave_data
                 .wind_wave_direction
                 .value
-                .unwrap_or(Direction::from_degree(270))
-                .direction,
+                .unwrap_or(Direction::from_degrees(270))
+                .cardinal_direction().clone(),
             CardinalDirection::East
         );
         assert!((wave_data.wave_height.value.unwrap_or(0.0) - 2.0).abs() < 0.0001);

@@ -89,7 +89,7 @@ impl DirectionalSpectralWaveDataRecord {
             direction: directional_spectra
                 .value
                 .iter()
-                .map(|d| Direction::from_degree(d.round() as i32))
+                .map(|d| Direction::from_degrees(d.round() as i32))
                 .collect()
         }
     }
