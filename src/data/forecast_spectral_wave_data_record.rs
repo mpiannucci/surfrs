@@ -225,6 +225,17 @@ impl ForecastSpectralWaveDataRecord {
 
         (self.frequency.clone(), max_directions, max_energies)
     }
+
+    pub fn extract_partitions(&self) {
+        let min_energy = self.energy.iter().fold(std::f64::INFINITY, |a, &b| a.min(b));
+        let max_energy = self.energy.iter().fold(std::f64::NEG_INFINITY, |a, &b| a.max(b));
+        let scaled_energy = self.energy.iter().map(|e| max_energy - e).collect::<Vec<f64>>();
+
+        // see notes
+        let ihmax = 100;
+        let fact = (ihmax as f64) / (max_energy - min_energy);
+        //let imi = f64::max(1.0, f64::min(ihmax as f64, (1.0 + scaled_energy * fact).round()));
+    }
 }
 
 impl UnitConvertible<ForecastSpectralWaveDataRecord> for ForecastSpectralWaveDataRecord {
