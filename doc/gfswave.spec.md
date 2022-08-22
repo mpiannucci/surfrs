@@ -447,3 +447,6 @@ lastly `SUMEYP` and `SUMEXP`:
 ```
 
 where `IFPMAX` is the index of the peak period (Freq)
+
+
+`IHMAX` is usually 100 (defaulted to 50, but overriden to 100)
