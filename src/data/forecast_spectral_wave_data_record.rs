@@ -201,7 +201,8 @@ impl ForecastSpectralWaveDataRecord {
             }
 
             spec_energy_sum.push(energy_sum);
-            max_directions.push(max_direction);
+            max_directions.push(max_direction.invert());
+            max_energies.push(max_value);
         }
 
         // for (_frequency_index, energy) in self.energy.chunks(self.direction.len()).enumerate() {
@@ -222,7 +223,7 @@ impl ForecastSpectralWaveDataRecord {
         //     max_directions.push(max_direction);
         // }
 
-        (self.frequency.clone(), max_directions, spec_energy_sum)
+        (self.frequency.clone(), max_directions, max_energies)
     }
 }
 
