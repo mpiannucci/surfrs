@@ -234,7 +234,11 @@ impl ForecastSpectralWaveDataRecord {
         // see notes
         let ihmax = 100;
         let fact = (ihmax as f64) / (max_energy - min_energy);
-        //let imi = f64::max(1.0, f64::min(ihmax as f64, (1.0 + scaled_energy * fact).round()));
+        // IMI    = MAX ( 1 , MIN ( IHMAX , NINT ( 1. + Z*FACT ) ) )
+        let imi = scaled_energy
+            .iter()
+            .map(|e| 1.max(ihmax.min((1.0 + (e * fact)).round() as usize)))
+            .collect::<Vec<usize>>();
     }
 }
 
