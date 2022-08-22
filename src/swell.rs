@@ -107,7 +107,11 @@ impl Display for SwellProviderError {
     }
 }
 
+pub struct SwellSummary {
+    pub summary: Swell, 
+    pub components: Vec<Swell>,
+}
+
 pub trait SwellProvider {
-    fn wave_summary(&self) -> Result<Swell, SwellProviderError>;
-    fn swell_components(&self) -> Result<Vec<Swell>, SwellProviderError>;
+    fn swell_data(&self) -> Result<SwellSummary, SwellProviderError>;
 }

@@ -1,10 +1,10 @@
-use chrono::{Utc, TimeZone, DateTime};
+use chrono::{DateTime, TimeZone, Utc};
 use csv::Reader;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
 use crate::dimensional_data::DimensionalData;
-use crate::swell::{Swell, SwellProvider};
+use crate::swell::{Swell, SwellProvider, SwellSummary};
 use crate::units::*;
 
 use std::str::FromStr;
@@ -32,9 +32,13 @@ impl ParseableDataRecord for WaveDataRecord {
         row: &Vec<&str>,
     ) -> Result<WaveDataRecord, DataRecordParsingError> {
         let date = Utc
-            .ymd(row[0].parse().unwrap(), row[1].parse().unwrap(), row[2].parse().unwrap())
+            .ymd(
+                row[0].parse().unwrap(),
+                row[1].parse().unwrap(),
+                row[2].parse().unwrap(),
+            )
             .and_hms(row[3].parse().unwrap(), row[4].parse().unwrap(), 0);
-        
+
         Ok(WaveDataRecord {
             date,
             wave_height: DimensionalData::from_raw_data(
@@ -111,30 +115,29 @@ impl UnitConvertible<WaveDataRecord> for WaveDataRecord {
 }
 
 impl SwellProvider for WaveDataRecord {
-    fn wave_summary(&self) -> Result<crate::swell::Swell, crate::swell::SwellProviderError> {
-        Ok(Swell {
-            wave_height: self.wave_height.clone(),
-            period: self.average_wave_period.clone(),
-            direction: self.mean_wave_direction.clone(),
-            energy: None,
+    fn swell_data(&self) -> Result<SwellSummary, crate::swell::SwellProviderError> {
+        Ok(SwellSummary {
+            summary: Swell {
+                wave_height: self.wave_height.clone(),
+                period: self.average_wave_period.clone(),
+                direction: self.mean_wave_direction.clone(),
+                energy: None,
+            },
+            components: vec![
+                Swell {
+                    wave_height: self.swell_wave_height.clone(),
+                    period: self.swell_wave_period.clone(),
+                    direction: self.swell_wave_direction.clone(),
+                    energy: None,
+                },
+                Swell {
+                    wave_height: self.wind_wave_height.clone(),
+                    period: self.wind_wave_period.clone(),
+                    direction: self.wind_wave_direction.clone(),
+                    energy: None,
+                },
+            ],
         })
-    }
-
-    fn swell_components(&self) -> Result<Vec<Swell>, crate::swell::SwellProviderError> {
-        Ok(vec![
-            Swell {
-                wave_height: self.swell_wave_height.clone(),
-                period: self.swell_wave_period.clone(),
-                direction: self.swell_wave_direction.clone(),
-                energy: None,
-            },
-            Swell {
-                wave_height: self.wind_wave_height.clone(),
-                period: self.wind_wave_period.clone(),
-                direction: self.wind_wave_direction.clone(),
-                energy: None,
-            },
-        ])
     }
 }
 

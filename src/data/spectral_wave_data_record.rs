@@ -2,7 +2,8 @@ use chrono::{DateTime, TimeZone, Utc};
 use csv::Reader;
 use serde::{Deserialize, Serialize};
 
-use crate::swell::{Swell, SwellProvider, SwellProviderError};
+use crate::dimensional_data::DimensionalData;
+use crate::swell::{Swell, SwellProvider, SwellProviderError, SwellSummary};
 use crate::tools::detect_peaks;
 use crate::units::*;
 
@@ -95,15 +96,7 @@ impl DirectionalSpectralWaveDataRecord {
 }
 
 impl SwellProvider for DirectionalSpectralWaveDataRecord {
-    fn wave_summary(&self) -> Result<Swell, SwellProviderError> {
-        Swell::from_spectra(
-            &self.frequency,
-            &&self.energy,
-            &self.direction,
-        )
-    }
-
-    fn swell_components(&self) -> Result<Vec<Swell>, SwellProviderError> {
+    fn swell_data(&self) -> Result<SwellSummary, SwellProviderError> {
         let (minima_indexes, maxima_indexes) = detect_peaks(&&self.energy, 0.05);
 
         let mut components = maxima_indexes
@@ -132,9 +125,32 @@ impl SwellProvider for DirectionalSpectralWaveDataRecord {
             })
             .collect::<Result<Vec<_>, SwellProviderError>>()?;
 
+            // Sort swell components from highest energy to lowest energy 
             components.sort_by(|s1, s2| s2.energy.clone().unwrap().value.unwrap().total_cmp(&s1.energy.clone().unwrap().value.unwrap()));
 
-            Ok(components)
+            let dominant = components[0].clone();
+
+            // See https://www.ndbc.noaa.gov/waveobs.shtml
+            let wave_height = components
+                .iter()
+                .map(|c| c.wave_height.value.unwrap().powi(2))
+                .sum::<f64>()
+                .sqrt();
+
+            Ok(SwellSummary {
+                summary: Swell { 
+                    wave_height: DimensionalData {
+                        value: Some(wave_height), 
+                        measurement: dominant.wave_height.measurement,
+                        unit: dominant.wave_height.unit, 
+                        variable_name: dominant.wave_height.variable_name,
+                    }, 
+                    period: dominant.period, 
+                    direction: dominant.direction, 
+                    energy: None 
+                },
+                components,
+            })
     }
 }
 

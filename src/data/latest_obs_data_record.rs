@@ -2,7 +2,7 @@ use chrono::{DateTime, TimeZone, Utc};
 use csv::Reader;
 use serde::{Serialize, Deserialize};
 
-use crate::{dimensional_data::DimensionalData, units::{Direction, Measurement, Units, UnitConvertible}, swell::{Swell, SwellProvider}, buoy::BuoyStation};
+use crate::{dimensional_data::DimensionalData, units::{Direction, Measurement, Units, UnitConvertible}, swell::{Swell, SwellProvider, SwellSummary}, buoy::BuoyStation};
 
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
 
@@ -164,20 +164,16 @@ impl UnitConvertible<LatestObsDataRecord> for LatestObsDataRecord {
 }
 
 impl SwellProvider for LatestObsDataRecord {
-    fn wave_summary(&self) -> Result<crate::swell::Swell, crate::swell::SwellProviderError> {
-        Ok(Swell {
-            wave_height: self.wave_height.clone(),
-            period: self.dominant_wave_period.clone(),
-            direction: self.mean_wave_direction.clone(),
-            energy: None,
+    fn swell_data(&self) -> Result<SwellSummary, crate::swell::SwellProviderError> {
+        Ok(SwellSummary {
+            summary: Swell {
+                wave_height: self.wave_height.clone(),
+                period: self.dominant_wave_period.clone(),
+                direction: self.mean_wave_direction.clone(),
+                energy: None,
+            },
+            components: vec![],
         })
-    }
-
-    fn swell_components(&self) -> Result<Vec<Swell>, crate::swell::SwellProviderError> {
-        match self.wave_summary() {
-            Ok(summary) => Ok(vec![summary]),
-            Err(err) => Err(err),
-        }
     }
 }
 

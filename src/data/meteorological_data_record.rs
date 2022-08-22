@@ -7,6 +7,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::dimensional_data::DimensionalData;
+use crate::swell::SwellSummary;
 use crate::swell::{Swell, SwellProvider};
 use crate::units::*;
 
@@ -152,20 +153,16 @@ impl UnitConvertible<MeteorologicalDataRecord> for MeteorologicalDataRecord {
 }
 
 impl SwellProvider for MeteorologicalDataRecord {
-    fn wave_summary(&self) -> Result<crate::swell::Swell, crate::swell::SwellProviderError> {
-        Ok(Swell {
-            wave_height: self.wave_height.clone(),
-            period: self.dominant_wave_period.clone(),
-            direction: self.mean_wave_direction.clone(),
-            energy: None,
+    fn swell_data(&self) -> Result<SwellSummary, crate::swell::SwellProviderError> {
+        Ok(SwellSummary {
+            summary: Swell {
+                wave_height: self.wave_height.clone(),
+                period: self.dominant_wave_period.clone(),
+                direction: self.mean_wave_direction.clone(),
+                energy: None,
+            }, 
+            components: vec![],
         })
-    }
-
-    fn swell_components(&self) -> Result<Vec<Swell>, crate::swell::SwellProviderError> {
-        match self.wave_summary() {
-            Ok(summary) => Ok(vec![summary]),
-            Err(err) => Err(err),
-        }
     }
 }
 

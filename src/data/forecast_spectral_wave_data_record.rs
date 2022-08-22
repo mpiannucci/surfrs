@@ -1,17 +1,17 @@
 use std::iter::Skip;
 use std::str::{FromStr, Lines};
 
-use chrono::{DateTime, Utc, TimeZone};
+use chrono::{DateTime, TimeZone, Utc};
 use regex::Regex;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use crate::dimensional_data::DimensionalData;
 use crate::location::Location;
-use crate::swell::{Swell, SwellProvider};
+use crate::swell::{Swell, SwellProvider, SwellProviderError, SwellSummary};
 use crate::tools::detect_peaks;
 use crate::units::{Direction, Measurement, UnitConvertible, Units};
 
-use super::parseable_data_record::{DataRecordParsingError};
+use super::parseable_data_record::DataRecordParsingError;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ForecastSpectralWaveDataRecordMetadata {
@@ -168,12 +168,12 @@ impl ForecastSpectralWaveDataRecord {
     // f is row
     // theta is columns
     // fortran stores in column major
-    //      dir dir dir dir dir dir dir 
+    //      dir dir dir dir dir dir dir
     // freq  E   E   E   E   E   E   E
     // freq  E   E   E   E   E   E   E
     // freq  E   E   E   E   E   E   E
-    // 
-    // So to get 
+    //
+    // So to get
     // E(2, 0) = 2
     // E(2, 3) = 11
     // E(2, 4) = 14
@@ -235,20 +235,12 @@ impl UnitConvertible<ForecastSpectralWaveDataRecord> for ForecastSpectralWaveDat
 }
 
 impl SwellProvider for ForecastSpectralWaveDataRecord {
-    fn wave_summary(&self) -> Result<crate::swell::Swell, crate::swell::SwellProviderError> {
-        let (frequency, direction, energy) = self.dominant_spectra();
-
-        Swell::from_spectra(&frequency, &energy, &direction)
-    }
-
-    fn swell_components(
-        &self,
-    ) -> Result<Vec<crate::swell::Swell>, crate::swell::SwellProviderError> {
+    fn swell_data(&self) -> Result<SwellSummary, crate::swell::SwellProviderError> {
         let (frequency, direction, energy) = self.dominant_spectra();
 
         let (minima_indexes, maxima_indexes) = detect_peaks(&energy, 0.05);
 
-        maxima_indexes
+        let mut components = maxima_indexes
             .iter()
             .enumerate()
             .map(|(meta_index, i)| {
@@ -272,7 +264,34 @@ impl SwellProvider for ForecastSpectralWaveDataRecord {
                     &direction[start..end],
                 )
             })
-            .collect()
+            .collect::<Result<Vec<_>, SwellProviderError>>()?;
+
+            // Sort swell components from highest energy to lowest energy 
+            components.sort_by(|s1, s2| s2.energy.clone().unwrap().value.unwrap().total_cmp(&s1.energy.clone().unwrap().value.unwrap()));
+
+            let dominant = components[0].clone();
+
+            // See https://www.ndbc.noaa.gov/waveobs.shtml
+            let wave_height = components
+                .iter()
+                .map(|c| c.wave_height.value.unwrap().powi(2))
+                .sum::<f64>()
+                .sqrt();
+
+            Ok(SwellSummary {
+                summary: Swell { 
+                    wave_height: DimensionalData {
+                        value: Some(wave_height), 
+                        measurement: dominant.wave_height.measurement,
+                        unit: dominant.wave_height.unit, 
+                        variable_name: dominant.wave_height.variable_name,
+                    }, 
+                    period: dominant.period, 
+                    direction: dominant.direction, 
+                    energy: None 
+                },
+                components,
+            })
     }
 }
 
@@ -499,9 +518,9 @@ impl<'a> Iterator for ForecastBulletinWaveRecordIterator<'a> {
         match self.parse_next() {
             Ok(v) => Some(Ok(v)),
             Err(e) => match e {
-                DataRecordParsingError::EOF => None, 
+                DataRecordParsingError::EOF => None,
                 _ => Some(Err(e)),
-            }
+            },
         }
     }
 }

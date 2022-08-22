@@ -63,8 +63,9 @@ fn read_wave_spectra_data() {
     let swell_components = records
         .next()
         .unwrap()
-        .swell_components()
+        .swell_data()
         .unwrap()
+        .components
         .iter()
         .map(|s| s.to_string())
         .collect::<Vec<String>>();
@@ -85,9 +86,11 @@ fn read_forecast_station_data() {
     let spectral_records: Vec<ForecastSpectralWaveDataRecord> = spectral_records_iter.unwrap().1.collect();
     assert_eq!(spectral_records.len(), 385);
 
-    assert!(spectral_records[0].wave_summary().is_ok());
+    let spectral_wave_summary = spectral_records[0].swell_data();
+
+    assert!(spectral_wave_summary.is_ok());
     for (_, record) in spectral_records.iter().enumerate() {
-        assert!(record.swell_components().is_ok());
+        assert!(record.swell_data().is_ok());
     }
 
     let raw_data = read_mock_data("gfswave.44097.cbull");
@@ -96,15 +99,15 @@ fn read_forecast_station_data() {
     assert!(bulletin_records_iter.is_ok());
 
     let bulletin_records: Vec<ForecastBulletinWaveRecord> = bulletin_records_iter.unwrap().1.collect();
-    assert!(bulletin_records[0].wave_summary().is_ok());
+    assert!(bulletin_records[0].swell_data().is_ok());
     for (_, record) in bulletin_records.iter().enumerate() {
-        assert!(record.swell_components().is_ok());
+        assert!(record.swell_data().is_ok());
     }
 
     let zipped = bulletin_records.iter().zip(spectral_records.iter());
     for (bulletin, spectral) in zipped {
-        println!("b: {}", bulletin.wave_summary().unwrap());
-        println!("s: {}", spectral.wave_summary().unwrap());
+        println!("b: {}", bulletin.swell_data().unwrap().summary);
+        println!("s: {}", spectral.swell_data().unwrap().summary);
 
         println!("-----------------------------------------------")
     }
