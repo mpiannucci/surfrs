@@ -232,13 +232,43 @@ impl ForecastSpectralWaveDataRecord {
         let scaled_energy = self.energy.iter().map(|e| max_energy - e).collect::<Vec<f64>>();
 
         // see notes
-        let ihmax = 100;
-        let fact = (ihmax as f64) / (max_energy - min_energy);
+        const IHMAX: usize = 100;
+        let fact = (IHMAX as f64) / (max_energy - min_energy);
         // IMI    = MAX ( 1 , MIN ( IHMAX , NINT ( 1. + Z*FACT ) ) )
         let imi = scaled_energy
             .iter()
-            .map(|e| 1.max(ihmax.min((1.0 + (e * fact)).round() as usize)))
+            .map(|e| 1.max(IHMAX.min((1.0 + (e * fact)).round() as usize)))
             .collect::<Vec<usize>>();
+
+        // PTSORT
+
+        let mut numv: [usize; IHMAX] = [0; IHMAX];
+        for i in 0..IHMAX {
+            numv[imi[i]] += 1;
+        }
+
+        let mut iaddr: [usize; IHMAX] = [0; IHMAX];
+        iaddr[0] = 1;
+        for i in 0..IHMAX - 1 {
+            iaddr[i+1]= iaddr[i] + numv[i]; 
+        }
+
+        let mut iorder: Vec<usize> = vec![0; self.energy.len()];
+        for i in 0..self.energy.len() {
+            let iv = imi[i];
+            let inn = iaddr[iv];
+            iorder[i] = inn;
+            iaddr[iv] = inn + 1;
+        }
+
+        let mut ind: Vec<usize> = vec![0; self.energy.len()];
+        for i in 0..self.energy.len() {
+            ind[iorder[i]] = i;
+        }
+
+        // TODO: PT_FLD
+
+        // TODO: PTMEAN
     }
 }
 
