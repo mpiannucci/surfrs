@@ -1,7 +1,7 @@
 use std::iter::Skip;
 use std::str::{FromStr, Lines};
 
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, TimeZone, Utc, offset};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
@@ -227,9 +227,19 @@ impl ForecastSpectralWaveDataRecord {
     }
 
     pub fn extract_partitions(&self) {
-        let min_energy = self.energy.iter().fold(std::f64::INFINITY, |a, &b| a.min(b));
-        let max_energy = self.energy.iter().fold(std::f64::NEG_INFINITY, |a, &b| a.max(b));
-        let scaled_energy = self.energy.iter().map(|e| max_energy - e).collect::<Vec<f64>>();
+        let min_energy = self
+            .energy
+            .iter()
+            .fold(std::f64::INFINITY, |a, &b| a.min(b));
+        let max_energy = self
+            .energy
+            .iter()
+            .fold(std::f64::NEG_INFINITY, |a, &b| a.max(b));
+        let scaled_energy = self
+            .energy
+            .iter()
+            .map(|e| max_energy - e)
+            .collect::<Vec<f64>>();
 
         // see notes
         const IHMAX: usize = 100;
@@ -250,7 +260,7 @@ impl ForecastSpectralWaveDataRecord {
         let mut iaddr: [usize; IHMAX] = [0; IHMAX];
         iaddr[0] = 1;
         for i in 0..IHMAX - 1 {
-            iaddr[i+1]= iaddr[i] + numv[i]; 
+            iaddr[i + 1] = iaddr[i] + numv[i];
         }
 
         let mut iorder: Vec<usize> = vec![0; self.energy.len()];
@@ -266,7 +276,105 @@ impl ForecastSpectralWaveDataRecord {
             ind[iorder[i]] = i;
         }
 
-        // TODO: PT_FLD
+        // TODO: PTNBH
+        let mut neigh: Vec<usize> = vec![0; self.energy.len() * 9];
+        for n in 1..self.energy.len() {
+            // base loop
+            let j = (n - 1) / self.frequency.len();
+            let i = n - (j - 1) * self.frequency.len();
+            let mut k = 0;
+
+            let noffset = 9 * n;
+
+            // point at left
+            if i != 1 {
+                k += 1;
+                neigh[noffset + k] = n - 1;
+            }
+
+            // point at right
+            if i != self.frequency.len() {
+                k += 1;
+                neigh[noffset + k] = n + 1;
+            }
+
+            // point at bottom
+            if j != 1 {
+                k += 1;
+                neigh[noffset + k] = n - self.frequency.len();
+            }
+
+            // add point at bottom_wrap to top
+            if j == 1 {
+                k += 1;
+                neigh[noffset + k] = self.energy.len() - (self.frequency.len() - i);
+            }
+
+            // point at top
+            if j != self.direction.len() {
+                k += 1;
+                neigh[noffset + k] = n + self.frequency.len();
+            }
+
+            // add point to top_wrap to bottom
+            if j == self.direction.len() {
+                k += 1;
+                neigh[noffset + k] = n - (self.direction.len() - 1) * self.frequency.len();
+            }
+
+            // point at the bottom, left(5)
+            if i != 1 && j != 1 {
+                k += 1;
+                neigh[noffset + k] = n - self.frequency.len() - 1;
+            }
+
+            // point at the bottom, left with wrap.
+            if i != 1 && j == 1 {
+                k += 1;
+                neigh[noffset + k] = n - 1 + self.frequency.len() * (self.direction.len() - 1);
+            }
+
+            // point at the bottom, right(6)
+            if i != self.frequency.len() && j != 1 {
+                k += 1;
+                neigh[noffset + k] = n - self.frequency.len() + 1;
+            }
+
+            // point at the bottom, right with wrap
+            if i != self.frequency.len() && j == 1 {
+                k += 1;
+                neigh[noffset + k] = n + 1 + self.frequency.len() * (self.direction.len() - 1);
+            }
+
+            // point at the top, left(7)
+            if i != 1 && j != self.direction.len() {
+                k += 1;
+                neigh[noffset + k] = n + self.frequency.len() - 1;
+            }
+
+            // point at the top, left with wrap
+            if i != 1 && j == self.direction.len() {
+                k += 1;
+                neigh[noffset + k] = n - 1 - self.frequency.len() * (self.direction.len() - 1);
+            }
+
+            // point at the top, right(8)
+            if i != self.frequency.len() && j != self.direction.len() {
+                k += 1;
+                neigh[noffset + k] = n + self.frequency.len() + 1;
+            }
+
+            // point at top, right with wrap
+            if i != self.frequency.len() && j == self.direction.len() {
+                k += 1;
+                neigh[noffset + k] = n + 1 - self.frequency.len() * (self.direction.len() - 1);
+            }
+
+            // 9
+            neigh[(9 * n) + 8] = k;
+        }
+
+        // TODO: PTFLD
 
         // TODO: PTMEAN
     }
@@ -312,32 +420,39 @@ impl SwellProvider for ForecastSpectralWaveDataRecord {
             })
             .collect::<Result<Vec<_>, SwellProviderError>>()?;
 
-            // Sort swell components from highest energy to lowest energy 
-            components.sort_by(|s1, s2| s2.energy.clone().unwrap().value.unwrap().total_cmp(&s1.energy.clone().unwrap().value.unwrap()));
+        // Sort swell components from highest energy to lowest energy
+        components.sort_by(|s1, s2| {
+            s2.energy
+                .clone()
+                .unwrap()
+                .value
+                .unwrap()
+                .total_cmp(&s1.energy.clone().unwrap().value.unwrap())
+        });
 
-            let dominant = components[0].clone();
+        let dominant = components[0].clone();
 
-            // See https://www.ndbc.noaa.gov/waveobs.shtml
-            let wave_height = components
-                .iter()
-                .map(|c| c.wave_height.value.unwrap().powi(2))
-                .sum::<f64>()
-                .sqrt();
+        // See https://www.ndbc.noaa.gov/waveobs.shtml
+        let wave_height = components
+            .iter()
+            .map(|c| c.wave_height.value.unwrap().powi(2))
+            .sum::<f64>()
+            .sqrt();
 
-            Ok(SwellSummary {
-                summary: Swell { 
-                    wave_height: DimensionalData {
-                        value: Some(wave_height), 
-                        measurement: dominant.wave_height.measurement,
-                        unit: dominant.wave_height.unit, 
-                        variable_name: dominant.wave_height.variable_name,
-                    }, 
-                    period: dominant.period, 
-                    direction: dominant.direction, 
-                    energy: None 
+        Ok(SwellSummary {
+            summary: Swell {
+                wave_height: DimensionalData {
+                    value: Some(wave_height),
+                    measurement: dominant.wave_height.measurement,
+                    unit: dominant.wave_height.unit,
+                    variable_name: dominant.wave_height.variable_name,
                 },
-                components,
-            })
+                period: dominant.period,
+                direction: dominant.direction,
+                energy: None,
+            },
+            components,
+        })
     }
 }
 
