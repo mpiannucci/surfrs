@@ -212,5 +212,103 @@ pub fn closest_model_datetime(datetime: DateTime<Utc>) -> DateTime<Utc> {
         .unwrap()
 }
 
+pub fn nearest_neighbors(width: usize, height: usize, index: usize) -> [usize; 9] {
+    let left = if index == 0 {
+        index
+    } else {
+        index - 1
+    };
+
+    let right = if index == (width * height - 1) {
+        index
+    } else {
+        index + 1
+    };
+
+    let top = if index < width {
+        index
+    } else {
+        index - width
+    };
+
+    let bottom = if index > ((width*height) - width) {
+        index
+    } else {
+        index + width
+    };
+
+    let top_left = if top % width == 0 {
+        top
+    } else {
+        top - 1
+    };
+
+    let top_right = if top == (width * height - 1) {
+        top
+    } else {
+        top + 1
+    };
+
+    let bottom_left = if bottom % width == 0 {
+        bottom
+    } else {
+        bottom - 1
+    };
+
+    let bottom_right = if bottom == (width * height - 1) {
+        bottom
+    } else {
+        bottom + 1
+    };
+
+    return [
+        top_left, top, top_right,
+        left, index, right,
+        bottom_left, bottom, bottom_right,
+    ];
+}
+
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::nearest_neighbors;
+
+    #[test]
+    fn test_nearest_neighbors() {
+        let i = 0; 
+        let neighbors = nearest_neighbors(4, 4, i);
+        assert_eq!(neighbors[0], 0);
+        assert_eq!(neighbors[1], 0);
+        assert_eq!(neighbors[2], 1);
+        assert_eq!(neighbors[3], 0);
+        assert_eq!(neighbors[4], 0);
+        assert_eq!(neighbors[5], 1);
+        assert_eq!(neighbors[6], 4);
+        assert_eq!(neighbors[7], 4);
+        assert_eq!(neighbors[8], 5);
+
+        let i = 6;
+        let neighbors = nearest_neighbors(4, 4, i); 
+        assert_eq!(neighbors[0], 1);
+        assert_eq!(neighbors[1], 2);
+        assert_eq!(neighbors[2], 3);
+        assert_eq!(neighbors[3], 5);
+        assert_eq!(neighbors[4], 6);
+        assert_eq!(neighbors[5], 7);
+        assert_eq!(neighbors[6], 9);
+        assert_eq!(neighbors[7], 10);
+        assert_eq!(neighbors[8], 11);
+
+        let i = 15;
+        let neighbors = nearest_neighbors(4, 4, i); 
+        assert_eq!(neighbors[0], 10);
+        assert_eq!(neighbors[1], 11);
+        assert_eq!(neighbors[2], 12);
+        assert_eq!(neighbors[3], 14);
+        assert_eq!(neighbors[4], 15);
+        assert_eq!(neighbors[5], 15);
+        assert_eq!(neighbors[6], 14);
+        assert_eq!(neighbors[7], 15);
+        assert_eq!(neighbors[8], 15);
+    }
+}
+

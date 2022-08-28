@@ -108,7 +108,7 @@ fn read_forecast_station_data() {
     for (bulletin, spectral) in zipped {
         println!("b: {}", bulletin.swell_data().unwrap().summary);
         println!("s: {}", spectral.swell_data().unwrap().summary);
-
-        println!("-----------------------------------------------")
+        // println!("spart: {}", spectral.extract_partitions());
+        // println!("-----------------------------------------------")
     }
 }

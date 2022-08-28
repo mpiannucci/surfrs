@@ -1,7 +1,8 @@
+use std::collections::VecDeque;
 use std::iter::Skip;
 use std::str::{FromStr, Lines};
 
-use chrono::{DateTime, TimeZone, Utc, offset};
+use chrono::{offset, DateTime, TimeZone, Utc};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
@@ -181,9 +182,6 @@ impl ForecastSpectralWaveDataRecord {
         let mut max_energies: Vec<f64> = Vec::with_capacity(self.frequency.len());
         let mut max_directions: Vec<Direction> = Vec::with_capacity(self.frequency.len());
 
-        println!("{}", self.frequency.len());
-        println!("{}", self.direction.len());
-
         let mut spec_energy_sum: Vec<f64> = Vec::with_capacity(self.frequency.len());
 
         for i in 0..self.frequency.len() {
@@ -226,7 +224,7 @@ impl ForecastSpectralWaveDataRecord {
         (self.frequency.clone(), max_directions, max_energies)
     }
 
-    pub fn extract_partitions(&self) {
+    pub fn extract_partitions(&self) -> usize {
         let min_energy = self
             .energy
             .iter()
@@ -254,7 +252,7 @@ impl ForecastSpectralWaveDataRecord {
 
         let mut numv: [usize; IHMAX] = [0; IHMAX];
         for i in 0..IHMAX {
-            numv[imi[i]] += 1;
+            numv[imi[i] - 1] += 1;
         }
 
         let mut iaddr: [usize; IHMAX] = [0; IHMAX];
@@ -265,7 +263,7 @@ impl ForecastSpectralWaveDataRecord {
 
         let mut iorder: Vec<usize> = vec![0; self.energy.len()];
         for i in 0..self.energy.len() {
-            let iv = imi[i];
+            let iv = imi[i] - 1;
             let inn = iaddr[iv];
             iorder[i] = inn;
             iaddr[iv] = inn + 1;
@@ -278,96 +276,96 @@ impl ForecastSpectralWaveDataRecord {
 
         // TODO: PTNBH
         let mut neigh: Vec<usize> = vec![0; self.energy.len() * 9];
-        for n in 1..self.energy.len() {
+        for n in 1..self.energy.len() - 1 {
             // base loop
-            let j = (n - 1) / self.frequency.len();
-            let i = n - (j - 1) * self.frequency.len();
+            let j = n / self.frequency.len();
+            let i = n - j * self.frequency.len();
             let mut k = 0;
 
             let noffset = 9 * n;
 
             // point at left
             if i != 1 {
-                k += 1;
                 neigh[noffset + k] = n - 1;
+                k += 1;
             }
 
             // point at right
             if i != self.frequency.len() {
-                k += 1;
                 neigh[noffset + k] = n + 1;
+                k += 1;
             }
 
             // point at bottom
-            if j != 1 {
-                k += 1;
+            if j != 0 {
                 neigh[noffset + k] = n - self.frequency.len();
+                k += 1;
             }
 
             // add point at bottom_wrap to top
-            if j == 1 {
-                k += 1;
+            if j == 0 {
                 neigh[noffset + k] = self.energy.len() - (self.frequency.len() - i);
+                k += 1;
             }
 
             // point at top
             if j != self.direction.len() {
-                k += 1;
                 neigh[noffset + k] = n + self.frequency.len();
+                k += 1;
             }
 
             // add point to top_wrap to bottom
             if j == self.direction.len() {
-                k += 1;
                 neigh[noffset + k] = n - (self.direction.len() - 1) * self.frequency.len();
+                k += 1;
             }
 
             // point at the bottom, left(5)
-            if i != 1 && j != 1 {
-                k += 1;
+            if i != 0 && j != 0 {
                 neigh[noffset + k] = n - self.frequency.len() - 1;
+                k += 1;
             }
 
             // point at the bottom, left with wrap.
-            if i != 1 && j == 1 {
+            if i != 0 && j == 0 {
+                neigh[noffset + k] = n + self.frequency.len() * (self.direction.len() - 1);
                 k += 1;
-                neigh[noffset + k] = n - 1 + self.frequency.len() * (self.direction.len() - 1);
             }
 
             // point at the bottom, right(6)
-            if i != self.frequency.len() && j != 1 {
+            if i != self.frequency.len() && j != 0 {
+                neigh[noffset + k] = n - self.frequency.len();
                 k += 1;
-                neigh[noffset + k] = n - self.frequency.len() + 1;
             }
 
             // point at the bottom, right with wrap
-            if i != self.frequency.len() && j == 1 {
-                k += 1;
+            if i != self.frequency.len() && j == 0 {
                 neigh[noffset + k] = n + 1 + self.frequency.len() * (self.direction.len() - 1);
+                k += 1;
             }
 
             // point at the top, left(7)
-            if i != 1 && j != self.direction.len() {
-                k += 1;
+            if i != 0 && j != self.direction.len() {
                 neigh[noffset + k] = n + self.frequency.len() - 1;
+                k += 1;
             }
 
             // point at the top, left with wrap
-            if i != 1 && j == self.direction.len() {
+            if i != 0 && j == self.direction.len() {
+                neigh[noffset + k] = n - self.frequency.len() * (self.direction.len() - 1);
                 k += 1;
-                neigh[noffset + k] = n - 1 - self.frequency.len() * (self.direction.len() - 1);
             }
 
             // point at the top, right(8)
             if i != self.frequency.len() && j != self.direction.len() {
+                neigh[noffset + k] = n + self.frequency.len();
                 k += 1;
-                neigh[noffset + k] = n + self.frequency.len() + 1;
             }
 
             // point at top, right with wrap
             if i != self.frequency.len() && j == self.direction.len() {
-                k += 1;
                 neigh[noffset + k] = n + 1 - self.frequency.len() * (self.direction.len() - 1);
+                k += 1;
             }
 
             // 9
@@ -375,6 +373,163 @@ impl ForecastSpectralWaveDataRecord {
         }
 
         // TODO: PTFLD
+        let mut imo = vec![0; self.energy.len()];
+        let mut npart = 0usize;
+
+        let mut mask: i32 = -2;
+        let mut ipt: i32 = 0;
+        let mut ipp = 0;
+        let mut ippp = 0;
+        let mut iwshed = 0;
+        let mut ifict_pixel: i32 = -100;
+        let mut iclabel = 0;
+        let mut imd = vec![0; self.energy.len()];
+        let mut fifo: VecDeque<i32> = VecDeque::new();
+
+        let mut ep1 = 0.0;
+        let mut diff = 0.0;
+        let zpmax = scaled_energy
+            .iter()
+            .fold(std::f64::NEG_INFINITY, |a, &b| a.max(b));
+
+        let mut m = 0usize;
+        let mut m_save = 0usize;
+        for ih in 0..IHMAX {
+            m_save = m;
+
+            while m < self.energy.len() {
+                let ip = ind[m];
+                if imi[ip] != ih {
+                    break;
+                }
+
+                imo[ip] = mask;
+
+                for i in 0..neigh[(9 * ip) + 8] {
+                    ipp = neigh[(9 * ip) + i];
+
+                    if imo[ipp] > 0 || imo[ipp] == iwshed {
+                        imd[ip] = 1;
+                        // CALL FIFO_ADD (IP)
+                        fifo.push_back(ip as i32);
+                        break;
+                    }
+                }
+
+                m += 1;
+            }
+
+            let mut icdist = 0;
+
+            // CALL FIFO_ADD (IFICT_PIXEL)
+            fifo.push_back(ifict_pixel);
+
+            loop {
+                let mut ip = fifo.pop_front().unwrap();
+
+                // Check for end of processing
+                if ip == ifict_pixel {
+                    if fifo.is_empty() {
+                        break;
+                    } else {
+                        fifo.push_back(ifict_pixel);
+                        icdist += 1;
+                        ip = fifo.pop_front().unwrap();
+                    }
+                }
+
+                // Process queue
+                for i in 0..neigh[(9 * ip as usize) + 8] {
+                    ipp = neigh[(9 * ip as usize) + i];
+
+                    // Check for labeled watersheds or basins
+                    if imd[ipp] < icdist && (imo[ipp] > 0 || imo[ipp] == iwshed) {
+                        if imo[ipp] > 0 {
+                            if imo[ip as usize] == mask || imo[ip as usize] == iwshed {
+                                imo[ip as usize] = imo[ipp];
+                            } else if imo[ip as usize] != imo[ipp] {
+                                imo[ip as usize] = iwshed;
+                            }
+                        } else if imo[ipp] == mask {
+                            imo[ip as usize] = iwshed;
+                        }
+                    } else if imo[ipp] == mask && imd[ipp] == 0 {
+                        imd[ipp] = icdist + 1;
+                        fifo.push_back(ipp as i32);
+                    }
+                }
+            }
+
+            // Check for mask values in IMO to identify new basins
+            m = m_save;
+            while m < self.energy.len() {
+                let mut ip = ind[m];
+                if imi[ip] != ih {
+                    break;
+                }
+
+                imd[ip] = 0;
+
+                if imo[ip] == mask {
+                    // New label for pixel
+                    iclabel += 1;
+                    fifo.push_back(ip as i32);
+                    imo[ip] = iclabel;
+
+                    // and all connected to it ...
+                    while !fifo.is_empty() {
+                        ipp = fifo.pop_front().unwrap() as usize;
+                        for i in 0..neigh[(9 * ip as usize) + 8] {
+                            ippp = neigh[(9 * ipp as usize) + i];
+                            if imo[ippp] == mask {
+                                fifo.push_back(ippp as i32);
+                                imo[ippp] = iclabel;
+                            }
+                        }
+                    }
+                }
+
+                m += 1;
+            }
+
+            println!("{iclabel}");
+
+            // Find nearest neighbor of 0 watershed points and replace
+            // use original input to check which group to affiliate with 0
+            // Soring changes first in IMD to assure symetry in adjustment.
+            // for j in 0..4usize {
+            //     let mut imd_tmp = imo.clone();
+            //     for jl in 0..self.energy.len() {
+            //         ipt = -1;
+            //         if imo[jl] == 0 {
+            //             ep1 = max_energy;
+            //             for jn in 0..neigh[9 * jl + 8] {
+            //                 let e_index = neigh[9 * jl + jn];
+            //                 println!("{e_index}: {jl},{jn}");
+            //                 diff = scaled_energy[jl] - scaled_energy[e_index];
+            //                 if diff < ep1 && imo[e_index] != 0 {
+            //                     ep1 = diff;
+            //                     ipt = jn as i32;
+            //                 }
+            //             }
+
+            //             if ipt > 0 {
+            //                 imd_tmp[jl] = imo[neigh[9 * jl + ipt as usize]];
+            //             }
+            //         }
+            //     }
+
+            //     imo = imd_tmp;
+            //     let min_imo: i32 = imo.iter().min().unwrap().clone();
+            //     if min_imo > 0 {
+            //         break;
+            //     }
+
+            //     npart = iclabel as usize;
+            // }
+        }
+
+        npart
 
         // TODO: PTMEAN
     }
