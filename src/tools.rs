@@ -3,6 +3,8 @@ use std::f64::{INFINITY, NEG_INFINITY};
 
 use chrono::{DateTime, Datelike, Duration, Timelike, Utc};
 
+const GRAVITY: f64 = 9.81;
+
 pub enum Error {
     ConvergenceFailure,
 }
@@ -16,7 +18,6 @@ pub fn scalar_from_uv(u: f64, v: f64) -> (f64, f64) {
 
 /// Computes the wavelength for a wave with the given period and depth. Units are metric, gravity is 9.81 m/s.
 pub fn ldis(period: f64, depth: f64) -> Result<f64, Error> {
-    const GRAVITY: f64 = 9.81;
     const EPS: f64 = 0.000001;
     const MAX_ITERATION: usize = 50;
 
@@ -63,8 +64,6 @@ pub fn break_wave(
     beach_slope: f64,
     water_depth: f64,
 ) -> Result<(f64, f64), Error> {
-    const GRAVITY: f64 = 9.81;
-
     // We need the angle in radians
     let incident_angle = incident_angle.to_radians();
 
@@ -105,8 +104,6 @@ pub fn refraction_coefficient(wavelength: f64, depth: f64, incident_angle: f64) 
 
 /// Calculate the shoaling coeffecient Ks. Units are metric, gravity is 9.81
 pub fn shoaling_coefficient(wavelength: f64, depth: f64) -> f64 {
-    const GRAVITY: f64 = 9.81;
-
     // Solve basic dispersion relationships
     let wavenumber = (2.0 * PI) / wavelength;
     let deep_wavelength = wavelength / (wavenumber * depth).tanh();
