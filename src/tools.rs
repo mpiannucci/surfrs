@@ -197,6 +197,8 @@ pub fn detect_peaks(data: &Vec<f64>, delta: f64) -> (Vec<usize>, Vec<usize>) {
     (min_indexes, max_indexes)
 }
 
+/// Creates a datetime object for the most recent model run given the logic that 
+/// weather models run at 0Z, 6Z, 12Z, and 18Z
 pub fn closest_model_datetime(datetime: DateTime<Utc>) -> DateTime<Utc> {
     let adjusted = datetime + Duration::hours(-6);
     let latest_model_hour = adjusted.hour() % 6;
