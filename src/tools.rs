@@ -212,6 +212,27 @@ pub fn closest_model_datetime(datetime: DateTime<Utc>) -> DateTime<Utc> {
         .unwrap()
 }
 
+/// Calculate the indexes of a given indexes nearest neighbor cells
+/// https://stackoverflow.com/questions/7862190/nearest-neighbor-operation-on-1d-array-elements
+/// 
+/// 1   2   3   4
+/// 5   6   7   8
+/// 9   10  11  12
+/// 13  14  15  16
+///
+/// gives
+///
+/// 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
+///
+/// with neighbors calculated for index 5 as 
+///
+/// 1   2   3   
+/// 5   6   7   
+/// 9   10  11
+///
+/// this implementation does NOT wrap, and defaults to the selected index in cases where wrapping would 
+/// occur
+///
 pub fn nearest_neighbors(width: usize, height: usize, index: usize) -> [usize; 9] {
     let left = if index == 0 {
         index
