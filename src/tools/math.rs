@@ -6,3 +6,13 @@ pub fn scalar_from_uv(u: f64, v: f64) -> (f64, f64) {
     let speed = (v.abs().powi(2) + u.abs().powi(2)).sqrt();
     (speed, angle as f64)
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::tools::math::scalar_from_uv;
+
+	#[test]
+	fn test_scaler_from_uv() {
+		// TODO
+	}
+}
