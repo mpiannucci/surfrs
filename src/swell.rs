@@ -1,7 +1,7 @@
 use serde::{Serialize, Deserialize};
 
 use crate::dimensional_data::DimensionalData;
-use crate::tools::zero_spectral_moment;
+use crate::tools::waves::zero_spectral_moment;
 use crate::units::{Units, Measurement, Direction, UnitConvertible};
 use std::fmt::{self, Display, Debug};
 

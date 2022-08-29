@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::dimensional_data::DimensionalData;
 use crate::location::Location;
 use crate::swell::{Swell, SwellProvider, SwellProviderError, SwellSummary};
-use crate::tools::detect_peaks;
+use crate::tools::analysis::detect_peaks;
 use crate::units::{Direction, Measurement, UnitConvertible, Units};
 
 use super::parseable_data_record::DataRecordParsingError;

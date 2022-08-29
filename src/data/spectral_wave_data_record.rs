@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::dimensional_data::DimensionalData;
 use crate::swell::{Swell, SwellProvider, SwellProviderError, SwellSummary};
-use crate::tools::detect_peaks;
+use crate::tools::analysis::detect_peaks;
 use crate::units::*;
 
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
