@@ -140,6 +140,7 @@ pub fn nearest_neighbors(width: usize, height: usize, index: usize) -> [usize; 9
     ];
 }
 
+#[derive(Debug)]
 pub enum WatershedError {
     Unknown,
     InvalidData,
@@ -157,7 +158,7 @@ pub fn watershed(
     data: &[f64],
     width: usize,
     height: usize,
-    steps: usize,
+    steps: u8,
 ) -> Result<(Vec<i32>, usize), WatershedError> {
     const MASK: i32 = -2;
     const WSHD: i32 = 0;
@@ -184,23 +185,24 @@ pub fn watershed(
         .map(|i| *(&data[*i].clone()))
         .collect::<Vec<f64>>();
 
-    // evenly spaced steps from minimum to maximum.
-    let levels: Vec<f64> =
-        linspace(sorted_data[0], sorted_data[sorted_data.len() - 1], steps).collect();
+    let min_value = sorted_data[0];
+    let max_value = sorted_data[sorted_data.len() - 1];
+    let range = max_value - min_value;
+    let factor = (steps as f64 - 1.0) / range;
+    let binned_data: Vec<u8> = sorted_data.iter().map(|s| 0.max(steps.min((1.0 + (factor * (max_value - s))).round() as u8))).collect();
+    println!("max: {max_value}, min: {min_value}");
+    println!("{:?}", data);
+    println!("{:?}", binned_data);
 
     let mut level_indices: Vec<usize> = Vec::new();
     let mut current_level = 0;
 
     // Get the indices that deleimit pixels with different values.
     for i in 0..size {
-        if sorted_data[i] > levels[current_level] {
+        if binned_data[i] > current_level {
             // Skip levels until the next highest one is reached.
-            while sorted_data[i] > levels[current_level] {
+            while binned_data[i] > current_level {
                 current_level += 1;
-
-                if current_level == steps {
-                    break;
-                }
             }
             level_indices.push(i);
         }
@@ -240,9 +242,11 @@ pub fn watershed(
                         labels[i] = WSHD;
                         flag = false;
                     }
-                } else if label_n == WSHD && label_i == INQE {
-                    labels[i] = WSHD;
-                    flag = true;
+                } else if label_n == WSHD {
+                    if label_i == INQE {
+                        labels[i] = WSHD;
+                        flag = true;
+                    }
                 } else if label_n == MASK {
                     labels[n] = INQE;
                     fifo.push_back(n);
