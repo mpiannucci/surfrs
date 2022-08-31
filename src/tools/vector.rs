@@ -1,6 +1,6 @@
 
 /// Returns the sorted indices of the data vector in ascending order
-pub fn argsort_float(data: &Vec<f64>) -> Vec<usize> {
+pub fn argsort_float(data: &[f64]) -> Vec<usize> {
     let mut indices = (0..data.len()).collect::<Vec<_>>();
     indices.sort_by(|&a, &b| data[a].partial_cmp(&data[b]).unwrap());
     indices

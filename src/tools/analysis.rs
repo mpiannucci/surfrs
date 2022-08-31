@@ -1,6 +1,9 @@
-use std::{f64::{INFINITY, NEG_INFINITY}, collections::VecDeque};
+use std::{
+    collections::VecDeque,
+    f64::{INFINITY, NEG_INFINITY},
+};
 
-use crate::tools::{vector::argsort_float, linspace::linspace};
+use crate::tools::{linspace::linspace, vector::argsort_float};
 
 /// Converted from MATLAB script at http://billauer.co.il/peakdet.html
 ///     
@@ -68,7 +71,7 @@ pub fn detect_peaks(data: &Vec<f64>, delta: f64) -> (Vec<usize>, Vec<usize>) {
 
 /// Calculate the indexes of a given indexes nearest neighbor cells
 /// https://stackoverflow.com/questions/7862190/nearest-neighbor-operation-on-1d-array-elements
-/// 
+///
 /// 1   2   3   4
 /// 5   6   7   8
 /// 9   10  11  12
@@ -78,21 +81,17 @@ pub fn detect_peaks(data: &Vec<f64>, delta: f64) -> (Vec<usize>, Vec<usize>) {
 ///
 /// 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
 ///
-/// with neighbors calculated for index 5 as 
+/// with neighbors calculated for index 5 as
 ///
 /// 1   2   3   
 /// 5   6   7   
 /// 9   10  11
 ///
-/// this implementation does NOT wrap, and defaults to the selected index in cases where wrapping would 
+/// this implementation does NOT wrap, and defaults to the selected index in cases where wrapping would
 /// occur
 ///
 pub fn nearest_neighbors(width: usize, height: usize, index: usize) -> [usize; 9] {
-    let left = if index == 0 {
-        index
-    } else {
-        index - 1
-    };
+    let left = if index == 0 { index } else { index - 1 };
 
     let right = if index == (width * height - 1) {
         index
@@ -100,23 +99,15 @@ pub fn nearest_neighbors(width: usize, height: usize, index: usize) -> [usize; 9
         index + 1
     };
 
-    let top = if index < width {
-        index
-    } else {
-        index - width
-    };
+    let top = if index < width { index } else { index - width };
 
-    let bottom = if index > ((width*height) - width) {
+    let bottom = if index >= ((width * height) - width) {
         index
     } else {
         index + width
     };
 
-    let top_left = if top % width == 0 {
-        top
-    } else {
-        top - 1
-    };
+    let top_left = if top % width == 0 { top } else { top - 1 };
 
     let top_right = if top == (width * height - 1) {
         top
@@ -137,9 +128,15 @@ pub fn nearest_neighbors(width: usize, height: usize, index: usize) -> [usize; 9
     };
 
     return [
-        top_left, top, top_right,
-        left, index, right,
-        bottom_left, bottom, bottom_right,
+        top_left,
+        top,
+        top_right,
+        left,
+        index,
+        right,
+        bottom_left,
+        bottom,
+        bottom_right,
     ];
 }
 
@@ -147,14 +144,6 @@ pub enum WatershedError {
     Unknown,
     InvalidData,
 }
-
-pub struct WatershedImage {
-    /// The same data array as passed to the watershed function, but with the values replaced with water basin labels
-    pub labeled_data: Vec<i32>,
-    /// A vector containing all labels found in the image
-    pub labels: Vec<i32>, 
-}
-
 
 /// Implementation of:
 /// Pierre Soille, Luc M. Vincent, "Determining watersheds in digital pictures via
@@ -164,7 +153,12 @@ pub struct WatershedImage {
 ///
 /// Adapted from https://github.com/mzur/watershed
 ///
-pub fn watershed(data: Vec<f64>, width: usize, height: usize, levels: usize) -> Result<WatershedImage, WatershedError> {
+pub fn watershed(
+    data: &[f64],
+    width: usize,
+    height: usize,
+    steps: usize,
+) -> Result<(Vec<i32>, usize), WatershedError> {
     const MASK: i32 = -2;
     const WSHD: i32 = 0;
     const INIT: i32 = -1;
@@ -191,7 +185,8 @@ pub fn watershed(data: Vec<f64>, width: usize, height: usize, levels: usize) -> 
         .collect::<Vec<f64>>();
 
     // evenly spaced steps from minimum to maximum.
-    let levels: Vec<f64> = linspace(sorted_data[0], sorted_data[sorted_data.len() - 1], levels).collect();
+    let levels: Vec<f64> =
+        linspace(sorted_data[0], sorted_data[sorted_data.len() - 1], steps).collect();
 
     let mut level_indices: Vec<usize> = Vec::new();
     let mut current_level = 0;
@@ -202,6 +197,10 @@ pub fn watershed(data: Vec<f64>, width: usize, height: usize, levels: usize) -> 
             // Skip levels until the next highest one is reached.
             while sorted_data[i] > levels[current_level] {
                 current_level += 1;
+
+                if current_level == steps {
+                    break;
+                }
             }
             level_indices.push(i);
         }
@@ -249,7 +248,7 @@ pub fn watershed(data: Vec<f64>, width: usize, height: usize, levels: usize) -> 
                     fifo.push_back(n);
                 }
             }
-        } 
+        }
 
         // Detect and process new minima at the current level.
         for i in &indices[start_index..stop_index] {
@@ -273,16 +272,19 @@ pub fn watershed(data: Vec<f64>, width: usize, height: usize, levels: usize) -> 
         start_index = stop_index;
     }
 
-    Err(WatershedError::Unknown)
+    Ok((labels, current_label as usize))
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::tools::analysis::watershed;
+
     use super::nearest_neighbors;
+    use rand;
 
     #[test]
     fn test_nearest_neighbors() {
-        let i = 0; 
+        let i = 0;
         let neighbors = nearest_neighbors(4, 4, i);
         assert_eq!(neighbors[0], 0);
         assert_eq!(neighbors[1], 0);
@@ -295,7 +297,7 @@ mod tests {
         assert_eq!(neighbors[8], 5);
 
         let i = 6;
-        let neighbors = nearest_neighbors(4, 4, i); 
+        let neighbors = nearest_neighbors(4, 4, i);
         assert_eq!(neighbors[0], 1);
         assert_eq!(neighbors[1], 2);
         assert_eq!(neighbors[2], 3);
@@ -307,7 +309,7 @@ mod tests {
         assert_eq!(neighbors[8], 11);
 
         let i = 15;
-        let neighbors = nearest_neighbors(4, 4, i); 
+        let neighbors = nearest_neighbors(4, 4, i);
         assert_eq!(neighbors[0], 10);
         assert_eq!(neighbors[1], 11);
         assert_eq!(neighbors[2], 12);
@@ -317,5 +319,15 @@ mod tests {
         assert_eq!(neighbors[6], 14);
         assert_eq!(neighbors[7], 15);
         assert_eq!(neighbors[8], 15);
+    }
+
+    #[test]
+    fn test_watershed_smoke() {
+        const WIDTH: usize = 6;
+        const HEIGHT: usize = 5;
+        let data: [f64; WIDTH * HEIGHT] = rand::random();
+
+        let watershed_result = watershed(&data, WIDTH, HEIGHT, 100);
+        assert!(watershed_result.is_ok());
     }
 }
