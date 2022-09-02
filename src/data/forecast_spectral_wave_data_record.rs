@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::dimensional_data::DimensionalData;
 use crate::location::Location;
 use crate::swell::{Swell, SwellProvider, SwellProviderError, SwellSummary};
-use crate::tools::analysis::{detect_peaks, WatershedError, watershed};
+use crate::tools::analysis::{detect_peaks, WatershedError};
 use crate::units::{Direction, Measurement, UnitConvertible, Units};
 
 use super::parseable_data_record::DataRecordParsingError;
@@ -225,9 +225,10 @@ impl ForecastSpectralWaveDataRecord {
     }
 
     pub fn extract_partitions(&self) -> Result<usize, WatershedError> {
-        let (labeled_energy, partition_count) = watershed(&self.energy, self.direction.len(), self.frequency.len(), 50)?;
+        // let (labeled_energy, partition_count) = watershed(&self.energy, self.direction.len(), self.frequency.len(), 50)?;
 
-        Ok(partition_count)
+        // Ok(partition_count)
+        Ok(0)
         // TODO: PTMEAN
     }
 }
