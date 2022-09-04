@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::dimensional_data::DimensionalData;
 use crate::location::Location;
 use crate::swell::{Swell, SwellProvider, SwellProviderError, SwellSummary};
-use crate::tools::analysis::{detect_peaks, WatershedError};
+use crate::tools::analysis::{detect_peaks, WatershedError, watershed};
 use crate::units::{Direction, Measurement, UnitConvertible, Units};
 
 use super::parseable_data_record::DataRecordParsingError;
@@ -169,10 +169,10 @@ impl ForecastSpectralWaveDataRecord {
     // f is row
     // theta is columns
     // fortran stores in column major
-    //      dir dir dir dir dir dir dir
-    // freq  E   E   E   E   E   E   E
-    // freq  E   E   E   E   E   E   E
-    // freq  E   E   E   E   E   E   E
+    //      freq freq freq freq freq freq freq
+    // dir  E    E    E    E    E    E    E
+    // dir  E    E    E    E    E    E    E
+    // dir  E    E    E    E    E    E    E
     //
     // So to get
     // E(2, 0) = 2
@@ -225,10 +225,10 @@ impl ForecastSpectralWaveDataRecord {
     }
 
     pub fn extract_partitions(&self) -> Result<usize, WatershedError> {
-        // let (labeled_energy, partition_count) = watershed(&self.energy, self.direction.len(), self.frequency.len(), 50)?;
+        let (labeled_energy, partition_count) = watershed(&self.energy, self.frequency.len(), self.direction.len(), 50)?;
 
-        // Ok(partition_count)
-        Ok(0)
+        Ok(partition_count)
+        // Ok(0)
         // TODO: PTMEAN
     }
 }
