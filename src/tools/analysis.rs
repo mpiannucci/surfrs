@@ -31,8 +31,8 @@ pub fn detect_peaks(data: &Vec<f64>, delta: f64) -> (Vec<usize>, Vec<usize>) {
     let mut min_indexes = Vec::new();
     let mut max_indexes = Vec::new();
 
-    let mut min_val = INFINITY;
-    let mut max_val = NEG_INFINITY;
+    let mut min_val = f64::INFINITY;
+    let mut max_val = f64::NEG_INFINITY;
     let mut min_pos: usize = 0;
     let mut max_pos: usize = 0;
 
@@ -110,7 +110,7 @@ pub fn nearest_neighbors(width: usize, height: usize, index: usize) -> Vec<usize
 
     // Point at bottom_wrap to top
     if j == 0 {
-       neighbors.push(t - (width - 1 - i)); 
+       neighbors.push(t - (width - i)); 
     }
 
     // Point at the top(4)
@@ -254,7 +254,7 @@ pub fn watershed(data: &[f64], width: usize, height: usize, steps: usize) -> Res
         let mut ic_dist = 0;
         fifo.push_back(IFICT_PIXEL);
 
-        while let Some(ip) = fifo.pop_front() {
+        while let Some(mut ip) = fifo.pop_front() {
             // Check for end of processing
             if ip == IFICT_PIXEL {
                 if fifo.is_empty() {
@@ -327,11 +327,11 @@ pub fn watershed(data: &[f64], width: usize, height: usize, steps: usize) -> Res
                 if imo[jl] == 0 {
                     let mut ep1 = max_value;
 
-                    for jn in &neigh[jl] {
+                    for (ijn, jn) in neigh[jl].iter().enumerate() {
                         let diff = (data[jl] - data[*jn]).abs();
                         if diff <= ep1 && imo[*jn] != 0 {
                             ep1 = diff;
-                            ipt = *jn as i32;
+                            ipt = ijn as i32;
                         }
                     }
 
@@ -493,6 +493,7 @@ pub fn watershed(data: &[f64], width: usize, height: usize, steps: usize) -> Res
 #[cfg(test)]
 mod tests {
     use super::nearest_neighbors;
+    use super::watershed;
     use rand;
 
     #[test]
@@ -516,15 +517,25 @@ mod tests {
         let i = 15;
         let neighbors = nearest_neighbors(4, 4, i);
         assert_eq!(neighbors.len(), 5);
+
+        // 0   1   2   3  4  5
+        // 5   7   8   9  10 11
+        // 12  13  14  15 16 17
+        // 18  19  20  21 22 23
+        // 24  25  26  27 28 29
+        let i = 5;
+        let neighbors = nearest_neighbors(6, 5, i);
+        println!("{:?}", neighbors);
+        assert_eq!(neighbors.len(), 5);
     }
 
-    // #[test]
-    // fn test_watershed_smoke() {
-    //     const WIDTH: usize = 6;
-    //     const HEIGHT: usize = 5;
-    //     let data: [f64; WIDTH * HEIGHT] = rand::random();
+    #[test]
+    fn test_watershed_smoke() {
+        const WIDTH: usize = 6;
+        const HEIGHT: usize = 5;
+        let data: [f64; WIDTH * HEIGHT] = rand::random();
 
-    //     let watershed_result = watershed(&data, WIDTH, HEIGHT, 100);
-    //     assert!(watershed_result.is_ok());
-    // }
+        let watershed_result = watershed(&data, WIDTH, HEIGHT, 50);
+        assert!(watershed_result.is_ok());
+    }
 }
