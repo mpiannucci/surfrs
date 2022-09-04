@@ -1,9 +1,9 @@
 use std::{
     collections::VecDeque,
-    f64::{INFINITY, NEG_INFINITY},
+    f64,
 };
 
-use crate::tools::{linspace::linspace, vector::argsort_partial};
+use crate::tools::{linspace::linspace, vector::argsort};
 
 /// Converted from MATLAB script at http://billauer.co.il/peakdet.html
 ///     
@@ -173,9 +173,184 @@ pub enum WatershedError {
 }
 
 /// Implementation of watershed algorithm as used by WW3 in w3partmd.f90
-// pub fn watershed(data: &[f64], width: usize, height: usize, steps: u8) -> Result<(Vec<i32>, usize), WatershedError> {
+/// More details to come
+pub fn watershed(data: &[f64], width: usize, height: usize, steps: usize) -> Result<(Vec<i32>, usize), WatershedError> {
+    let count = width * height;
+    if data.len() != count {
+        return Err(WatershedError::InvalidData);
+    }
 
-// }
+    let min_value = data
+        .iter()
+        .copied()
+        .fold(f64::INFINITY, f64::min);
+    let max_value = data
+        .iter()
+        .copied()
+        .fold(f64::NEG_INFINITY, f64::max);
+
+    // Scale the data
+    let fact = (steps as f64 - 1.0) / (max_value - min_value);
+    let z = data
+        .iter()
+        .map(|v| max_value - v)
+        .collect::<Vec<f64>>();
+
+    // Digitize the signal, mapping each energy value to a level from 0 to steps
+    let imi = z 
+        .iter()
+        .map(|zz| 1usize.max(steps.min((1.0 + zz * fact).round() as usize)))
+        .collect::<Vec<usize>>();
+
+    // Sort the digitized data indices, so all levels are grouped in order
+    let ind = argsort::<usize>(&imi);
+
+    // Compute the nearest neighbor for every index ahead of time
+    let neigh = (0..count)
+        .map(|i| nearest_neighbors(width, height, i))
+        .collect::<Vec<Vec<usize>>>();
+
+    // Constants
+    const MASK: i32 = - 2;
+    const INIT: i32 = -1;
+    const IWSHED: i32 = 0;
+    const IFICT_PIXEL: i32 = -100;
+
+    // Initialize
+    let mut ic_label = 0;
+    let mut m = 0;
+    let mut m_save = 0;
+    let mut fifo: VecDeque<i32> = VecDeque::new();
+    let mut imo = vec![0; count];
+    let mut imd = vec![0; count];
+
+    // Iterate the levels looking for the watersheds
+    for ih in 0..steps {
+        m_save = 1;
+
+        while m < count {
+            let ip = ind[m];
+            if imi[ip] != ih {
+                break;
+            }
+
+            // Flag the point, if it stays flagge, it is a separate minimum.
+            imo[ip] = MASK;
+
+            // Consider neighbors. If there is neighbor, set distance and add
+            // to queue.
+            let neighbors = &neigh[ip];
+            for ipp in neighbors {
+                if imo[*ipp] > 0 || imo[*ipp] == IWSHED {
+                    imd[ip] = 1;
+                    fifo.push_back(ip as i32);
+                }
+            }
+
+            m += 1;
+        }
+
+        // Process the queue
+        let mut ic_dist = 0;
+        fifo.push_back(IFICT_PIXEL);
+
+        while let Some(ip) = fifo.pop_front() {
+            // Check for end of processing
+            if ip == IFICT_PIXEL {
+                if fifo.is_empty() {
+                    break;
+                } else {
+                    fifo.push_back(IFICT_PIXEL);
+                    ic_dist += 1;
+                    ip = fifo.pop_front().unwrap();
+                }
+            }
+
+            // Process queue
+            for ipp in &neigh[ip as usize] {
+                // Check for labeled watersheds or basins
+                if imd[*ipp] < ic_dist && (imo[*ipp] > 0 || imo[*ipp] == IWSHED) {
+                    if imo[*ipp] > 0 {
+                        if imo[ip as usize] == MASK || imo[ip as usize] == IWSHED {
+                            imo[ip as usize] = imo[*ipp];
+                        } else if imo[ip as usize] != imo[*ipp] {
+                            imo[ip as usize] = IWSHED;
+                        }
+                    } else if imo[ip as usize] == MASK {
+                        imo[ip as usize] = IWSHED;
+                    }
+                } else if imo[*ipp] == MASK && imd[*ipp] == 0 {
+                    imd[*ipp] = ic_dist + 1;
+                    fifo.push_back(*ipp as i32);
+                }
+            }
+        }
+
+        // Check for mask values in IMO to identify new basins
+        m = m_save;
+        while m < count {
+            let ip = ind[m];
+
+            if imi[ip] != ih {
+                break;
+            }
+
+            imd[ip] = 0;
+
+            if imo[ip] == MASK {
+                // ... New label for pixel
+                ic_label += 1;
+                fifo.push_back(ip as i32);
+                imo[ip] = ic_label;
+
+                // ... and all connected to it ...
+                while let Some(ipp) = fifo.pop_front() {
+                    for ippp in &neigh[ipp as usize] {
+                        if imo[*ippp] == MASK {
+                            fifo.push_back(*ippp as i32);
+                            imo[*ippp] = ic_label;
+                        }
+                    }
+                }
+            }
+            m += 1;
+        }
+
+        // Find nearest neighbor of 0 watershed points and replace
+        // use original input to check which group to affiliate with 0
+        // Soring changes first in IMD to assure symetry in adjustment.
+        for j in 1..5 {
+            imd = imo.clone();
+
+            for jl in 0..count {
+                let mut ipt = -1;
+                if imo[jl] == 0 {
+                    let mut ep1 = max_value;
+
+                    for jn in &neigh[jl] {
+                        let diff = (data[jl] - data[*jn]).abs();
+                        if diff <= ep1 && imo[*jn] != 0 {
+                            ep1 = diff;
+                            ipt = *jn as i32;
+                        }
+                    }
+
+                    if ipt > 0 {
+                        imd[jl] = imo[neigh[jl][ipt as usize]];
+                    }
+                }
+            }
+
+            imo = imd.clone();
+            let min_imo = imo.iter().min().unwrap_or(&0).clone();
+            if min_imo > 0 {
+                break;
+            }
+        }
+    }
+
+    Ok((imo, ic_label as usize + 1))
+}
 
 /// Implementation of:
 /// Pierre Soille, Luc M. Vincent, "Determining watersheds in digital pictures via
