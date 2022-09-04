@@ -219,14 +219,14 @@ pub fn watershed(data: &[f64], width: usize, height: usize, steps: usize) -> Res
     // Initialize
     let mut ic_label = 0;
     let mut m = 0;
-    let mut m_save = 0;
+    let mut m_save;
     let mut fifo: VecDeque<i32> = VecDeque::new();
-    let mut imo = vec![0; count];
+    let mut imo = vec![INIT; count];
     let mut imd = vec![0; count];
 
     // Iterate the levels looking for the watersheds
     for ih in 0..steps {
-        m_save = 1;
+        m_save = m;
 
         while m < count {
             let ip = ind[m];
@@ -319,7 +319,7 @@ pub fn watershed(data: &[f64], width: usize, height: usize, steps: usize) -> Res
         // Find nearest neighbor of 0 watershed points and replace
         // use original input to check which group to affiliate with 0
         // Soring changes first in IMD to assure symetry in adjustment.
-        for j in 1..5 {
+        for _ in 1..5 {
             imd = imo.clone();
 
             for jl in 0..count {
@@ -342,8 +342,8 @@ pub fn watershed(data: &[f64], width: usize, height: usize, steps: usize) -> Res
             }
 
             imo = imd.clone();
-            let min_imo = imo.iter().min().unwrap_or(&0).clone();
-            if min_imo > 0 {
+            let min_imo = imo.iter().min().unwrap_or(&0);
+            if *min_imo > 0 {
                 break;
             }
         }
