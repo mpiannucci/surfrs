@@ -3,7 +3,7 @@ use std::{
     f64::{INFINITY, NEG_INFINITY},
 };
 
-use crate::tools::{linspace::linspace, vector::argsort_float};
+use crate::tools::{linspace::linspace, vector::argsort_partial};
 
 /// Converted from MATLAB script at http://billauer.co.il/peakdet.html
 ///     
@@ -171,6 +171,11 @@ pub enum WatershedError {
     Unknown,
     InvalidData,
 }
+
+/// Implementation of watershed algorithm as used by WW3 in w3partmd.f90
+// pub fn watershed(data: &[f64], width: usize, height: usize, steps: u8) -> Result<(Vec<i32>, usize), WatershedError> {
+
+// }
 
 /// Implementation of:
 /// Pierre Soille, Luc M. Vincent, "Determining watersheds in digital pictures via
