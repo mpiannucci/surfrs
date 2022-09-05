@@ -46,6 +46,31 @@ pub fn ldis(period: f64, depth: f64) -> Result<f64, Error> {
     }
 }
 
+/// Calculate wavenumber and group velocity from the improved 
+/// Eckard's formula by Beji (2003) using direct computation by approximation
+/// 
+/// Parameter list
+/// ----------------------------------------------------------------
+///  SI      Real   I   Intrinsic frequency (moving frame)  (rad/s)
+///  H       Real   I   Waterdepth                            (m)
+///  K       Real   O   Wavenumber                          (rad/m)
+///  CG      Real   O   Group velocity                       (m/s)
+/// ----------------------------------------------------------------
+/// 
+pub fn wavenu3(si: f64, h: f64) -> (f64, f64) {
+    const ZPI: f64 = 2.0 * PI;
+    const KDMAX: f64 = 20.0;
+
+    let tp = si / ZPI;
+    let kho = ZPI * ZPI * h / GRAVITY * tp * tp;
+    let tmp = 1.55 + 1.3 * kho + 0.216 * kho * kho;
+    let kh = kho * (1.0 + kho.powf(1.09) * 1.0 / tmp.min(KDMAX).exp()) / KDMAX.min(kho).tanh().sqrt();
+    let k = kh / h;
+    let cg = 0.5 * (1.0 + (2.0 * kh/KDMAX.min(2.0 * kh).sinh())) * si / k;
+
+    (k, cg)
+}
+
 /// Solves for the Breaking Wave Height and Breaking Water Depth given a swell and beach conditions. All units are metric, degrees, and gravity is 9.81 m/s.
 pub fn break_wave(
     period: f64,
@@ -122,3 +147,37 @@ pub fn second_spectral_moment(energy: f64, bandwidth: f64, frequency: f64) -> f6
 pub fn steepness_coefficient(zero_moment: f64, second_moment: f64) -> f64 {
     (8.0 * PI * second_moment) / (9.81 * zero_moment.sqrt())
 }
+
+/// Calculate wavenumber and group velocity from the interpolation
+/// array filled by DISTAB from a given intrinsic frequency and the
+/// waterdepth.
+// pub fn wav_nu()
+
+/// Calculates the Compute mean parameters per swell component given a discretized specrtral signal
+/// Ported from WW3 code: PTMEAN in w3partmd.f90
+pub fn pt_mean(
+    num_partitions: usize,
+    partition_map: Vec<i32>,
+    spectra: Vec<f64>,
+    depth: f64,
+    wind_speed: f64,
+    wind_direction: f64,
+    wave_numbers: Vec<f64>,
+) -> () {
+
+    ()
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+

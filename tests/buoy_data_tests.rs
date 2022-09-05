@@ -110,9 +110,10 @@ fn read_forecast_station_data() {
         println!("b: {}", bulletin.swell_data().unwrap().summary);
         println!("s: {}", spectral.swell_data().unwrap().summary);
         let partitions = spectral.extract_partitions().unwrap();
-        println!("b partition count: {}", bulletin_swell_data.components.len());
+        println!("b partition count: {}", bulletin_swell_data.components[0].wave_height);
         println!("s partition count: {partitions}");
         // println!("-----------------------------------------------")
-        //break;
+
+        break;
     }
 }

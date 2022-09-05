@@ -34,6 +34,8 @@ https://github.com/NOAA-EMC/WW3/blob/develop/model/src/w3partmd.F90
 `SIG` from w3gridmd.f90
 
 ```f90
+      REAL, PARAMETER :: TPI = 2.0 * PI !< TPI 2*Pi.
+      ....
       XFR    = MAX ( RXFR , 1.00001 ) // commonly 1.1 can be calculated on the fly
       FR1    = MAX ( RFR1 , 1.E-6 ) // lowest frq, we know this
       ....
@@ -45,6 +47,32 @@ https://github.com/NOAA-EMC/WW3/blob/develop/model/src/w3partmd.F90
         SIG (IK) = SIGMA
         DSIP(IK) = SIGMA * SXFR
         END DO
+```
+
+`WN` is calculated using wavnu1
+
+`w3dispmd.f90`: 
+
+`SI` = sigma
+`H` = depth
+
+```f90
+      SQRTH  = SQRT(H)
+      SIX    = SI * SQRTH
+      I1     = INT(SIX/DSIE)
+!
+      IF (I1.LE.N1MAX.AND.I1.GE.1) THEN
+          I2 = I1 + 1
+          R1 = SIX/DSIE - REAL(I1)
+          R2 = 1. - R1
+          K  = ( R2*EWN1(I1) + R1*EWN1(I2) ) / H
+          CG = ( R2*ECG1(I1) + R1*ECG1(I2) ) * SQRTH
+        ELSE
+          K  = SI*SI/GRAV
+          CG = 0.5 * GRAV / SI
+        END IF
+!
+      RETURN
 ```
 
 ```f90 
