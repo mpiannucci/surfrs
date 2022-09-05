@@ -233,7 +233,7 @@ impl ForecastSpectralWaveDataRecord {
             &self.energy,
             self.frequency.len(),
             self.direction.len(),
-            100,
+            50,
         )?;
 
         // Ok(0)
@@ -262,10 +262,10 @@ impl ForecastSpectralWaveDataRecord {
 
         let mut dsii = vec![0.0; self.frequency.len()];
         dsii[0] = 0.5 * sig[1] * (xfr - 1.0);
-        for ik in 1..dsii.len() - 2 {
+        for ik in 1..dsii.len() - 1 {
             dsii[ik] = dsip[ik];
         }
-        dsii[self.frequency.len() - 1] = 0.5 * sig[self.frequency.len() - 1] * (xfr - 1.) / xfr;
+        dsii[self.frequency.len() - 1] = 0.5 * sig[self.frequency.len()] * (xfr - 1.) / xfr;
 
         let fte = 0.25 * sig[self.frequency.len() - 1] * dth * sig[self.frequency.len() - 1];
 
@@ -393,7 +393,7 @@ impl ForecastSpectralWaveDataRecord {
             let hs= 4. * mo.max(0.0).sqrt();
 
             // If the derived swell height is too small, thow it away
-            if hs < 0.1 {
+            if hs < 0.05 {
                 continue;
             }
 
