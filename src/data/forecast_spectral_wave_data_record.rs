@@ -644,18 +644,21 @@ impl<'a> ForecastBulletinWaveRecordIterator<'a> {
 
         // Then the frequency * direction data
         let energy_count = self.metadata.frequency.len() * self.metadata.direction.len();
-        let mut energy: Vec<f64> =
+        let mut raw_energy: Vec<f64> =
             Vec::with_capacity(self.metadata.frequency.len() * self.metadata.direction.len());
 
-        while energy.len() < energy_count {
+        while raw_energy.len() < energy_count {
             let line = self.lines.next().ok_or(DataRecordParsingError::EOF)?;
 
             line.split_whitespace().map(f64::from_str).for_each(|v| {
                 if let Ok(v) = v {
-                    energy.push(v);
+                    raw_energy.push(v);
                 }
             });
         }
+
+        let mut energy = vec![0.0; raw_energy.len()];
+        transpose::transpose(&raw_energy, &mut energy, self.metadata.direction.len(), self.metadata.frequency.len());
 
         Ok(ForecastSpectralWaveDataRecord {
             date,
