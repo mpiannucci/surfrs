@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, f64};
+use std::{collections::VecDeque, f64, marker};
 
 use crate::tools::{
     linspace::linspace,
@@ -363,7 +363,7 @@ pub fn watershed2(
     width: usize,
     height: usize,
     steps: usize,
-) -> Result<(Vec<i32>, usize), WatershedError> {
+) -> Result<(Vec<i32>, usize, Option<usize>), WatershedError> {
     const MASK: i32 = -2;
     const WSHD: i32 = 0;
     const INIT: i32 = -1;
@@ -398,10 +398,14 @@ pub fn watershed2(
     let digital_min = imi.iter().min().unwrap().clone() as f64;
     let digital_max = imi.iter().max().unwrap().clone() as f64;
 
+    let mut marker_partition= None;
+
     imi = imi
         .iter()
-        .map(|v| {
+        .enumerate()
+        .map(|(i, v)| {
             if v >= &steps {
+                marker_partition = Some(i);
                 1
             } else {
                 ((1.0 - ((digital_max - *v as f64) / (digital_max - digital_min))) * 255.0) as usize
@@ -499,7 +503,14 @@ pub fn watershed2(
         start_index = stop_index;
     }
 
-    Ok((labels, current_label as usize + 1))
+    if let Some(ip) = marker_partition {
+        let nan_partition = labels[ip];
+        labels.iter_mut().for_each(|v| if *v == nan_partition {
+            *v = 0;
+        });
+    }
+
+    Ok((labels, current_label as usize + 1, marker_partition))
 }
 
 #[cfg(test)]
