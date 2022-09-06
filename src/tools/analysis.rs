@@ -363,7 +363,7 @@ pub fn watershed2(
     width: usize,
     height: usize,
     steps: usize,
-) -> Result<(Vec<i32>, usize, Option<usize>), WatershedError> {
+) -> Result<(Vec<i32>, usize), WatershedError> {
     const MASK: i32 = -2;
     const WSHD: i32 = 0;
     const INIT: i32 = -1;
@@ -503,6 +503,8 @@ pub fn watershed2(
         start_index = stop_index;
     }
 
+    // If there is a boundary layer, we count it the same as the watershed layer, it will count towards the 
+    // significant wave height but not toward the swell components
     if let Some(ip) = marker_partition {
         let nan_partition = labels[ip];
         labels.iter_mut().for_each(|v| if *v == nan_partition {
@@ -510,7 +512,7 @@ pub fn watershed2(
         });
     }
 
-    Ok((labels, current_label as usize + 1, marker_partition))
+    Ok((labels, current_label as usize + 1))
 }
 
 #[cfg(test)]
