@@ -202,6 +202,8 @@ pub fn watershed(data: &[f64], width: usize, height: usize, steps: usize) -> Res
         .map(|zz| 1usize.max(steps.min((1.0 + zz * fact).round() as usize)))
         .collect::<Vec<usize>>();
 
+    println!("{:?}", imi);
+
     // Sort the digitized data indices, so all levels are grouped in order
     let ind = argsort::<usize>(&imi);
 
@@ -225,7 +227,7 @@ pub fn watershed(data: &[f64], width: usize, height: usize, steps: usize) -> Res
     let mut imd = vec![0; count];
 
     // Iterate the levels looking for the watersheds
-    for ih in 0..steps {
+    for ih in 1..=steps {
         m_save = m;
 
         while m < count {
@@ -319,7 +321,7 @@ pub fn watershed(data: &[f64], width: usize, height: usize, steps: usize) -> Res
         // Find nearest neighbor of 0 watershed points and replace
         // use original input to check which group to affiliate with 0
         // Soring changes first in IMD to assure symetry in adjustment.
-        for _ in 1..5 {
+        for _ in 0..5 {
             imd = imo.clone();
 
             for jl in 0..count {
@@ -366,7 +368,7 @@ mod tests {
         // 8   9   10  11
         // 12  13  14  15
         //
-        // Only wraps rows and not columns
+        // Only wraps y and not x
 
         let i = 0;
         let neighbors = nearest_neighbors(4, 4, i);

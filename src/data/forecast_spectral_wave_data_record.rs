@@ -233,8 +233,11 @@ impl ForecastSpectralWaveDataRecord {
             &self.energy,
             self.frequency.len(),
             self.direction.len(),
-            50,
+            100,
         )?;
+
+        println!("------------");
+        println!("{:?}", imo);
 
         // Ok(0)
         // TODO: PTMEAN
