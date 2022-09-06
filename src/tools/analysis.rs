@@ -3,7 +3,7 @@ use std::{
     f64,
 };
 
-use crate::tools::{linspace::linspace, vector::argsort};
+use crate::tools::{linspace::linspace, vector::{argsort, argsort_partial}};
 
 /// Converted from MATLAB script at http://billauer.co.il/peakdet.html
 ///     
@@ -191,21 +191,17 @@ pub fn watershed(data: &[f64], width: usize, height: usize, steps: usize) -> Res
 
     // Scale the data
     let fact = (steps as f64 - 1.0) / (max_value - min_value);
-    let z = data
-        .iter()
-        .map(|v| max_value - v)
-        .collect::<Vec<f64>>();
 
     // Digitize the signal, mapping each energy value to a level from 0 to steps
-    let imi = z 
+    let imi = data 
         .iter()
-        .map(|zz| 1usize.max(steps.min((1.0 + zz * fact).round() as usize)))
+        .map(|v| 1usize.max(steps.min((1.0 + (max_value - v) * fact).round() as usize)))
         .collect::<Vec<usize>>();
-
-    println!("{:?}", imi);
 
     // Sort the digitized data indices, so all levels are grouped in order
     let ind = argsort::<usize>(&imi);
+    //let sorted = ind.iter().map(|i| imi[*i]).collect::<Vec<usize>>();
+    // println!("{:?}", ind.iter().zip(sorted).collect::<Vec<(&usize, usize)>>());
 
     // Compute the nearest neighbor for every index ahead of time
     let neigh = (0..count)
@@ -228,15 +224,15 @@ pub fn watershed(data: &[f64], width: usize, height: usize, steps: usize) -> Res
 
     // Iterate the levels looking for the watersheds
     for ih in 1..=steps {
-        m_save = m;
+        m_save = m; // 0
 
         while m < count {
-            let ip = ind[m];
-            if imi[ip] != ih {
+            let ip = ind[m]; // 471
+            if imi[ip] != ih { //  imi[ip] = 1
                 break;
             }
 
-            // Flag the point, if it stays flagge, it is a separate minimum.
+            // Flag the point, if it stays flagged, it is a separate minimum.
             imo[ip] = MASK;
 
             // Consider neighbors. If there is neighbor, set distance and add
@@ -352,6 +348,143 @@ pub fn watershed(data: &[f64], width: usize, height: usize, steps: usize) -> Res
     }
 
     Ok((imo, ic_label as usize + 1))
+}
+
+/// Implementation of:
+/// Pierre Soille, Luc M. Vincent, "Determining watersheds in digital pictures via
+/// flooding simulations", Proc. SPIE 1360, Visual Communications and Image Processing
+/// '90: Fifth in a Series, (1 September 1990); doi: 10.1117/12.24211;
+/// http://dx.doi.org/10.1117/12.24211
+///
+/// Adapted from https://github.com/mzur/watershed
+///
+pub fn watershed2(
+    data: &[f64],
+    width: usize,
+    height: usize,
+    steps: usize,
+) -> Result<(Vec<i32>, usize), WatershedError> {
+    const MASK: i32 = -2;
+    const WSHD: i32 = 0;
+    const INIT: i32 = -1;
+    const INQE: i32 = -3;
+
+    let size = width * height;
+    if size != data.len() {
+        return Err(WatershedError::InvalidData);
+    }
+
+    let mut current_label = 0;
+    let mut flag = false;
+    let mut fifo: VecDeque<usize> = VecDeque::new();
+    let mut labels: Vec<i32> = vec![INIT; size];
+
+    let neighbors = (0..size)
+        .map(|i| nearest_neighbors(width, height, i))
+        .collect::<Vec<_>>();
+
+    let indices = argsort_partial(&data);
+    let sorted_data = indices
+        .iter()
+        .map(|i| *(&data[*i].clone()))
+        .collect::<Vec<f64>>();
+
+    let min_value = sorted_data[0];
+    let max_value = sorted_data[sorted_data.len() - 1];
+    let levels = linspace(min_value, max_value, steps).collect::<Vec<f64>>();
+    //let range = max_value - min_value;
+    //let factor = (steps as f64 - 1.0) / range;
+    //let binned_data: Vec<u8> = sorted_data.iter().map(|s| 0.max(steps.min((1.0 + (factor * (max_value - s))).round() as u8))).rev().collect();
+    // println!("max: {max_value}, min: {min_value}");
+    // println!("{:?}", data);
+    // println!("{:?}", binned_data);
+
+    let mut level_indices: Vec<usize> = Vec::new();
+    let mut current_level = 0;
+
+    // Get the indices that deleimit pixels with different values.
+    for i in 0..size {
+        if sorted_data[i] > levels[current_level] {
+            // println!("{}", binned_data[i]);
+            // Skip levels until the next highest one is reached.
+            while sorted_data[i] > levels[current_level] {
+                current_level += 1;
+            }
+            // println!("{current_level}");
+            level_indices.push(i);
+        }
+    }
+    level_indices.push(size);
+    // println!("{:?}", level_indices);
+
+    let mut start_index = 0;
+
+    for stop_index in level_indices {
+        // Mask all pixels at the current level.
+        for p in &indices[start_index..stop_index] {
+            labels[*p] = MASK;
+
+            // Initialize queue with neighbours of existing basins at the current level.
+            for q in &neighbors[*p] {
+                // p == q is ignored here because labels[p] < WSHD
+                if labels[*q] >= WSHD {
+                    labels[*p] = INQE;
+                    fifo.push_back(*p);
+                    break;
+                }
+            }
+        }
+
+        // Extend basins
+        while let Some(p) = fifo.pop_front() {
+            // Label i by inspecting neighbours.
+            for q in &neighbors[p] {
+                // Don't set lab_p in the outer loop because it may change.
+                let label_p = labels[p];
+                let label_q = labels[*q];
+
+                if label_q > 0 {
+                    if label_p == INQE || (label_p == WSHD && flag) {
+                        labels[p] = label_q;
+                    } else if label_p > 0 && label_p != label_q {
+                        labels[p] = WSHD;
+                        flag = false;
+                    }
+                } else if label_q == WSHD {
+                    if label_p == INQE {
+                        labels[p] = WSHD;
+                        flag = true;
+                    }
+                } else if label_q == MASK {
+                    labels[*q] = INQE;
+                    fifo.push_back(*q);
+                }
+            }
+        }
+
+        // Detect and process new minima at the current level.
+        for p in &indices[start_index..stop_index] {
+            // i is inside a new minimum. Create a new label.
+            if labels[*p] == MASK {
+                current_label += 1;
+                fifo.push_back(*p);
+                labels[*p] = current_label;
+                while let Some(q) = fifo.pop_front() {
+                    for r in &neighbors[q] {
+                        if labels[*r] == MASK {
+                            fifo.push_back(*r);
+                            labels[*r] = current_label;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Increment
+        start_index = stop_index;
+    }
+
+    Ok((labels, current_label as usize))
 }
 
 #[cfg(test)]

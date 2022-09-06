@@ -1,4 +1,6 @@
-use std::f64::consts::PI;
+use std::{f64::consts::PI, ops::Sub};
+
+use crate::{units::Direction, swell::Swell};
 
 const GRAVITY: f64 = 9.81;
 
@@ -157,15 +159,175 @@ pub fn steepness_coefficient(zero_moment: f64, second_moment: f64) -> f64 {
 /// Ported from WW3 code: PTMEAN in w3partmd.f90
 pub fn pt_mean(
     num_partitions: usize,
-    partition_map: Vec<i32>,
-    spectra: Vec<f64>,
+    partition_map: &[i32],
+    energy: &[f64],
     depth: f64,
     wind_speed: f64,
     wind_direction: f64,
-    wave_numbers: Vec<f64>,
-) -> () {
+    frequency: &[f64],
+    direction: &[Direction]
+) -> usize {
+    let dera = 1.0f64.atan() / 45.0;
+    let xfr = 1.07;
+    let tpi = 2.0 * PI;
+    let fr1 = 0.035;
+    let wsmult = 1.7;
+    let dth = tpi / direction.len() as f64;
+    let sxfr = 0.5 * (xfr - 1. / xfr);
 
-    ()
+    let mut sigma = fr1 * tpi / f64::powi(xfr, 2);
+    let sig = (0..frequency.len() + 2)
+        .map(|_| {
+            sigma = sigma * xfr;
+            sigma
+        })
+        .collect::<Vec<f64>>();
+
+    let dsip = sig.iter().map(|s| s * sxfr).collect::<Vec<f64>>();
+
+    let mut dsii = vec![0.0; frequency.len()];
+    dsii[0] = 0.5 * sig[1] * (xfr - 1.0);
+    for ik in 1..dsii.len() - 1 {
+        dsii[ik] = dsip[ik];
+    }
+    dsii[frequency.len() - 1] = 0.5 * sig[frequency.len()] * (xfr - 1.) / xfr;
+
+    let fte = 0.25 * sig[frequency.len() - 1] * dth * sig[frequency.len() - 1];
+
+    let wn = sig[1..]
+        .iter()
+        .map(|s| wavenu3(*s, depth).0)
+        .collect::<Vec<f64>>();
+
+    let c = (0..frequency.len())
+        .map(|i| sig[i + 1] / wn[i])
+        .collect::<Vec<f64>>();
+
+    let c_nk = c[c.len() - 1];
+
+    let fcdir = direction
+        .iter()
+        .enumerate()
+        .map(|(ith, th)| {
+            let upar =
+                wsmult * wind_speed * 0.0f64.max(direction[ith].radian() - dera * wind_direction);
+            if upar < c_nk {
+                sig[sig.len() - 1]
+            } else {
+                let mut ik = frequency.len() - 1;
+                while ik >= 1 {
+                    if upar < c[ik] {
+                        break;
+                    }
+
+                    ik = Sub::sub(ik, 1);
+                }
+
+                let mut rd = (c[ik] - upar) / (c[ik] - c[ik + 1]);
+                if rd < 0.0 {
+                    ik = 0;
+                    rd = 0.0f64.max(rd + 1.0);
+                }
+
+                // sig starts at 1 and goes to freqcount + 1
+                rd * sig[ik + 2] + (1.0 - rd) * sig[ik + 1]
+            }
+        })
+        .collect::<Vec<f64>>();
+
+    // Spectral integrals and preps
+    // 3.a Integrals
+
+    let mut sumf = vec![vec![0.0; num_partitions + 1]; frequency.len() + 2];
+    let mut sumfw = vec![vec![0.0; num_partitions + 1]; frequency.len()];
+    let mut sumfx = vec![vec![0.0; num_partitions + 1]; frequency.len()];
+    let mut sumfy = vec![vec![0.0; num_partitions + 1]; frequency.len()];
+
+    for ik in 0..frequency.len() {
+        for ith in 0..direction.len() {
+            let isp = ik + (ith * frequency.len());
+            let ip = partition_map[isp]; // imo[ip]
+            let fact = 0.0f64.max(
+                1.0f64.min(1.0 - (fcdir[ith] - 0.05 * (sig[ik] + sig[ik + 1]) / dsip[ik + 1])),
+            );
+
+            sumf[ik][0] += energy[isp];
+            sumfw[ik][0] += energy[isp] * fact;
+            sumfx[ik][0] += energy[isp] * direction[ith].radian().cos();
+            sumfy[ik][0] += energy[isp] * direction[ith].radian().sin();
+
+            if ip < 0 {
+                continue;
+            }
+
+            sumf[ik][ip as usize + 1] += energy[isp];
+            sumfw[ik][ip as usize + 1] += energy[isp] * fact;
+            sumfx[ik][ip as usize + 1] += energy[isp] * direction[ith].radian().cos();
+            sumfy[ik][ip as usize + 1] += energy[isp] * direction[ith].radian().sin();
+        }
+    }
+
+    // SUMF(NK+1,:) = SUMF(NK,:) * FACHFE
+
+    let mut sume = vec![0.0; num_partitions + 1];
+    let mut sume1 = vec![0.0; num_partitions + 1];
+    let mut sume2 = vec![0.0; num_partitions + 1];
+    let mut sumem1 = vec![0.0; num_partitions + 1];
+    let mut sumew = vec![0.0; num_partitions + 1];
+    let mut sumex = vec![0.0; num_partitions + 1];
+    let mut sumey = vec![0.0; num_partitions + 1];
+    let mut sumqp = vec![0.0; num_partitions + 1];
+    let mut efpmax = vec![0.0; num_partitions + 1];
+    let mut ifpmax = vec![0; num_partitions + 1];
+
+    for ip in 0..num_partitions + 1 {
+        for ik in 0..frequency.len() {
+            sume[ip] += sumf[ik][ip] * dsii[ik];
+            sumqp[ip] += sumf[ik][ip].powf(2.0) * dsii[ik] * sig[ik + 1];
+            sume1[ip] += sumf[ik][ip] * dsii[ik] * sig[ik + 1];
+            sume2[ip] += sumf[ik][ip] * dsii[ik] * sig[ik + 1].powf(2.0);
+            sumem1[ip] += sumf[ik][ip] * dsii[ik] / sig[ik + 1];
+
+            sumew[ip] += sumfw[ik][ip] * dsii[ik];
+            sumex[ip] += sumfx[ik][ip] * dsii[ik];
+            sumey[ip] += sumfy[ik][ip] * dsii[ik];
+
+            if sumf[ik][ip] > efpmax[ip] {
+                ifpmax[ip] = ik;
+                efpmax[ip] = sumf[ik][ip];
+            }
+        }
+
+        let fteii = fte / (dth * sig[frequency.len()]); 
+        sume[ip] += sumf[frequency.len() - 1][ip] * fteii;
+        sume1[ip] += sumf[frequency.len() - 1][ip] * sig[frequency.len()] * fteii * (0.3333 / 0.25);
+        sume2[ip] += sumf[frequency.len() - 1][ip] * sig[frequency.len()].powi(2) * fteii * (0.5 / 0.25);
+        sumem1[ip] += sumf[frequency.len() - 1][ip] / sig[frequency.len()] * fteii * (0.2 / 0.25);
+        sumqp[ip] += sumf[frequency.len() - 1][ip] * fteii;
+        sumew[ip] += sumfw[frequency.len() - 1][ip] * fteii;
+        sumex[ip] += sumfx[frequency.len() - 1][ip] * fteii;
+        sumey[ip] += sumfy[frequency.len() - 1][ip] * fteii;
+    }
+
+    // Compute pars
+    let mut partitions: Vec<Swell> = Vec::new();
+    let mut count = 0;
+    for ip in 0..num_partitions + 1 {
+        let mo = sume[ip]  * dth * 1.0 / tpi;
+        let hs= 4. * mo.max(0.0).sqrt();
+
+        // If the derived swell height is too small, thow it away
+        if hs < 0.05 {
+            continue;
+        }
+
+        let peak_period = tpi / sig[ifpmax[ip]];
+
+        println!("{}m @ {}s wsfact {}", hs, peak_period, sumew[ip] / sume[ip]);
+        count += 1;
+    }
+
+    count
 }
 
 

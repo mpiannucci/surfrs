@@ -12,8 +12,8 @@ use serde::{Deserialize, Serialize};
 use crate::dimensional_data::DimensionalData;
 use crate::location::Location;
 use crate::swell::{Swell, SwellProvider, SwellProviderError, SwellSummary};
-use crate::tools::analysis::{detect_peaks, watershed, WatershedError};
-use crate::tools::waves::wavenu3;
+use crate::tools::analysis::{detect_peaks, watershed, WatershedError, watershed2};
+use crate::tools::waves::{wavenu3, pt_mean};
 use crate::units::{Direction, Measurement, UnitConvertible, Units};
 
 use super::parseable_data_record::DataRecordParsingError;
@@ -233,178 +233,19 @@ impl ForecastSpectralWaveDataRecord {
             &self.energy,
             self.frequency.len(),
             self.direction.len(),
-            100,
+            3,
         )?;
 
-        println!("------------");
-        println!("{:?}", imo);
-
-        // Ok(0)
-        // TODO: PTMEAN
-
-        let h = self.depth.value.unwrap();
-        let uabs = self.wind_speed.value.unwrap();
-        let udir = self.wind_direction.value.as_ref().unwrap();
-        let dera = 1.0f64.atan() / 45.0;
-        let xfr = 1.07;
-        let tpi = 2.0 * PI;
-        let fr1 = 0.035;
-        let wsmult = 1.7;
-        let dth = tpi / self.direction.len() as f64;
-        let sxfr = 0.5 * (xfr - 1. / xfr);
-
-        let mut sigma = fr1 * tpi / f64::powi(xfr, 2);
-        let sig = (0..self.frequency.len() + 2)
-            .map(|_| {
-                sigma = sigma * xfr;
-                sigma
-            })
-            .collect::<Vec<f64>>();
-
-        let dsip = sig.iter().map(|s| s * sxfr).collect::<Vec<f64>>();
-
-        let mut dsii = vec![0.0; self.frequency.len()];
-        dsii[0] = 0.5 * sig[1] * (xfr - 1.0);
-        for ik in 1..dsii.len() - 1 {
-            dsii[ik] = dsip[ik];
-        }
-        dsii[self.frequency.len() - 1] = 0.5 * sig[self.frequency.len()] * (xfr - 1.) / xfr;
-
-        let fte = 0.25 * sig[self.frequency.len() - 1] * dth * sig[self.frequency.len() - 1];
-
-        let wn = sig[1..]
-            .iter()
-            .map(|s| wavenu3(*s, h).0)
-            .collect::<Vec<f64>>();
-
-        let c = (0..self.frequency.len())
-            .map(|i| sig[i + 1] / wn[i])
-            .collect::<Vec<f64>>();
-
-        let c_nk = c[c.len() - 1];
-
-        let fcdir = self
-            .direction
-            .iter()
-            .enumerate()
-            .map(|(ith, th)| {
-                let upar =
-                    wsmult * uabs * 0.0f64.max(self.direction[ith].radian() - dera * udir.radian());
-                if upar < c_nk {
-                    sig[sig.len() - 1]
-                } else {
-                    let mut ik = self.frequency.len() - 1;
-                    while ik >= 1 {
-                        if upar < c[ik] {
-                            break;
-                        }
-
-                        ik = ik.sub(1);
-                    }
-
-                    let mut rd = (c[ik] - upar) / (c[ik] - c[ik + 1]);
-                    if rd < 0.0 {
-                        ik = 0;
-                        rd = 0.0f64.max(rd + 1.0);
-                    }
-
-                    // sig starts at 1 and goes to freqcount + 1
-                    rd * sig[ik + 2] + (1.0 - rd) * sig[ik + 1]
-                }
-            })
-            .collect::<Vec<f64>>();
-
-        // Spectral integrals and preps
-        // 3.a Integrals
-
-        let mut sumf = vec![vec![0.0; partition_count + 1]; self.frequency.len() + 2];
-        let mut sumfw = vec![vec![0.0; partition_count + 1]; self.frequency.len()];
-        let mut sumfx = vec![vec![0.0; partition_count + 1]; self.frequency.len()];
-        let mut sumfy = vec![vec![0.0; partition_count + 1]; self.frequency.len()];
-
-        for ik in 0..self.frequency.len() {
-            for ith in 0..self.direction.len() {
-                let isp = ik + (ith * self.frequency.len());
-                let ip = imo[isp];
-                let fact = 0.0f64.max(
-                    1.0f64.min(1.0 - (fcdir[ith] - 0.05 * (sig[ik] + sig[ik + 1]) / dsip[ik + 1])),
-                );
-
-                sumf[ik][0] += self.energy[isp];
-                sumfw[ik][0] += self.energy[isp] * fact;
-                sumfx[ik][0] += self.energy[isp] * self.direction[ith].radian().cos();
-                sumfy[ik][0] += self.energy[isp] * self.direction[ith].radian().sin();
-
-                if ip < 0 {
-                    continue;
-                }
-
-                sumf[ik][ip as usize + 1] += self.energy[isp];
-                sumfw[ik][ip as usize + 1] += self.energy[isp] * fact;
-                sumfx[ik][ip as usize + 1] += self.energy[isp] * self.direction[ith].radian().cos();
-                sumfy[ik][ip as usize + 1] += self.energy[isp] * self.direction[ith].radian().sin();
-            }
-        }
-
-        // SUMF(NK+1,:) = SUMF(NK,:) * FACHFE
-
-        let mut sume = vec![0.0; partition_count + 1];
-        let mut sume1 = vec![0.0; partition_count + 1];
-        let mut sume2 = vec![0.0; partition_count + 1];
-        let mut sumem1 = vec![0.0; partition_count + 1];
-        let mut sumew = vec![0.0; partition_count + 1];
-        let mut sumex = vec![0.0; partition_count + 1];
-        let mut sumey = vec![0.0; partition_count + 1];
-        let mut sumqp = vec![0.0; partition_count + 1];
-        let mut efpmax = vec![0.0; partition_count + 1];
-        let mut ifpmax = vec![0; partition_count + 1];
-
-        for ip in 0..partition_count + 1 {
-            for ik in 0..self.frequency.len() {
-                sume[ip] += sumf[ik][ip] * dsii[ik];
-                sumqp[ip] += sumf[ik][ip].powf(2.0) * dsii[ik] * sig[ik + 1];
-                sume1[ip] += sumf[ik][ip] * dsii[ik] * sig[ik + 1];
-                sume2[ip] += sumf[ik][ip] * dsii[ik] * sig[ik + 1].powf(2.0);
-                sumem1[ip] += sumf[ik][ip] * dsii[ik] / sig[ik + 1];
-
-                sumew[ip] += sumfw[ik][ip] * dsii[ik];
-                sumex[ip] += sumfx[ik][ip] * dsii[ik];
-                sumey[ip] += sumfy[ik][ip] * dsii[ik];
-
-                if sumf[ik][ip] > efpmax[ip] {
-                    ifpmax[ip] = ik;
-                    efpmax[ip] = sumf[ik][ip];
-                }
-            }
-
-            let fteii = fte / (dth * sig[self.frequency.len()]); 
-            sume[ip] += sumf[self.frequency.len() - 1][ip] * fteii;
-            sume1[ip] += sumf[self.frequency.len() - 1][ip] * sig[self.frequency.len()] * fteii * (0.3333 / 0.25);
-            sume2[ip] += sumf[self.frequency.len() - 1][ip] * sig[self.frequency.len()].powi(2) * fteii * (0.5 / 0.25);
-            sumem1[ip] += sumf[self.frequency.len() - 1][ip] / sig[self.frequency.len()] * fteii * (0.2 / 0.25);
-            sumqp[ip] += sumf[self.frequency.len() - 1][ip] * fteii;
-            sumew[ip] += sumfw[self.frequency.len() - 1][ip] * fteii;
-            sumex[ip] += sumfx[self.frequency.len() - 1][ip] * fteii;
-            sumey[ip] += sumfy[self.frequency.len() - 1][ip] * fteii;
-        }
-
-        // Compute pars
-        let mut partitions: Vec<Swell> = Vec::new();
-        let mut count = 0;
-        for ip in 0..partition_count + 1 {
-            let mo = sume[ip]  * dth * 1.0 / tpi;
-            let hs= 4. * mo.max(0.0).sqrt();
-
-            // If the derived swell height is too small, thow it away
-            if hs < 0.05 {
-                continue;
-            }
-
-            let peak_period = tpi / sig[ifpmax[ip]];
-
-            println!("{}m @ {}s", hs, peak_period);
-            count += 1;
-        }
+        let count = pt_mean(
+            partition_count, 
+            &imo, 
+            &self.energy, 
+            self.depth.value.unwrap(), 
+            self.wind_speed.value.unwrap(), 
+            self.wind_direction.value.as_ref().unwrap().radian(), 
+            &self.frequency, 
+            &self.direction
+        );
 
         Ok(count)
     }
