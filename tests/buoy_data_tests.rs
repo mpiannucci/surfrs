@@ -116,6 +116,6 @@ fn read_forecast_station_data() {
         println!("s partition count: {partitions}");
         // println!("-----------------------------------------------")
 
-        // break;
+        break;
     }
 }

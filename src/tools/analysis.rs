@@ -239,11 +239,11 @@ pub fn watershed(data: &[f64], width: usize, height: usize, steps: usize) -> Res
 
             // Consider neighbors. If there is neighbor, set distance and add
             // to queue.
-            let neighbors = &neigh[ip];
-            for ipp in neighbors {
+            for ipp in &neigh[ip] {
                 if imo[*ipp] > 0 || imo[*ipp] == IWSHED {
                     imd[ip] = 1;
                     fifo.push_back(ip as i32);
+                    break;
                 }
             }
 
@@ -251,7 +251,7 @@ pub fn watershed(data: &[f64], width: usize, height: usize, steps: usize) -> Res
         }
 
         // Process the queue
-        let mut ic_dist = 0;
+        let mut ic_dist = 1;
         fifo.push_back(IFICT_PIXEL);
 
         while let Some(mut ip) = fifo.pop_front() {
@@ -342,7 +342,7 @@ pub fn watershed(data: &[f64], width: usize, height: usize, steps: usize) -> Res
             }
 
             imo = imd.clone();
-            let min_imo = imo.iter().min().unwrap_or(&0);
+            let min_imo = imo.iter().min().unwrap_or(&-1);
             if *min_imo > 0 {
                 break;
             }
