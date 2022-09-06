@@ -233,7 +233,7 @@ impl ForecastSpectralWaveDataRecord {
             &self.energy,
             self.frequency.len(),
             self.direction.len(),
-            3,
+            100,
         )?;
 
         let count = pt_mean(
