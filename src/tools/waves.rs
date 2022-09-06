@@ -256,7 +256,7 @@ pub fn pt_mean(
             sumfx[ik][0] += energy[isp] * direction[ith].radian().cos();
             sumfy[ik][0] += energy[isp] * direction[ith].radian().sin();
 
-            if ip < 0 {
+            if ip < 1 {
                 continue;
             }
 
