@@ -236,22 +236,22 @@ impl ForecastSpectralWaveDataRecord {
             255,
         )?;
 
-        println!("-----");
+        // println!("-----");
         println!("{partition_count}");
         println!("{:?}", imo);
 
-        // let count = pt_mean(
-        //     partition_count, 
-        //     &imo, 
-        //     &self.energy, 
-        //     self.depth.value.unwrap(), 
-        //     self.wind_speed.value.unwrap(), 
-        //     self.wind_direction.value.as_ref().unwrap().radian(), 
-        //     &self.frequency, 
-        //     &self.direction
-        // );
+        let count = pt_mean(
+            partition_count, 
+            &imo, 
+            &self.energy, 
+            self.depth.value.unwrap(), 
+            self.wind_speed.value.unwrap(), 
+            self.wind_direction.value.as_ref().unwrap().radian(), 
+            &self.frequency, 
+            &self.direction
+        );
 
-        Ok(partition_count)
+        Ok(count)
     }
 }
 

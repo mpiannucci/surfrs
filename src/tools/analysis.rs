@@ -402,16 +402,14 @@ pub fn watershed2(
         .iter()
         .map(|v| {
             if v >= &steps {
-                2
+                1
             } else {
                 ((1.0 - ((digital_max - *v as f64) / (digital_max - digital_min))) * 255.0) as usize
             }
         })
         .collect();
 
-    // println!("{:?}", imi);
-
-    let indices = argsort_partial(&data);
+    let indices = argsort(&imi);
     let sorted_data = indices
         .iter()
         .map(|i| *(&imi[*i].clone()))
@@ -419,12 +417,10 @@ pub fn watershed2(
 
     let levels = linspace(digital_min, digital_max, steps).collect::<Vec<f64>>();
 
-    println!("{:?}", levels);
-
     let mut level_indices: Vec<usize> = Vec::new();
     let mut current_level = 0;
 
-    // Get the indices that deleimit pixels with different values.
+    // Get the indices that delimit pixels with different values.
     for i in 0..size {
         if sorted_data[i] as f64 > levels[current_level] {
             // Skip levels until the next highest one is reached.
@@ -503,7 +499,7 @@ pub fn watershed2(
         start_index = stop_index;
     }
 
-    Ok((labels, current_label as usize))
+    Ok((labels, current_label as usize + 1))
 }
 
 #[cfg(test)]

@@ -47,6 +47,8 @@ class Watershed(object):
       sorted_image = reshaped_image[indices]
       sorted_pixels = pixels[indices]
 
+      print(sorted_image)
+
       # self.levels evenly spaced steps from minimum to maximum.
       print(sorted_image[0])
       print(sorted_image[-1])
