@@ -229,25 +229,29 @@ impl ForecastSpectralWaveDataRecord {
     }
 
     pub fn extract_partitions(&self) -> Result<usize, WatershedError> {
-        let (imo, partition_count) = watershed(
+        let (imo, partition_count) = watershed2(
             &self.energy,
             self.frequency.len(),
             self.direction.len(),
-            100,
+            255,
         )?;
 
-        let count = pt_mean(
-            partition_count, 
-            &imo, 
-            &self.energy, 
-            self.depth.value.unwrap(), 
-            self.wind_speed.value.unwrap(), 
-            self.wind_direction.value.as_ref().unwrap().radian(), 
-            &self.frequency, 
-            &self.direction
-        );
+        println!("-----");
+        println!("{partition_count}");
+        println!("{:?}", imo);
 
-        Ok(count)
+        // let count = pt_mean(
+        //     partition_count, 
+        //     &imo, 
+        //     &self.energy, 
+        //     self.depth.value.unwrap(), 
+        //     self.wind_speed.value.unwrap(), 
+        //     self.wind_direction.value.as_ref().unwrap().radian(), 
+        //     &self.frequency, 
+        //     &self.direction
+        // );
+
+        Ok(partition_count)
     }
 }
 

@@ -1,9 +1,9 @@
-use std::{
-    collections::VecDeque,
-    f64,
-};
+use std::{collections::VecDeque, f64};
 
-use crate::tools::{linspace::linspace, vector::{argsort, argsort_partial}};
+use crate::tools::{
+    linspace::linspace,
+    vector::{argsort, argsort_partial},
+};
 
 /// Converted from MATLAB script at http://billauer.co.il/peakdet.html
 ///     
@@ -70,7 +70,7 @@ pub fn detect_peaks(data: &Vec<f64>, delta: f64) -> (Vec<usize>, Vec<usize>) {
 }
 
 /// Calculate the indexes of a given indexes nearest neighbor cells
-/// This is direct port of the routine used by WW3 where typically frequency is the columns and 
+/// This is direct port of the routine used by WW3 where typically frequency is the columns and
 /// direction is the rows
 ///
 /// 1   2   3   4
@@ -110,7 +110,7 @@ pub fn nearest_neighbors(width: usize, height: usize, index: usize) -> Vec<usize
 
     // Point at bottom_wrap to top
     if j == 0 {
-       neighbors.push(t - (width - i)); 
+        neighbors.push(t - (width - i));
     }
 
     // Point at the top(4)
@@ -141,7 +141,7 @@ pub fn nearest_neighbors(width: usize, height: usize, index: usize) -> Vec<usize
     // Point at the bottom, right with wrap
     if i != width - 1 && j == 0 {
         neighbors.push(index + 1 + width * (height - 1));
-    } 
+    }
 
     // Point at the top, left(7)
     if i != 0 && j != height - 1 {
@@ -159,7 +159,7 @@ pub fn nearest_neighbors(width: usize, height: usize, index: usize) -> Vec<usize
     }
 
     // Point at top, right with wrap
-    if i != width - 1 && j == height -1 {
+    if i != width - 1 && j == height - 1 {
         neighbors.push(index + 1 - width * (height - 1));
     }
 
@@ -174,26 +174,25 @@ pub enum WatershedError {
 
 /// Implementation of watershed algorithm as used by WW3 in w3partmd.f90
 /// More details to come
-pub fn watershed(data: &[f64], width: usize, height: usize, steps: usize) -> Result<(Vec<i32>, usize), WatershedError> {
+pub fn watershed(
+    data: &[f64],
+    width: usize,
+    height: usize,
+    steps: usize,
+) -> Result<(Vec<i32>, usize), WatershedError> {
     let count = width * height;
     if data.len() != count {
         return Err(WatershedError::InvalidData);
     }
 
-    let min_value = data
-        .iter()
-        .copied()
-        .fold(f64::INFINITY, f64::min);
-    let max_value = data
-        .iter()
-        .copied()
-        .fold(f64::NEG_INFINITY, f64::max);
+    let min_value = data.iter().copied().fold(f64::INFINITY, f64::min);
+    let max_value = data.iter().copied().fold(f64::NEG_INFINITY, f64::max);
 
     // Scale the data
     let fact = (steps as f64 - 1.0) / (max_value - min_value);
 
     // Digitize the signal, mapping each energy value to a level from 0 to steps
-    let imi = data 
+    let imi = data
         .iter()
         .map(|v| 1usize.max(steps.min((1.0 + (max_value - v) * fact).round() as usize)))
         .collect::<Vec<usize>>();
@@ -209,7 +208,7 @@ pub fn watershed(data: &[f64], width: usize, height: usize, steps: usize) -> Res
         .collect::<Vec<Vec<usize>>>();
 
     // Constants
-    const MASK: i32 = - 2;
+    const MASK: i32 = -2;
     const INIT: i32 = -1;
     const IWSHED: i32 = 0;
     const IFICT_PIXEL: i32 = -100;
@@ -228,7 +227,8 @@ pub fn watershed(data: &[f64], width: usize, height: usize, steps: usize) -> Res
 
         while m < count {
             let ip = ind[m]; // 471
-            if imi[ip] != ih { //  imi[ip] = 1
+            if imi[ip] != ih {
+                //  imi[ip] = 1
                 break;
             }
 
@@ -383,39 +383,58 @@ pub fn watershed2(
         .map(|i| nearest_neighbors(width, height, i))
         .collect::<Vec<_>>();
 
+    let min_value = data.iter().copied().fold(f64::INFINITY, f64::min);
+    let max_value = data.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+
+    // Scale the data
+    let fact = (steps as f64 - 1.0) / (max_value - min_value);
+
+    // Digitize the signal, mapping each energy value to a level from 0 to steps
+    let mut imi = data
+        .iter()
+        .map(|v| 1usize.max(steps.min((1.0 + (max_value - v) * fact).round() as usize)))
+        .collect::<Vec<usize>>();
+
+    let digital_min = imi.iter().min().unwrap().clone() as f64;
+    let digital_max = imi.iter().max().unwrap().clone() as f64;
+
+    imi = imi
+        .iter()
+        .map(|v| {
+            if v >= &steps {
+                2
+            } else {
+                ((1.0 - ((digital_max - *v as f64) / (digital_max - digital_min))) * 255.0) as usize
+            }
+        })
+        .collect();
+
+    // println!("{:?}", imi);
+
     let indices = argsort_partial(&data);
     let sorted_data = indices
         .iter()
-        .map(|i| *(&data[*i].clone()))
-        .collect::<Vec<f64>>();
+        .map(|i| *(&imi[*i].clone()))
+        .collect::<Vec<usize>>();
 
-    let min_value = sorted_data[0];
-    let max_value = sorted_data[sorted_data.len() - 1];
-    let levels = linspace(min_value, max_value, steps).collect::<Vec<f64>>();
-    //let range = max_value - min_value;
-    //let factor = (steps as f64 - 1.0) / range;
-    //let binned_data: Vec<u8> = sorted_data.iter().map(|s| 0.max(steps.min((1.0 + (factor * (max_value - s))).round() as u8))).rev().collect();
-    // println!("max: {max_value}, min: {min_value}");
-    // println!("{:?}", data);
-    // println!("{:?}", binned_data);
+    let levels = linspace(digital_min, digital_max, steps).collect::<Vec<f64>>();
+
+    println!("{:?}", levels);
 
     let mut level_indices: Vec<usize> = Vec::new();
     let mut current_level = 0;
 
     // Get the indices that deleimit pixels with different values.
     for i in 0..size {
-        if sorted_data[i] > levels[current_level] {
-            // println!("{}", binned_data[i]);
+        if sorted_data[i] as f64 > levels[current_level] {
             // Skip levels until the next highest one is reached.
-            while sorted_data[i] > levels[current_level] {
+            while sorted_data[i] as f64 > levels[current_level] {
                 current_level += 1;
             }
-            // println!("{current_level}");
             level_indices.push(i);
         }
     }
     level_indices.push(size);
-    // println!("{:?}", level_indices);
 
     let mut start_index = 0;
 
@@ -495,7 +514,7 @@ mod tests {
 
     #[test]
     fn test_nearest_neighbors() {
-        // Test given: 
+        // Test given:
         // 0   1   2   3
         // 4   5   6   7
         // 8   9   10  11
@@ -522,7 +541,6 @@ mod tests {
         // 24  25  26  27 28 29
         let i = 5;
         let neighbors = nearest_neighbors(6, 5, i);
-        println!("{:?}", neighbors);
         assert_eq!(neighbors.len(), 5);
     }
 

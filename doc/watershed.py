@@ -48,7 +48,10 @@ class Watershed(object):
       sorted_pixels = pixels[indices]
 
       # self.levels evenly spaced steps from minimum to maximum.
+      print(sorted_image[0])
+      print(sorted_image[-1])
       levels = np.linspace(sorted_image[0], sorted_image[-1], self.levels)
+      print(levels)
       level_indices = []
       current_level = 0
 
@@ -120,6 +123,8 @@ if __name__ == "__main__":
 
    w = Watershed()
    image = np.array(Image.open(sys.argv[1]))
+   plt.imshow(image)
+   plt.show()
    print(image.shape)
    labels = w.apply(image)
    #imsave('ws.png', labels)
