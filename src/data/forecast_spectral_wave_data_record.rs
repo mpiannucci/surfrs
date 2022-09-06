@@ -397,7 +397,9 @@ impl ForecastSpectralWaveDataRecord {
                 continue;
             }
 
-            println!("{}", hs);
+            let peak_period = tpi / sig[ifpmax[ip]];
+
+            println!("{}m @ {}s", hs, peak_period);
             count += 1;
         }
 
@@ -657,8 +659,8 @@ impl<'a> ForecastBulletinWaveRecordIterator<'a> {
             });
         }
 
-        let mut energy = vec![0.0; raw_energy.len()];
-        transpose::transpose(&raw_energy, &mut energy, self.metadata.direction.len(), self.metadata.frequency.len());
+        //let mut energy = vec![0.0; raw_energy.len()];
+        //transpose::transpose(&raw_energy, &mut energy, self.metadata.direction.len(), self.metadata.frequency.len());
 
         Ok(ForecastSpectralWaveDataRecord {
             date,
@@ -695,7 +697,7 @@ impl<'a> ForecastBulletinWaveRecordIterator<'a> {
             },
             frequency: self.metadata.frequency.clone(),
             direction: self.metadata.direction.clone(),
-            energy,
+            energy: raw_energy,
         })
     }
 }
