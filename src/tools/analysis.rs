@@ -343,7 +343,7 @@ pub fn watershed(data: &[f64], width: usize, height: usize, steps: usize) -> Res
 
             imo = imd.clone();
             let min_imo = imo.iter().min().unwrap_or(&-1);
-            if *min_imo > 0 {
+            if *min_imo >= 0 {
                 break;
             }
         }
