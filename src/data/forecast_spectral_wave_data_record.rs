@@ -227,28 +227,6 @@ impl ForecastSpectralWaveDataRecord {
 
         (self.frequency.clone(), max_directions, max_energies)
     }
-
-    pub fn extract_partitions(&self) -> Result<usize, WatershedError> {
-        let (imo, partition_count) = watershed2(
-            &self.energy,
-            self.frequency.len(),
-            self.direction.len(),
-            255,
-        )?;
-
-        let count = pt_mean(
-            partition_count, 
-            &imo, 
-            &self.energy, 
-            self.depth.value.unwrap(), 
-            self.wind_speed.value.unwrap(), 
-            self.wind_direction.value.as_ref().unwrap().radian(), 
-            &self.frequency, 
-            &self.direction
-        );
-
-        Ok(count)
-    }
 }
 
 impl UnitConvertible<ForecastSpectralWaveDataRecord> for ForecastSpectralWaveDataRecord {
@@ -261,67 +239,29 @@ impl UnitConvertible<ForecastSpectralWaveDataRecord> for ForecastSpectralWaveDat
 
 impl SwellProvider for ForecastSpectralWaveDataRecord {
     fn swell_data(&self) -> Result<SwellSummary, crate::swell::SwellProviderError> {
-        let (frequency, direction, energy) = self.dominant_spectra();
+        let (imo, partition_count) = match watershed2(
+            &self.energy,
+            self.frequency.len(),
+            self.direction.len(),
+            255,
+        ) {
+            Ok(result) => Ok(result), 
+            Err(e) => Err(SwellProviderError::InsufficientData("watershed segmentation of the spectra failed".into())),
+        }?;
 
-        let (minima_indexes, maxima_indexes) = detect_peaks(&energy, 0.05);
-
-        let mut components = maxima_indexes
-            .iter()
-            .enumerate()
-            .map(|(meta_index, i)| {
-                let start = if meta_index == 0 {
-                    0
-                } else if i > &minima_indexes[meta_index - 1] {
-                    minima_indexes[meta_index - 1]
-                } else {
-                    0
-                };
-
-                let end = if meta_index >= minima_indexes.len() {
-                    energy.len()
-                } else {
-                    minima_indexes[meta_index]
-                };
-
-                Swell::from_spectra(
-                    &frequency[start..end],
-                    &energy[start..end],
-                    &direction[start..end],
-                )
-            })
-            .collect::<Result<Vec<_>, SwellProviderError>>()?;
-
-        // Sort swell components from highest energy to lowest energy
-        components.sort_by(|s1, s2| {
-            s2.energy
-                .clone()
-                .unwrap()
-                .value
-                .unwrap()
-                .total_cmp(&s1.energy.clone().unwrap().value.unwrap())
-        });
-
-        let dominant = components[0].clone();
-
-        // See https://www.ndbc.noaa.gov/waveobs.shtml
-        let wave_height = components
-            .iter()
-            .map(|c| c.wave_height.value.unwrap().powi(2))
-            .sum::<f64>()
-            .sqrt();
+        let (summary, components) = pt_mean(
+            partition_count, 
+            &imo, 
+            &self.energy, 
+            self.depth.value.unwrap(), 
+            self.wind_speed.value.unwrap(), 
+            self.wind_direction.value.as_ref().unwrap().radian(), 
+            &self.frequency, 
+            &self.direction
+        );
 
         Ok(SwellSummary {
-            summary: Swell {
-                wave_height: DimensionalData {
-                    value: Some(wave_height),
-                    measurement: dominant.wave_height.measurement,
-                    unit: dominant.wave_height.unit,
-                    variable_name: dominant.wave_height.variable_name,
-                },
-                period: dominant.period,
-                direction: dominant.direction,
-                energy: None,
-            },
+            summary, 
             components,
         })
     }

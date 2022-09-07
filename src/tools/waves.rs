@@ -1,6 +1,6 @@
 use std::{f64::consts::PI, ops::Sub};
 
-use crate::{units::Direction, swell::Swell};
+use crate::{units::Direction, units::Units, swell::Swell};
 
 const GRAVITY: f64 = 9.81;
 
@@ -166,7 +166,7 @@ pub fn pt_mean(
     wind_direction: f64,
     frequency: &[f64],
     direction: &[Direction]
-) -> usize {
+) -> (Swell, Vec<Swell>) {
     let dera = 1.0f64.atan() / 45.0;
     let xfr = 1.07;
     let tpi = 2.0 * PI;
@@ -310,24 +310,36 @@ pub fn pt_mean(
     }
 
     // Compute pars
-    let mut partitions: Vec<Swell> = Vec::new();
-    let mut count = 0;
+    let mut components: Vec<Swell> = Vec::new();
+    let mut summary: Swell = Swell::new(&Units::Metric, 0.0, 0.0, Direction::from_degrees(0), None);
+
     for ip in 0..num_partitions + 1 {
         let mo = sume[ip]  * dth * 1.0 / tpi;
         let hs= 4. * mo.max(0.0).sqrt();
 
         // If the derived swell height is too small, thow it away
-        if hs < 0.05 {
+        if ip != 0 && hs < 0.05 {
             continue;
         }
 
-        let peak_period = tpi / sig[ifpmax[ip]];
+        //let sumexp = sumfx[ifpmax[ip]][ip] * dsii[ifpmax[ip]];
+        //let sumeyp = sumfy[ifpmax[ip]][ip] * dsii[ifpmax[ip]];
 
-        println!("{}m @ {}s wsfact {}", hs, peak_period, sumew[ip] / sume[ip]);
-        count += 1;
+        let peak_period = tpi / sig[ifpmax[ip]];
+        let mean_wave_direction = (((630.0 - f64::atan2(sumey[ip], sumex[ip]).to_degrees()) % 360.0) + 180.0) % 360.0;
+        //let peak_wave_direction = (630.0 - f64::atan2(sumeyp, sumexp).to_degrees()) % 360.0;
+        let energy = efpmax[ip];
+
+        let component = Swell::new(&Units::Metric, hs, peak_period, Direction::from_degrees(mean_wave_direction as i32), Some(energy));
+
+        if ip == 0 {
+            summary = component;
+        } else {
+            components.push(component);
+        }
     }
 
-    count
+    (summary, components)
 }
 
 
