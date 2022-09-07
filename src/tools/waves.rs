@@ -337,6 +337,8 @@ pub fn pt_mean(
         } else {
             components.push(component);
         }
+
+        components.sort_by(|sl, sr| sl.energy.partial_cmp(&sr.energy).unwrap());
     }
 
     (summary, components)

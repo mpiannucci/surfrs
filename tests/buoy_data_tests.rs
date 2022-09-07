@@ -108,17 +108,15 @@ fn read_forecast_station_data() {
     for (bulletin, spectral) in zipped {
         let bulletin_swell_data = bulletin.swell_data().unwrap();
         let spectra_swell_data = spectral.swell_data().unwrap();
-        println!("b: {}", bulletin_swell_data.summary);
-        println!("s: {}", spectra_swell_data.summary);
-        println!("b swell height: {}", bulletin_swell_data.components[0]);
-        println!("b swell height: {}", bulletin_swell_data.components[1]);
+        // println!("b: {}", bulletin_swell_data.summary);
+        // println!("s: {}", spectra_swell_data.summary);
+        // println!("b swell height: {}", bulletin_swell_data.components[0]);
+        // println!("b swell height: {}", bulletin_swell_data.components[1]);
         // println!("b swell height: {}", bulletin_swell_data.components[1].wave_height);
-        println!("b partition count: {}", bulletin_swell_data.components.len());
-        println!("s partition count: {}", spectra_swell_data.components.len());
-        println!("s swell height: {}", spectra_swell_data.components[0]);
-        println!("s swell height: {}", spectra_swell_data.components[1]);
+        // println!("b partition count: {}", bulletin_swell_data.components.len());
+        // println!("s partition count: {}", spectra_swell_data.components.len());
+        // println!("s swell height: {}", spectra_swell_data.components[0]);
+        // println!("s swell height: {}", spectra_swell_data.components[1]);
         // println!("-----------------------------------------------")
-
-        break;
     }
 }
