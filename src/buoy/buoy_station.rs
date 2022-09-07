@@ -19,6 +19,7 @@ pub enum BuoyType {
     OilRig,
     Dart,
     Tao,
+    USV,
     Other,
 }
 
