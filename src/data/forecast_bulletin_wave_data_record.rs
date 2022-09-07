@@ -160,7 +160,7 @@ impl ParseableDataRecord for ForecastBulletinWaveRecord {
             row[1],
             "significant wave height".into(),
             Measurement::Length,
-            Units::Metric,
+            Units::English,
         );
 
         let mut swell_components = Vec::new();
@@ -177,7 +177,7 @@ impl ParseableDataRecord for ForecastBulletinWaveRecord {
             })?;
 
             swell_components.push(Swell::new(
-                &Units::Metric,
+                &Units::English,
                 wave_height,
                 period,
                 Direction::from_degrees(degrees),
