@@ -314,11 +314,11 @@ pub fn pt_mean(
     let mut summary: Swell = Swell::new(&Units::Metric, 0.0, 0.0, Direction::from_degrees(0), None);
 
     for ip in 0..num_partitions + 1 {
-        let mo = sume[ip]  * dth * 1.0 / tpi;
+        let mo = sume[ip] * dth * 1.0 / tpi;
         let hs= 4. * mo.max(0.0).sqrt();
 
         // If the derived swell height is too small, thow it away
-        if ip != 0 && hs < 0.05 {
+        if ip > 0 && hs < 0.05 {
             continue;
         }
 
@@ -326,11 +326,22 @@ pub fn pt_mean(
         //let sumeyp = sumfy[ifpmax[ip]][ip] * dsii[ifpmax[ip]];
 
         let peak_period = tpi / sig[ifpmax[ip]];
-        let mean_wave_direction = (((630.0 - f64::atan2(sumey[ip], sumex[ip]).to_degrees()) % 360.0) + 180.0) % 360.0;
+        let mean_wave_direction = (630.0 - f64::atan2(sumey[ip], sumex[ip]).to_degrees()) % 360.0;
         //let peak_wave_direction = (630.0 - f64::atan2(sumeyp, sumexp).to_degrees()) % 360.0;
-        let energy = efpmax[ip];
 
-        let component = Swell::new(&Units::Metric, hs, peak_period, Direction::from_degrees(mean_wave_direction as i32), Some(energy));
+        // Parabolic fit around the spectral peak
+        let mut energy = sumf[ifpmax[ip]][ip] * dth;
+        if ifpmax[ip] > 0 && ifpmax[ip] < frequency.len() - 1 {
+            let el = sumf[ifpmax[ip] - 1][ip] * dth;
+            let eh = sumf[ifpmax[ip] + 1][ip] * dth;
+            let numer = 0.125 * (el - eh).powf(2.0);
+            let denom = el - 2.0 * energy + eh;
+            if denom != 0.0 {
+                energy = energy - numer / denom.abs().copysign(denom);
+            }
+        }
+
+        let component = Swell::new(&Units::Metric, hs, peak_period, Direction::from_degrees(((mean_wave_direction + 180.0) % 360.0)  as i32), Some(energy));
 
         if ip == 0 {
             summary = component;
