@@ -243,6 +243,34 @@ pub fn pt_mean(
     let mut sumfx = vec![vec![0.0; num_partitions + 1]; frequency.len()];
     let mut sumfy = vec![vec![0.0; num_partitions + 1]; frequency.len()];
 
+    let (ecos, esin): (Vec<f64>, Vec<f64>) = direction
+        .iter()
+        .map(|d| {
+            let r = d.radian();
+            let mut ec = r.cos();
+            let mut es = r.sin();
+            if es < 1.0e-5 {
+                es = 0.0;
+                if ec > 0.5 {
+                    ec = 1.0;
+                } else {
+                    ec = -1.0;
+                }
+            }
+
+            if ec < 1.0e-5 {
+                ec = 0.0;
+                if es > 0.5 {
+                    es = 1.0;
+                } else {
+                    es = -1.0;
+                }
+            }
+
+            (ec, es)
+        })
+        .unzip();
+
     for ik in 0..frequency.len() {
         for ith in 0..direction.len() {
             let isp = ik + (ith * frequency.len());
@@ -253,8 +281,8 @@ pub fn pt_mean(
 
             sumf[ik][0] += energy[isp];
             sumfw[ik][0] += energy[isp] * fact;
-            sumfx[ik][0] += energy[isp] * direction[ith].radian().cos();
-            sumfy[ik][0] += energy[isp] * direction[ith].radian().sin();
+            sumfx[ik][0] += energy[isp] * ecos[ith];
+            sumfy[ik][0] += energy[isp] * esin[ith];
 
             if ip < 1 {
                 continue;
@@ -262,8 +290,8 @@ pub fn pt_mean(
 
             sumf[ik][ip as usize + 1] += energy[isp];
             sumfw[ik][ip as usize + 1] += energy[isp] * fact;
-            sumfx[ik][ip as usize + 1] += energy[isp] * direction[ith].radian().cos();
-            sumfy[ik][ip as usize + 1] += energy[isp] * direction[ith].radian().sin();
+            sumfx[ik][ip as usize + 1] += energy[isp] * ecos[ith];
+            sumfy[ik][ip as usize + 1] += energy[isp] * esin[ith];
         }
     }
 
@@ -322,12 +350,13 @@ pub fn pt_mean(
             continue;
         }
 
-        //let sumexp = sumfx[ifpmax[ip]][ip] * dsii[ifpmax[ip]];
-        //let sumeyp = sumfy[ifpmax[ip]][ip] * dsii[ifpmax[ip]];
-
         let peak_period = tpi / sig[ifpmax[ip]];
+
+        // This calculates the direction towards, not from
         let mean_wave_direction = (630.0 - f64::atan2(sumey[ip], sumex[ip]).to_degrees()) % 360.0;
-        //let peak_wave_direction = (630.0 - f64::atan2(sumeyp, sumexp).to_degrees()) % 360.0;
+        let sumexp = sumfx[ifpmax[ip]][ip] * dsii[ifpmax[ip]];
+        let sumeyp = sumfy[ifpmax[ip]][ip] * dsii[ifpmax[ip]];
+        let peak_wave_direction = (630.0 - f64::atan2(sumeyp, sumexp).to_degrees()) % 360.0;
 
         // Parabolic fit around the spectral peak
         let mut energy = sumf[ifpmax[ip]][ip] * dth;
