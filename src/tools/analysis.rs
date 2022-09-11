@@ -313,37 +313,37 @@ pub fn watershed(
             }
             m += 1;
         }
+    }
 
-        // Find nearest neighbor of 0 watershed points and replace
-        // use original input to check which group to affiliate with 0
-        // Soring changes first in IMD to assure symetry in adjustment.
-        for _ in 0..5 {
-            imd = imo.clone();
+    // Find nearest neighbor of 0 watershed points and replace
+    // use original input to check which group to affiliate with 0
+    // Soring changes first in IMD to assure symetry in adjustment.
+    for _ in 0..5 {
+        imd = imo.clone();
 
-            for jl in 0..count {
-                let mut ipt = -1;
-                if imo[jl] == 0 {
-                    let mut ep1 = max_value;
+        for jl in 0..count {
+            let mut ipt = -1;
+            if imo[jl] == 0 {
+                let mut ep1 = max_value;
 
-                    for (ijn, jn) in neigh[jl].iter().enumerate() {
-                        let diff = (data[jl] - data[*jn]).abs();
-                        if diff <= ep1 && imo[*jn] != 0 {
-                            ep1 = diff;
-                            ipt = ijn as i32;
-                        }
-                    }
-
-                    if ipt > 0 {
-                        imd[jl] = imo[neigh[jl][ipt as usize]];
+                for (ijn, jn) in neigh[jl].iter().enumerate() {
+                    let diff = (data[jl] - data[*jn]).abs();
+                    if diff <= ep1 && imo[*jn] != 0 {
+                        ep1 = diff;
+                        ipt = ijn as i32;
                     }
                 }
-            }
 
-            imo = imd.clone();
-            let min_imo = imo.iter().min().unwrap_or(&-1);
-            if *min_imo >= 0 {
-                break;
+                if ipt > 0 {
+                    imd[jl] = imo[neigh[jl][ipt as usize]];
+                }
             }
+        }
+
+        imo = imd.clone();
+        let min_imo = imo.iter().min().unwrap_or(&-1);
+        if *min_imo > 0 {
+            break;
         }
     }
 
@@ -398,7 +398,7 @@ pub fn watershed2(
     let digital_min = imi.iter().min().unwrap().clone() as f64;
     let digital_max = imi.iter().max().unwrap().clone() as f64;
 
-    let mut marker_partition= None;
+    let mut marker_partition = None;
 
     imi = imi
         .iter()
@@ -503,12 +503,14 @@ pub fn watershed2(
         start_index = stop_index;
     }
 
-    // If there is a boundary layer, we count it the same as the watershed layer, it will count towards the 
+    // If there is a boundary layer, we count it the same as the watershed layer, it will count towards the
     // significant wave height but not toward the swell components
     if let Some(ip) = marker_partition {
         let nan_partition = labels[ip];
-        labels.iter_mut().for_each(|v| if *v == nan_partition {
-            *v = 0;
+        labels.iter_mut().for_each(|v| {
+            if *v == nan_partition {
+                *v = 0;
+            }
         });
     }
 

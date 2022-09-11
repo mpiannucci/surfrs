@@ -273,7 +273,7 @@ impl<'a> ForecastBulletinWaveRecordCollection<'a> {
         let records = self
             .reader
             .records()
-            .skip(6)
+            .skip(5)
             .map(
                 move |result| -> Result<ForecastBulletinWaveRecord, DataRecordParsingError> {
                     match result {

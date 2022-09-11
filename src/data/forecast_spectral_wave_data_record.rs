@@ -239,11 +239,11 @@ impl UnitConvertible<ForecastSpectralWaveDataRecord> for ForecastSpectralWaveDat
 
 impl SwellProvider for ForecastSpectralWaveDataRecord {
     fn swell_data(&self) -> Result<SwellSummary, crate::swell::SwellProviderError> {
-        let (imo, partition_count) = match watershed2(
+        let (imo, partition_count) = match watershed(
             &self.energy,
             self.frequency.len(),
             self.direction.len(),
-            255,
+            100,
         ) {
             Ok(result) => Ok(result), 
             Err(e) => Err(SwellProviderError::InsufficientData("watershed segmentation of the spectra failed".into())),
@@ -267,13 +267,13 @@ impl SwellProvider for ForecastSpectralWaveDataRecord {
     }
 }
 
-pub struct ForecastBulletinWaveRecordIterator<'a> {
+pub struct ForecastSpectralWaveRecordIterator<'a> {
     lines: Skip<Lines<'a>>,
     point_regex: Regex,
     metadata: ForecastSpectralWaveDataRecordMetadata,
 }
 
-impl<'a> ForecastBulletinWaveRecordIterator<'a> {
+impl<'a> ForecastSpectralWaveRecordIterator<'a> {
     pub fn from_data(data: &'a str) -> Result<Self, DataRecordParsingError> {
         let metadata = ForecastSpectralWaveDataRecordMetadata::from_str(data)?;
         let lines = data.lines().skip(metadata.line_count);
@@ -486,7 +486,7 @@ impl<'a> ForecastBulletinWaveRecordIterator<'a> {
     }
 }
 
-impl<'a> Iterator for ForecastBulletinWaveRecordIterator<'a> {
+impl<'a> Iterator for ForecastSpectralWaveRecordIterator<'a> {
     type Item = Result<ForecastSpectralWaveDataRecord, DataRecordParsingError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -518,7 +518,7 @@ impl<'a> ForecastSpectralWaveDataRecordCollection<'a> {
         ),
         DataRecordParsingError,
     > {
-        match ForecastBulletinWaveRecordIterator::from_data(self.data) {
+        match ForecastSpectralWaveRecordIterator::from_data(self.data) {
             Ok(iter) => Ok((iter.metadata.clone(), iter.filter_map(|d| d.ok()))),
             Err(e) => Err(e),
         }
