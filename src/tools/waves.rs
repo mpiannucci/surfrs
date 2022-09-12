@@ -177,11 +177,24 @@ pub fn pt_mean(
 
     let mut sigma = fr1 * tpi / f64::powi(xfr, 2);
     let sig = (0..frequency.len() + 2)
-        .map(|_| {
-            sigma = sigma * xfr;
-            sigma
+        .map(|ik| {
+            if ik == 0 {
+                let diff = frequency[ik + 1] - frequency[ik];
+                (frequency[ik] - diff) * 2.0 * PI
+            } else if ik == frequency.len() + 1 {
+                let diff = frequency[ik - 2] - frequency[ik - 3];
+                (frequency[ik - 2] + diff) * 2.0 * PI
+            } else {
+                frequency[ik - 1] * 2.0 * PI
+            }
         })
         .collect::<Vec<f64>>();
+
+    println!("================");
+    println!("{:?}", sig);
+    println!("{:?}", frequency.iter().map(|f| f * (2.0 * PI)).collect::<Vec<f64>>());
+    println!("{:?}", direction);
+    println!("================");
 
     let dsip = sig.iter().map(|s| s * sxfr).collect::<Vec<f64>>();
 
@@ -288,10 +301,10 @@ pub fn pt_mean(
                 continue;
             }
 
-            sumf[ik][ip as usize + 1] += energy[isp];
-            sumfw[ik][ip as usize + 1] += energy[isp] * fact;
-            sumfx[ik][ip as usize + 1] += energy[isp] * ecos[ith];
-            sumfy[ik][ip as usize + 1] += energy[isp] * esin[ith];
+            sumf[ik][ip as usize] += energy[isp];
+            sumfw[ik][ip as usize] += energy[isp] * fact;
+            sumfx[ik][ip as usize] += energy[isp] * ecos[ith];
+            sumfy[ik][ip as usize] += energy[isp] * esin[ith];
         }
     }
 
@@ -351,7 +364,7 @@ pub fn pt_mean(
             continue;
         }
 
-        let peak_period = tpi / sig[ifpmax[ip]];
+        let peak_period = tpi / sig[ifpmax[ip] + 1];
 
         // This calculates the direction towards, not from
         let mean_wave_direction = (270.0 - f64::atan2(sumey[ip], sumex[ip]).to_degrees()) % 360.0;
@@ -379,7 +392,7 @@ pub fn pt_mean(
         // println!("WSF = {wind_sea_fraction}");
         // println!("-------");
 
-        let component = Swell::new(&Units::Metric, hs, peak_period, Direction::from_degrees(mean_wave_direction as i32), Some(energy));
+        let component = Swell::new(&Units::Metric, hs, peak_period, Direction::from_degrees(peak_wave_direction as i32), Some(energy));
 
         if ip == 0 {
             summary = component;

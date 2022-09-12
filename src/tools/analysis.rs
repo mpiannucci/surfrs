@@ -197,6 +197,8 @@ pub fn watershed(
         .map(|v| 1usize.max(steps.min((1.0 + (max_value - v) * fact).round() as usize)))
         .collect::<Vec<usize>>();
 
+    println!("{:?}", imi);
+
     // Sort the digitized data indices, so all levels are grouped in order
     let ind = argsort::<usize>(&imi);
     //let sorted = ind.iter().map(|i| imi[*i]).collect::<Vec<usize>>();
@@ -419,16 +421,18 @@ pub fn watershed2(
         .map(|i| *(&imi[*i].clone()))
         .collect::<Vec<usize>>();
 
-    let levels = linspace(digital_min, digital_max, steps).collect::<Vec<f64>>();
+    let levels = linspace(digital_min, digital_max, steps).map(|v| v as usize).collect::<Vec<usize>>();
+
+    println!("{:?}", levels);
 
     let mut level_indices: Vec<usize> = Vec::new();
     let mut current_level = 0;
 
     // Get the indices that delimit pixels with different values.
     for i in 0..size {
-        if sorted_data[i] as f64 > levels[current_level] {
+        if current_level < steps && sorted_data[i] > levels[current_level] {
             // Skip levels until the next highest one is reached.
-            while sorted_data[i] as f64 > levels[current_level] {
+            while current_level < steps && sorted_data[i] > levels[current_level] {
                 current_level += 1;
             }
             level_indices.push(i);

@@ -107,6 +107,8 @@ fn read_spectral_forecast_station_data() {
         println!("s partition count: {}", spectra_swell_data.components.len());
         println!("s swell height: {} -- {}", spectra_swell_data.components[0], spectra_swell_data.components[0].energy.as_ref().unwrap());
         println!("s swell height: {}, {}", spectra_swell_data.components[1], spectra_swell_data.components[1].energy.as_ref().unwrap());
+        println!("s swell height: {} -- {}", spectra_swell_data.components[2], spectra_swell_data.components[2].energy.as_ref().unwrap());
+        println!("s swell height: {}, {}", spectra_swell_data.components[3], spectra_swell_data.components[3].energy.as_ref().unwrap());
         // println!("-----------------------------------------------")
         break;
     }
