@@ -354,10 +354,10 @@ pub fn pt_mean(
         let peak_period = tpi / sig[ifpmax[ip]];
 
         // This calculates the direction towards, not from
-        let mean_wave_direction = (270.0 + 180.0 - f64::atan2(sumey[ip], sumex[ip]).to_degrees()) % 360.0;
+        let mean_wave_direction = (270.0 - f64::atan2(sumey[ip], sumex[ip]).to_degrees()) % 360.0;
         let sumexp = sumfx[ifpmax[ip]][ip] * dsii[ifpmax[ip]];
         let sumeyp = sumfy[ifpmax[ip]][ip] * dsii[ifpmax[ip]];
-        let peak_wave_direction = (270.0 + 180.0 - f64::atan2(sumeyp, sumexp).to_degrees()) % 360.0;
+        let peak_wave_direction = (270.0 - f64::atan2(sumeyp, sumexp).to_degrees()) % 360.0;
 
         // Parabolic fit around the spectral peak
         let mut energy = sumf[ifpmax[ip]][ip] * dth;

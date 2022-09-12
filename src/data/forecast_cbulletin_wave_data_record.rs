@@ -13,12 +13,12 @@ use crate::units::{Direction, Measurement, UnitConvertible, Units};
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ForecastBulletinWaveRecordMetadata {
+pub struct ForecastCBulletinWaveRecordMetadata {
     pub location: Location,
     pub model_run_date: DateTime<Utc>,
 }
 
-impl FromStr for ForecastBulletinWaveRecordMetadata {
+impl FromStr for ForecastCBulletinWaveRecordMetadata {
     type Err = DataRecordParsingError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -111,7 +111,7 @@ impl FromStr for ForecastBulletinWaveRecordMetadata {
             )),
         }?;
 
-        Ok(ForecastBulletinWaveRecordMetadata {
+        Ok(ForecastCBulletinWaveRecordMetadata {
             location,
             model_run_date,
         })
@@ -119,14 +119,14 @@ impl FromStr for ForecastBulletinWaveRecordMetadata {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ForecastBulletinWaveRecord {
+pub struct ForecastCBulletinWaveRecord {
     pub date: DateTime<Utc>,
     pub significant_wave_height: DimensionalData<f64>,
     pub swell_components: Vec<Swell>,
 }
 
-impl ParseableDataRecord for ForecastBulletinWaveRecord {
-    type Metadata = ForecastBulletinWaveRecordMetadata;
+impl ParseableDataRecord for ForecastCBulletinWaveRecord {
+    type Metadata = ForecastCBulletinWaveRecordMetadata;
 
     fn from_data_row(
         metadata: Option<&Self::Metadata>,
@@ -185,7 +185,7 @@ impl ParseableDataRecord for ForecastBulletinWaveRecord {
             ));
         }
 
-        Ok(ForecastBulletinWaveRecord {
+        Ok(ForecastCBulletinWaveRecord {
             date,
             significant_wave_height,
             swell_components,
@@ -193,7 +193,7 @@ impl ParseableDataRecord for ForecastBulletinWaveRecord {
     }
 }
 
-impl UnitConvertible<ForecastBulletinWaveRecord> for ForecastBulletinWaveRecord {
+impl UnitConvertible<ForecastCBulletinWaveRecord> for ForecastCBulletinWaveRecord {
     fn to_units(&mut self, new_units: &Units) {
         self.significant_wave_height.to_units(new_units);
         for swell in &mut self.swell_components {
@@ -202,7 +202,7 @@ impl UnitConvertible<ForecastBulletinWaveRecord> for ForecastBulletinWaveRecord 
     }
 }
 
-impl SwellProvider for ForecastBulletinWaveRecord {
+impl SwellProvider for ForecastCBulletinWaveRecord {
     fn swell_data(&self) -> Result<SwellSummary, crate::swell::SwellProviderError> {
         let dominant = self.swell_components[0].clone();
         Ok(SwellSummary {
@@ -241,12 +241,12 @@ fn parse_longitude(raw: &str) -> Result<f64, DataRecordParsingError> {
     }
 }
 
-pub struct ForecastBulletinWaveRecordCollection<'a> {
+pub struct ForecastCBulletinWaveRecordCollection<'a> {
     data: &'a str,
     reader: Reader<&'a [u8]>,
 }
 
-impl<'a> ForecastBulletinWaveRecordCollection<'a> {
+impl<'a> ForecastCBulletinWaveRecordCollection<'a> {
     pub fn from_data(data: &'a str) -> Self {
         let reader = csv::ReaderBuilder::new()
             .delimiter(b' ')
@@ -256,31 +256,31 @@ impl<'a> ForecastBulletinWaveRecordCollection<'a> {
             .flexible(true)
             .from_reader(data.as_bytes());
 
-        ForecastBulletinWaveRecordCollection { data, reader }
+        ForecastCBulletinWaveRecordCollection { data, reader }
     }
 
     pub fn records(
         &'a mut self,
     ) -> Result<
         (
-            ForecastBulletinWaveRecordMetadata,
-            impl Iterator<Item = ForecastBulletinWaveRecord> + 'a,
+            ForecastCBulletinWaveRecordMetadata,
+            impl Iterator<Item = ForecastCBulletinWaveRecord> + 'a,
         ),
         DataRecordParsingError,
     > {
-        let metadata = self.data.parse::<ForecastBulletinWaveRecordMetadata>()?;
+        let metadata = self.data.parse::<ForecastCBulletinWaveRecordMetadata>()?;
         let metadata_clone = metadata.clone();
         let records = self
             .reader
             .records()
             .skip(5)
             .map(
-                move |result| -> Result<ForecastBulletinWaveRecord, DataRecordParsingError> {
+                move |result| -> Result<ForecastCBulletinWaveRecord, DataRecordParsingError> {
                     match result {
                         Ok(record) => {
                             let filtered_record: Vec<&str> =
                                 record.iter().filter(|data| !data.is_empty()).collect();
-                            let mut wave_data = ForecastBulletinWaveRecord::from_data_row(
+                            let mut wave_data = ForecastCBulletinWaveRecord::from_data_row(
                                 Some(&metadata),
                                 &filtered_record,
                             )?;
@@ -319,13 +319,13 @@ mod tests {
     }
 
     #[test]
-    fn parse_wave_bulletin_metadata() {
+    fn parse_wave_cbulletin_metadata() {
         let metadata = "Location : 44097      (40.98N  71.12W)
         Model    : spectral resolution for points
         Cycle    : 20220519 18 UTC
         ";
 
-        let metadata = ForecastBulletinWaveRecordMetadata::from_str(metadata).unwrap();
+        let metadata = ForecastCBulletinWaveRecordMetadata::from_str(metadata).unwrap();
         assert_eq!(metadata.location.name, "44097");
         assert_eq!(metadata.location.latitude, 40.98);
         assert_eq!(metadata.location.longitude, -71.12);
@@ -337,8 +337,8 @@ mod tests {
     }
 
     #[test]
-    fn test_wave_bulletin_row_parse() {
-        let metadata = ForecastBulletinWaveRecordMetadata {
+    fn test_wave_cbulletin_row_parse() {
+        let metadata = ForecastCBulletinWaveRecordMetadata {
             location: Location::new(40.98, -71.12, "".into()),
             model_run_date: Utc.ymd(2020, 5, 19).and_hms(18, 0, 0),
         };
@@ -347,7 +347,7 @@ mod tests {
         let row = row.split_whitespace().collect();
 
         let wave_bulletin_record =
-            ForecastBulletinWaveRecord::from_data_row(Some(&metadata), &row).unwrap();
+            ForecastCBulletinWaveRecord::from_data_row(Some(&metadata), &row).unwrap();
 
         assert_eq!(wave_bulletin_record.date.year(), 2020);
         assert_eq!(wave_bulletin_record.date.month(), 6);

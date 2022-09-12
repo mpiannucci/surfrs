@@ -249,6 +249,8 @@ impl SwellProvider for ForecastSpectralWaveDataRecord {
             Err(e) => Err(SwellProviderError::InsufficientData("watershed segmentation of the spectra failed".into())),
         }?;
 
+        println!("{:?}", imo);
+
         let (summary, components) = pt_mean(
             partition_count, 
             &imo, 

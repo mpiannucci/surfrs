@@ -1,7 +1,7 @@
 extern crate surfrs;
 
 use std::fs;
-use surfrs::data::forecast_bulletin_wave_data_record::{ForecastBulletinWaveRecordCollection, ForecastBulletinWaveRecord};
+use surfrs::data::forecast_cbulletin_wave_data_record::{ForecastCBulletinWaveRecordCollection, ForecastCBulletinWaveRecord};
 use surfrs::data::forecast_spectral_wave_data_record::{ForecastSpectralWaveDataRecordCollection, ForecastSpectralWaveDataRecord};
 use surfrs::data::meteorological_data_record::MeteorologicalDataRecordCollection;
 use surfrs::data::spectral_wave_data_record::{SpectralWaveDataRecordCollection, DirectionalSpectralWaveDataRecord};
@@ -77,7 +77,21 @@ fn read_wave_spectra_data() {
 }
 
 #[test]
-fn read_forecast_station_data() {
+fn read_cbulletin_forecast_station_data() {
+    let raw_data = read_mock_data("gfswave.44097.cbull");
+    let mut data_collection = ForecastCBulletinWaveRecordCollection::from_data(raw_data.as_str());
+    let bulletin_records_iter = data_collection.records();
+    assert!(bulletin_records_iter.is_ok());
+
+    let bulletin_records: Vec<ForecastCBulletinWaveRecord> = bulletin_records_iter.unwrap().1.collect();
+    assert!(bulletin_records[0].swell_data().is_ok());
+    for (_, record) in bulletin_records.iter().enumerate() {
+        assert!(record.swell_data().is_ok());
+    }
+}
+
+#[test]
+fn read_spectral_forecast_station_data() {
     let raw_data = read_mock_data("gfswave.44097.spec");
     let mut data_collection = ForecastSpectralWaveDataRecordCollection::from_data(raw_data.as_str());
     let spectral_records_iter = data_collection.records();
@@ -86,36 +100,10 @@ fn read_forecast_station_data() {
     let spectral_records: Vec<ForecastSpectralWaveDataRecord> = spectral_records_iter.unwrap().1.collect();
     assert_eq!(spectral_records.len(), 385);
 
-    let spectral_wave_summary = spectral_records[0].swell_data();
-
-    assert!(spectral_wave_summary.is_ok());
-    for (_, record) in spectral_records.iter().enumerate() {
-        assert!(record.swell_data().is_ok());
-    }
-
-    let raw_data = read_mock_data("gfswave.44097.cbull");
-    let mut data_collection = ForecastBulletinWaveRecordCollection::from_data(raw_data.as_str());
-    let bulletin_records_iter = data_collection.records();
-    assert!(bulletin_records_iter.is_ok());
-
-    let bulletin_records: Vec<ForecastBulletinWaveRecord> = bulletin_records_iter.unwrap().1.collect();
-    assert!(bulletin_records[0].swell_data().is_ok());
-    for (_, record) in bulletin_records.iter().enumerate() {
-        assert!(record.swell_data().is_ok());
-    }
-
-    let zipped = bulletin_records.iter().zip(spectral_records.iter());
-    for (bulletin, spectral) in zipped {
-        let bulletin_swell_data = bulletin.swell_data().unwrap();
-        let spectra_swell_data = spectral.swell_data().unwrap();
-        println!("b: {}", bulletin.date);
-        println!("s: {}", spectral.date);
-        println!("b: {}", bulletin_swell_data.summary);
+    for s in spectral_records.iter() {
+        let spectra_swell_data = s.swell_data().unwrap();
+        println!("s: {}", s.date);
         println!("s: {}", spectra_swell_data.summary);
-        println!("b swell height: {}", bulletin_swell_data.components[0]);
-        println!("b swell height: {}", bulletin_swell_data.components[1]);
-        println!("b swell height: {}", bulletin_swell_data.components[1].wave_height);
-        println!("b partition count: {}", bulletin_swell_data.components.len());
         println!("s partition count: {}", spectra_swell_data.components.len());
         println!("s swell height: {} -- {}", spectra_swell_data.components[0], spectra_swell_data.components[0].energy.as_ref().unwrap());
         println!("s swell height: {}, {}", spectra_swell_data.components[1], spectra_swell_data.components[1].energy.as_ref().unwrap());
