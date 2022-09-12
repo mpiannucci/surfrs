@@ -241,7 +241,7 @@ impl UnitConvertible<ForecastSpectralWaveDataRecord> for ForecastSpectralWaveDat
 
 impl SwellProvider for ForecastSpectralWaveDataRecord {
     fn swell_data(&self) -> Result<SwellSummary, crate::swell::SwellProviderError> {
-        println!("{:?}", self.energy);
+        //println!("{:?}", self.energy);
         let (imo, partition_count) = match watershed(
             &self.energy,
             self.frequency.len(),
@@ -252,7 +252,7 @@ impl SwellProvider for ForecastSpectralWaveDataRecord {
             Err(e) => Err(SwellProviderError::InsufficientData("watershed segmentation of the spectra failed".into())),
         }?;
 
-        println!("{:?}", imo);
+        //println!("{:?}", imo);
 
         let (summary, components) = pt_mean(
             partition_count, 

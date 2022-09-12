@@ -190,11 +190,11 @@ pub fn pt_mean(
         })
         .collect::<Vec<f64>>();
 
-    println!("================");
-    println!("{:?}", sig);
-    println!("{:?}", frequency.iter().map(|f| f * (2.0 * PI)).collect::<Vec<f64>>());
-    println!("{:?}", direction);
-    println!("================");
+    // println!("================");
+    // println!("{:?}", sig);
+    // println!("{:?}", frequency.iter().map(|f| f * (2.0 * PI)).collect::<Vec<f64>>());
+    // println!("{:?}", direction);
+    // println!("================");
 
     let dsip = sig.iter().map(|s| s * sxfr).collect::<Vec<f64>>();
 
@@ -205,7 +205,7 @@ pub fn pt_mean(
     }
     dsii[frequency.len() - 1] = 0.5 * sig[frequency.len()] * (xfr - 1.) / xfr;
 
-    let fte = 0.25 * sig[frequency.len() - 1] * dth * sig[frequency.len() - 1];
+    let fte = 0.25 * sig[frequency.len()] * dth * sig[frequency.len()];
 
     let wn = sig[1..]
         .iter()
@@ -223,11 +223,11 @@ pub fn pt_mean(
         .enumerate()
         .map(|(ith, th)| {
             let upar =
-                wsmult * wind_speed * 0.0f64.max(direction[ith].radian() - dera * wind_direction);
+                wsmult * wind_speed * 0.0f64.max((direction[ith].radian() - dera * wind_direction).cos());
             if upar < c_nk {
                 sig[sig.len() - 1]
             } else {
-                let mut ik = frequency.len() - 1;
+                let mut ik = frequency.len() - 2;
                 while ik >= 1 {
                     if upar < c[ik] {
                         break;
@@ -262,7 +262,7 @@ pub fn pt_mean(
             let r = d.radian();
             let mut ec = r.cos();
             let mut es = r.sin();
-            if es < 1.0e-5 {
+            if es.abs() < 1.0e-5 {
                 es = 0.0;
                 if ec > 0.5 {
                     ec = 1.0;
@@ -271,7 +271,7 @@ pub fn pt_mean(
                 }
             }
 
-            if ec < 1.0e-5 {
+            if ec.abs() < 1.0e-5 {
                 ec = 0.0;
                 if es > 0.5 {
                     es = 1.0;
@@ -339,7 +339,7 @@ pub fn pt_mean(
             }
         }
 
-        let fteii = fte / (dth * sig[frequency.len()]); 
+        let fteii = fte / (dth * sig[frequency.len() + 1]); 
         sume[ip] += sumf[frequency.len() - 1][ip] * fteii;
         sume1[ip] += sumf[frequency.len() - 1][ip] * sig[frequency.len()] * fteii * (0.3333 / 0.25);
         sume2[ip] += sumf[frequency.len() - 1][ip] * sig[frequency.len()].powi(2) * fteii * (0.5 / 0.25);
@@ -392,7 +392,7 @@ pub fn pt_mean(
         // println!("WSF = {wind_sea_fraction}");
         // println!("-------");
 
-        let component = Swell::new(&Units::Metric, hs, peak_period, Direction::from_degrees(peak_wave_direction as i32), Some(energy));
+        let component = Swell::new(&Units::Metric, hs, peak_period, Direction::from_degrees(mean_wave_direction as i32), Some(energy));
 
         if ip == 0 {
             summary = component;

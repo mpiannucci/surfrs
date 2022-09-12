@@ -100,16 +100,17 @@ fn read_spectral_forecast_station_data() {
     let spectral_records: Vec<ForecastSpectralWaveDataRecord> = spectral_records_iter.unwrap().1.collect();
     assert_eq!(spectral_records.len(), 385);
 
-    for s in spectral_records.iter() {
+    for (i, s) in spectral_records.iter().enumerate() {
         let spectra_swell_data = s.swell_data().unwrap();
         println!("s: {}", s.date);
         println!("s: {}", spectra_swell_data.summary);
         println!("s partition count: {}", spectra_swell_data.components.len());
-        println!("s swell height: {} -- {}", spectra_swell_data.components[0], spectra_swell_data.components[0].energy.as_ref().unwrap());
-        println!("s swell height: {}, {}", spectra_swell_data.components[1], spectra_swell_data.components[1].energy.as_ref().unwrap());
-        println!("s swell height: {} -- {}", spectra_swell_data.components[2], spectra_swell_data.components[2].energy.as_ref().unwrap());
-        println!("s swell height: {}, {}", spectra_swell_data.components[3], spectra_swell_data.components[3].energy.as_ref().unwrap());
-        // println!("-----------------------------------------------")
-        break;
+        for p in spectra_swell_data.components {
+            println!("{} -- {}", p, p.energy.as_ref().unwrap());
+        }
+        
+        if i == 20 {
+            break;
+        }
     }
 }

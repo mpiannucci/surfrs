@@ -197,12 +197,8 @@ pub fn watershed(
         .map(|v| 1usize.max(steps.min((1.0 + (max_value - v) * fact).round() as usize)))
         .collect::<Vec<usize>>();
 
-    println!("{:?}", imi);
-
     // Sort the digitized data indices, so all levels are grouped in order
     let ind = argsort::<usize>(&imi);
-    //let sorted = ind.iter().map(|i| imi[*i]).collect::<Vec<usize>>();
-    // println!("{:?}", ind.iter().zip(sorted).collect::<Vec<(&usize, usize)>>());
 
     // Compute the nearest neighbor for every index ahead of time
     let neigh = (0..count)
@@ -422,8 +418,6 @@ pub fn watershed2(
         .collect::<Vec<usize>>();
 
     let levels = linspace(digital_min, digital_max, steps).map(|v| v as usize).collect::<Vec<usize>>();
-
-    println!("{:?}", levels);
 
     let mut level_indices: Vec<usize> = Vec::new();
     let mut current_level = 0;
