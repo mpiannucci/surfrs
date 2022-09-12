@@ -160,8 +160,8 @@ impl SwellProvider for DirectionalSpectralWaveDataRecord {
                         let wave_height = 4.0 * zero_moment.sqrt();
                         let period = 1.0 / self.frequency[start..end][max_energy_index];
                         let direction = self.mean_wave_direction[start..end][max_energy_index].clone();
-                        let spread_energy = energy * (1.0/PI) *(0.5+self.first_polar_coefficient[start..end][max_energy_index]*(direction-self.mean_wave_direction[start..end][max_energy_index]).cos()+self.second_polar_coefficient[start..end][max_energy_index]*(2.0*(direction-self.primary_wave_direction[start..end][max_energy_index])).cos());
-                        Ok(Swell::new(&Units::Metric, wave_height, period, Direction::from_degrees(direction as i32), Some(spread_energy)))
+                        //let spread_energy = energy * (1.0/PI) * (0.5+self.first_polar_coefficient[start..end][max_energy_index]*(direction-self.mean_wave_direction[start..end][max_energy_index]).cos()+self.second_polar_coefficient[start..end][max_energy_index]*(2.0*(direction-self.primary_wave_direction[start..end][max_energy_index])).cos());
+                        Ok(Swell::new(&Units::Metric, wave_height, period, Direction::from_degrees(direction as i32), Some(energy)))
                     }, 
                     None => Err(SwellProviderError::InsufficientData("Failed to extrsact the max energy frequency".to_string()))
                 }
