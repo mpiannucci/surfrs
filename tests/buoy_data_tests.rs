@@ -108,6 +108,8 @@ fn read_forecast_station_data() {
     for (bulletin, spectral) in zipped {
         let bulletin_swell_data = bulletin.swell_data().unwrap();
         let spectra_swell_data = spectral.swell_data().unwrap();
+        println!("b: {}", bulletin.date);
+        println!("s: {}", spectral.date);
         println!("b: {}", bulletin_swell_data.summary);
         println!("s: {}", spectra_swell_data.summary);
         println!("b swell height: {}", bulletin_swell_data.components[0]);
