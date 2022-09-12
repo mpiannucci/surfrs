@@ -175,7 +175,7 @@ pub fn pt_mean(
     let dth = tpi / direction.len() as f64;
     let sxfr = 0.5 * (xfr - 1. / xfr);
 
-    let mut sigma = fr1 * tpi / f64::powi(xfr, 2);
+    // let mut sigma = fr1 * tpi / f64::powi(xfr, 2);
     let sig = (0..frequency.len() + 2)
         .map(|ik| {
             if ik == 0 {
@@ -189,12 +189,6 @@ pub fn pt_mean(
             }
         })
         .collect::<Vec<f64>>();
-
-    // println!("================");
-    // println!("{:?}", sig);
-    // println!("{:?}", frequency.iter().map(|f| f * (2.0 * PI)).collect::<Vec<f64>>());
-    // println!("{:?}", direction);
-    // println!("================");
 
     let dsip = sig.iter().map(|s| s * sxfr).collect::<Vec<f64>>();
 
@@ -354,7 +348,6 @@ pub fn pt_mean(
     let mut components: Vec<Swell> = Vec::new();
     let mut summary: Swell = Swell::new(&Units::Metric, 0.0, 0.0, Direction::from_degrees(0), None);
 
-    // println!("num_partitions: {num_partitions}");
     for ip in 0..num_partitions + 1 {
         let mo = sume[ip] * dth * 1.0 / tpi;
         let hs= 4. * mo.max(0.0).sqrt();
@@ -368,9 +361,9 @@ pub fn pt_mean(
 
         // This calculates the direction towards, not from
         let mean_wave_direction = (270.0 - f64::atan2(sumey[ip], sumex[ip]).to_degrees()) % 360.0;
-        let sumexp = sumfx[ifpmax[ip]][ip] * dsii[ifpmax[ip]];
-        let sumeyp = sumfy[ifpmax[ip]][ip] * dsii[ifpmax[ip]];
-        let peak_wave_direction = (270.0 - f64::atan2(sumeyp, sumexp).to_degrees()) % 360.0;
+        // let sumexp = sumfx[ifpmax[ip]][ip] * dsii[ifpmax[ip]];
+        // let sumeyp = sumfy[ifpmax[ip]][ip] * dsii[ifpmax[ip]];
+        // let peak_wave_direction = (270.0 - f64::atan2(sumeyp, sumexp).to_degrees()) % 360.0;
 
         // Parabolic fit around the spectral peak
         let mut energy = sumf[ifpmax[ip]][ip] * dth;
@@ -384,13 +377,7 @@ pub fn pt_mean(
             }
         }
 
-        let wind_sea_fraction = sumew[ip] / sume[ip];
-        // println!("Hs = {hs}");
-        // println!("tp = {peak_period}");
-        // println!("Mwd = {}", mean_wave_direction as i32);
-        // println!("PWD = {}", peak_wave_direction as i32);
-        // println!("WSF = {wind_sea_fraction}");
-        // println!("-------");
+        // let wind_sea_fraction = sumew[ip] / sume[ip];
 
         let component = Swell::new(&Units::Metric, hs, peak_period, Direction::from_degrees(mean_wave_direction as i32), Some(energy));
 
