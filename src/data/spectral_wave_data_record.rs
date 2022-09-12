@@ -1,3 +1,6 @@
+use std::f64::NEG_INFINITY;
+use std::f64::consts::PI;
+
 use chrono::{DateTime, TimeZone, Utc};
 use csv::Reader;
 use serde::{Deserialize, Serialize};
@@ -105,6 +108,8 @@ impl SwellProvider for DirectionalSpectralWaveDataRecord {
     fn swell_data(&self) -> Result<SwellSummary, SwellProviderError> {
         let (minima_indexes, maxima_indexes) = detect_peaks(&&self.energy, 0.05);
 
+        let mut summary_max_energy = NEG_INFINITY;
+
         let mut components = maxima_indexes
             .iter()
             .enumerate()
@@ -148,12 +153,17 @@ impl SwellProvider for DirectionalSpectralWaveDataRecord {
         
                 match max_energy {
                     Some((max_energy_index, energy)) => {
+                        if energy > summary_max_energy {
+                            summary_max_energy = energy;
+                        }
+
                         let wave_height = 4.0 * zero_moment.sqrt();
                         let period = 1.0 / self.frequency[start..end][max_energy_index];
                         let direction = self.mean_wave_direction[start..end][max_energy_index].clone();
-                        Ok(Swell::new(&Units::Metric, wave_height, period, Direction::from_degrees(direction as i32), Some(energy)))
+                        let spread_energy = energy * (1.0/PI) *(0.5+self.first_polar_coefficient[start..end][max_energy_index]*(direction-self.mean_wave_direction[start..end][max_energy_index]).cos()+self.second_polar_coefficient[start..end][max_energy_index]*(2.0*(direction-self.primary_wave_direction[start..end][max_energy_index])));
+                        Ok(Swell::new(&Units::Metric, wave_height, period, Direction::from_degrees(direction as i32), Some(spread_energy)))
                     }, 
-                    None => Err(SwellProviderError::InsufficientData("Failed to extract the max energy frequency".to_string()))
+                    None => Err(SwellProviderError::InsufficientData("Failed to extrsact the max energy frequency".to_string()))
                 }
             })
             .collect::<Result<Vec<_>, SwellProviderError>>()?;
@@ -171,17 +181,13 @@ impl SwellProvider for DirectionalSpectralWaveDataRecord {
                 .sqrt();
 
             Ok(SwellSummary {
-                summary: Swell { 
-                    wave_height: DimensionalData {
-                        value: Some(wave_height), 
-                        measurement: dominant.wave_height.measurement,
-                        unit: dominant.wave_height.unit, 
-                        variable_name: dominant.wave_height.variable_name,
-                    }, 
-                    period: dominant.period, 
-                    direction: dominant.direction, 
-                    energy: dominant.energy, 
-                },
+                summary: Swell::new ( 
+                    &Units::Metric, 
+                    wave_height, 
+                    dominant.period.value.unwrap().clone(), 
+                    dominant.direction.value.unwrap().clone(), 
+                    Some(summary_max_energy)
+                ),
                 components,
             })
     }

@@ -81,7 +81,7 @@ fn read_wave_spectra_data() {
         .map(|s| s.to_string())
         .collect::<Vec<String>>();
 
-    let control = "0.6 m @ 12.5 s 120° ese, 0.6 m @ 10.5 s 112° ese, 0.7 m @ 4.5 s 168° sse, 0.5 m @ 3.8 s 160° sse";
+    let control = "0.7 m @ 4.5 s 168° sse, 0.6 m @ 12.5 s 120° ese, 0.6 m @ 10.5 s 112° ese, 0.5 m @ 3.8 s 160° sse";
     let out = swell_components.join(", ");
 
     assert_eq!(out, control);
