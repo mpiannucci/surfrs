@@ -70,7 +70,7 @@ fn read_wave_spectra_data() {
         .map(|s| s.to_string())
         .collect::<Vec<String>>();
 
-    let control = "0.5 m @ 6.2 s 156° sse, 0.4 m @ 4.5 s 220° sw, 0.2 m @ 13.3 s 136° se";
+    let control = "0.6 m @ 12.5 s 120° ese, 0.6 m @ 10.5 s 112° ese, 0.7 m @ 4.5 s 168° sse, 0.5 m @ 3.8 s 160° sse";
     let out = swell_components.join(", ");
 
     assert_eq!(out, control);
@@ -101,16 +101,6 @@ fn read_spectral_forecast_station_data() {
     assert_eq!(spectral_records.len(), 385);
 
     for (i, s) in spectral_records.iter().enumerate() {
-        let spectra_swell_data = s.swell_data().unwrap();
-        println!("s: {}", s.date);
-        println!("s: {}", spectra_swell_data.summary);
-        println!("s partition count: {}", spectra_swell_data.components.len());
-        for p in spectra_swell_data.components {
-            println!("{} -- {}", p, p.energy.as_ref().unwrap());
-        }
-        
-        if i == 20 {
-            break;
-        }
+        let spectra_swell_data = s.swell_data().is_ok();
     }
 }
