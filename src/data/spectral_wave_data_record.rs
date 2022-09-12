@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::dimensional_data::DimensionalData;
 use crate::swell::{Swell, SwellProvider, SwellProviderError, SwellSummary};
 use crate::tools::analysis::detect_peaks;
+use crate::tools::waves::zero_spectral_moment;
 use crate::units::*;
 
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
@@ -74,23 +75,28 @@ pub struct DirectionalSpectralWaveDataRecord {
     pub date: DateTime<Utc>,
     pub frequency: Vec<f64>,
     pub energy: Vec<f64>,
-    pub direction: Vec<Direction>,
+    pub mean_wave_direction: Vec<f64>,
+    pub primary_wave_direction: Vec<f64>, 
+    pub first_polar_coefficient: Vec<f64>, 
+    pub second_polar_coefficient: Vec<f64>,
 }
 
 impl DirectionalSpectralWaveDataRecord {
     pub fn from_data(
         energy_spectra: SpectralWaveDataRecord,
-        directional_spectra: SpectralWaveDataRecord,
+        mean_wave_direction: SpectralWaveDataRecord,
+        primary_wave_direction: SpectralWaveDataRecord,
+        first_polar_coefficient: SpectralWaveDataRecord,
+        second_polar_coefficient: SpectralWaveDataRecord,
     ) -> Self {
         DirectionalSpectralWaveDataRecord {
             date: energy_spectra.date.clone(),
             frequency: energy_spectra.frequency.clone(),
             energy: energy_spectra.value.clone(),
-            direction: directional_spectra
-                .value
-                .iter()
-                .map(|d| Direction::from_degrees(d.round() as i32))
-                .collect()
+            mean_wave_direction: mean_wave_direction.value.clone(), 
+            primary_wave_direction: primary_wave_direction.value.clone(),
+            first_polar_coefficient: first_polar_coefficient.value.clone(), 
+            second_polar_coefficient: second_polar_coefficient.value.clone(),
         }
     }
 }
@@ -117,11 +123,38 @@ impl SwellProvider for DirectionalSpectralWaveDataRecord {
                     minima_indexes[meta_index]
                 };
 
-                Swell::from_spectra(
-                    &self.frequency[start..end],
-                    &&self.energy[start..end],
-                    &self.direction[start..end],
-                )
+                let mut max_energy: Option<(usize, f64)> = None;
+                let mut zero_moment = 0.0f64;
+        
+                for (i, freq) in self.frequency[start..end].iter().enumerate() {
+                    let bandwidth = if i > 0 {
+                        (freq - self.frequency[start..end][i-1]).abs()
+                    } else if self.frequency[start..end].len() == 1 {
+                        *freq
+                    } else {
+                        (self.frequency[start..end][i+1] - freq).abs()
+                    };
+        
+                    zero_moment += zero_spectral_moment(self.energy[start..end][i], bandwidth);
+        
+                    if let Some(current_max_energy) = max_energy {
+                        if self.energy[start..end][i] > current_max_energy.1 {
+                            max_energy = Some((i, self.energy[start..end][i]));
+                        }
+                    } else {
+                        max_energy = Some((i, self.energy[start..end][i]));
+                    }
+                }
+        
+                match max_energy {
+                    Some((max_energy_index, energy)) => {
+                        let wave_height = 4.0 * zero_moment.sqrt();
+                        let period = 1.0 / self.frequency[start..end][max_energy_index];
+                        let direction = self.mean_wave_direction[start..end][max_energy_index].clone();
+                        Ok(Swell::new(&Units::Metric, wave_height, period, Direction::from_degrees(direction as i32), Some(energy)))
+                    }, 
+                    None => Err(SwellProviderError::InsufficientData("Failed to extract the max energy frequency".to_string()))
+                }
             })
             .collect::<Result<Vec<_>, SwellProviderError>>()?;
 
@@ -147,7 +180,7 @@ impl SwellProvider for DirectionalSpectralWaveDataRecord {
                     }, 
                     period: dominant.period, 
                     direction: dominant.direction, 
-                    energy: None 
+                    energy: dominant.energy, 
                 },
                 components,
             })

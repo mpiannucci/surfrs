@@ -123,28 +123,28 @@ impl BuoyStation {
         )
     }
 
-    pub fn primary_spectral_wave_direction_data_url(&self) -> String {
+    pub fn mean_wave_direction_spectral_data_url(&self) -> String {
         format!(
             "https://www.ndbc.noaa.gov/data/realtime2/{}.swdir",
             self.station_id
         )
     }
 
-    pub fn secondary_spectral_wave_direction_data_url(&self) -> String {
+    pub fn principal_wave_direction_spectral_data_url(&self) -> String {
         format!(
             "https://www.ndbc.noaa.gov/data/realtime2/{}.swdir2",
             self.station_id
         )
     }
 
-    pub fn primary_spectral_wave_energy_data_url(&self) -> String {
+    pub fn r1_spectral_data_url(&self) -> String {
         format!(
             "https://www.ndbc.noaa.gov/data/realtime2/{}.swr1",
             self.station_id
         )
     }
 
-    pub fn secondary_spectral_wave_energy_data_url(&self) -> String {
+    pub fn r2_spectral_data_url(&self) -> String {
         format!(
             "https://www.ndbc.noaa.gov/data/realtime2/{}.swr2",
             self.station_id

@@ -51,14 +51,25 @@ fn read_wave_direction_data() {
 #[test]
 fn read_wave_spectra_data() {
     let raw_energy_data = read_mock_data("44097.data_spec");
-    let raw_direction_data = read_mock_data("44097.swdir");
+    let raw_mean_wave_direction_data = read_mock_data("44097.swdir");
+    let raw_primary_wave_direction_data = read_mock_data("44097.swdir2");
+    let raw_first_polar_coefficient_data = read_mock_data("44097.swr1");
+    let raw_second_polar_coefficient_data = read_mock_data("44097.swr2");
 
     let mut energy_data_collection = SpectralWaveDataRecordCollection::from_data(raw_energy_data.as_str());
-    let mut direction_data_collection = SpectralWaveDataRecordCollection::from_data(raw_direction_data.as_str());
-
-    let mut records = energy_data_collection.records()
-        .zip(direction_data_collection.records())
-        .map(|(e, d)| DirectionalSpectralWaveDataRecord::from_data(e, d));
+    let mut mean_wave_direction_data_collection = SpectralWaveDataRecordCollection::from_data(&raw_mean_wave_direction_data.as_str());
+    let mut primary_wave_direction_data_collection = SpectralWaveDataRecordCollection::from_data(&raw_primary_wave_direction_data.as_str());
+    let mut first_polar_coefficient_collection = SpectralWaveDataRecordCollection::from_data(&raw_first_polar_coefficient_data.as_str());
+    let mut second_polar_coefficient_collection = SpectralWaveDataRecordCollection::from_data(&raw_second_polar_coefficient_data.as_str());
+    
+    let mut records = itertools::izip!(
+        energy_data_collection.records(), 
+        mean_wave_direction_data_collection.records(), 
+        primary_wave_direction_data_collection.records(), 
+        first_polar_coefficient_collection.records(), 
+        second_polar_coefficient_collection.records(),
+    )
+        .map(|(e, mwd, pwd, r1, r2)| DirectionalSpectralWaveDataRecord::from_data(e, mwd, pwd, r1, r2));
 
     let swell_components = records
         .next()

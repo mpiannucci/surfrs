@@ -42,41 +42,6 @@ impl Swell {
             }),
         }
     }
-
-    pub fn from_spectra(frequency: &[f64], energy: &[f64], direction: &[Direction]) -> Result<Self, SwellProviderError> {
-        let mut max_energy: Option<(usize, f64)> = None;
-        let mut zero_moment = 0.0f64;
-
-        for (i, freq) in frequency.iter().enumerate() {
-            let bandwidth = if i > 0 {
-                (freq - frequency[i-1]).abs()
-            } else if frequency.len() == 1 {
-                *freq
-            } else {
-                (frequency[i+1] - freq).abs()
-            };
-
-            zero_moment += zero_spectral_moment(energy[i], bandwidth);
-
-            if let Some(current_max_energy) = max_energy {
-                if energy[i] > current_max_energy.1 {
-                    max_energy = Some((i, energy[i]));
-                }
-            } else {
-                max_energy = Some((i, energy[i]));
-            }
-        }
-
-        match max_energy {
-            Some((max_energy_index, energy)) => {
-                let wave_height = 4.0 * zero_moment.sqrt();
-                let period = 1.0 / frequency[max_energy_index];
-                let direction = direction[max_energy_index].clone();
-                Ok(Swell::new(&Units::Metric, wave_height, period, direction, Some(energy)))
-            }, 
-            None => Err(SwellProviderError::InsufficientData("Failed to extract the max energy frequency".to_string()))
-        }
-    }
 }
 
 impl UnitConvertible<Swell> for Swell {
