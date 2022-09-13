@@ -9,6 +9,7 @@ use surfrs::data::spectral_wave_data_record::{SpectralWaveDataRecordCollection, 
 use surfrs::data::wave_data_record::{WaveDataRecordCollection};
 use surfrs::swell::SwellProvider;
 use surfrs::tools::analysis::watershed;
+use surfrs::units::{UnitConvertible, Units};
 
 fn read_mock_data(name: &str) -> String {
     fs::read_to_string(format!("mock/{}", name)).unwrap()
@@ -85,6 +86,11 @@ fn read_wave_spectra_data() {
 
     let control = "0.7 m @ 4.5 s 168° sse, 0.6 m @ 12.5 s 120° ese, 0.6 m @ 10.5 s 112° ese, 0.5 m @ 3.8 s 160° sse";
     let out = swell_components.join(", ");
+
+    let summary = records.next().clone().unwrap().swell_data().unwrap();
+    let mut component = summary.components[1].clone();
+    component.to_units(&Units::English);
+    println!("{} {}", component.clone(), component.energy.unwrap());
 
     //let dir_step = (2.0 * PI) / 36.0;
     //let directions = (0..36).map(|i| dir_step * (i as f64)).collect::<Vec<f64>>();
