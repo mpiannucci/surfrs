@@ -382,15 +382,15 @@ pub fn pt_mean(
         if ip == 0 {
             for ik in 0..frequency.len() {
                 let mut energy = sumf[ik][ip] * dth;
-                if ik > 0 && ik < frequency.len() - 1 {
-                    let el = sumf[ik - 1][ip] * dth;
-                    let eh = sumf[ik + 1][ip] * dth;
-                    let numer = 0.125 * (el - eh).powf(2.0);
-                    let denom = el - 2.0 * energy + eh;
-                    if denom != 0.0 {
-                        energy = energy - numer / denom.abs().copysign(denom);
-                    }
-                }
+                // if ik > 0 && ik < frequency.len() - 1 {
+                //     let el = sumf[ik - 1][ip] * dth;
+                //     let eh = sumf[ik + 1][ip] * dth;
+                //     let numer = 0.125 * (el - eh).powf(2.0);
+                //     let denom = el - 2.0 * energy + eh;
+                //     if denom != 0.0 {
+                //         energy = energy - numer / denom.abs().copysign(denom);
+                //     }
+                // }
 
                 energy_distribution[ik] = energy;
             }
