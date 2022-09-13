@@ -368,37 +368,20 @@ pub fn pt_mean(
         // let peak_wave_direction = (270.0 - f64::atan2(sumeyp, sumexp).to_degrees()) % 360.0;
 
         // Parabolic fit around the spectral peak
-        // let mut energy = sumf[ifpmax[ip]][ip] * dth;
-        // if ifpmax[ip] > 0 && ifpmax[ip] < frequency.len() - 1 {
-        //     let el = sumf[ifpmax[ip] - 1][ip] * dth;
-        //     let eh = sumf[ifpmax[ip] + 1][ip] * dth;
-        //     let numer = 0.125 * (el - eh).powf(2.0);
-        //     let denom = el - 2.0 * energy + eh;
-        //     if denom != 0.0 {
-        //         energy = energy - numer / denom.abs().copysign(denom);
-        //     }
-        // }
-
-        if ip == 0 {
-            for ik in 0..frequency.len() {
-                let mut energy = sumf[ik][0] * dth;
-                // if ik > 0 && ik < frequency.len() - 1 {
-                //     let el = sumf[ik - 1][ip] * dth;
-                //     let eh = sumf[ik + 1][ip] * dth;
-                //     let numer = 0.125 * (el - eh).powf(2.0);
-                //     let denom = el - 2.0 * energy + eh;
-                //     if denom != 0.0 {
-                //         energy = energy - numer / denom.abs().copysign(denom);
-                //     }
-                // }
-
-                energy_distribution[ik] = sumf[ik][0];
+        let mut energy = sumf[ifpmax[ip]][ip] * dth;
+        if ifpmax[ip] > 0 && ifpmax[ip] < frequency.len() - 1 {
+            let el = sumf[ifpmax[ip] - 1][ip] * dth;
+            let eh = sumf[ifpmax[ip] + 1][ip] * dth;
+            let numer = 0.125 * (el - eh).powf(2.0);
+            let denom = el - 2.0 * energy + eh;
+            if denom != 0.0 {
+                energy = energy - numer / denom.abs().copysign(denom);
             }
         }
 
         // let wind_sea_fraction = sumew[ip] / sume[ip];
 
-        let component = Swell::new(&Units::Metric, hs, peak_period, Direction::from_degrees(mean_wave_direction as i32), Some(energy_distribution[ifpmax[ip]]));
+        let component = Swell::new(&Units::Metric, hs, peak_period, Direction::from_degrees(mean_wave_direction as i32), Some(energy));
 
         if ip == 0 {
             summary = component;
