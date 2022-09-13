@@ -392,7 +392,7 @@ pub fn pt_mean(
                 //     }
                 // }
 
-                energy_distribution[ik] = energy;
+                energy_distribution[ik] = sumf[ik][0];
             }
         }
 
