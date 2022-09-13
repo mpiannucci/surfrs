@@ -102,6 +102,19 @@ impl DirectionalSpectralWaveDataRecord {
             second_polar_coefficient: second_polar_coefficient.value.clone(),
         }
     }
+
+    pub fn generate_spectra(&self, directions: &[f64]) -> Vec<f64> {
+        let mut directional_spectra = vec![0.0; self.frequency.len() * directions.len()];
+
+        for (ik, _) in self.frequency.iter().enumerate() {
+            for (ith, angle) in directions.iter().enumerate() {
+                let i = ik + (ith * self.frequency.len());
+                directional_spectra[i] = self.energy[ik] * (1.0/PI) * (0.5+self.first_polar_coefficient[ik]*(angle-self.mean_wave_direction[ik]).cos()+self.second_polar_coefficient[ik]*(2.0*(angle-self.primary_wave_direction[ik])).cos());
+            }
+        }
+
+        directional_spectra
+    }
 }
 
 impl SwellProvider for DirectionalSpectralWaveDataRecord {
@@ -160,6 +173,7 @@ impl SwellProvider for DirectionalSpectralWaveDataRecord {
                         let wave_height = 4.0 * zero_moment.sqrt();
                         let period = 1.0 / self.frequency[start..end][max_energy_index];
                         let direction = self.mean_wave_direction[start..end][max_energy_index].clone();
+                        // TODO: Integrate over directional spectra to match gfs wave
                         //let spread_energy = energy * (1.0/PI) * (0.5+self.first_polar_coefficient[start..end][max_energy_index]*(direction-self.mean_wave_direction[start..end][max_energy_index]).cos()+self.second_polar_coefficient[start..end][max_energy_index]*(2.0*(direction-self.primary_wave_direction[start..end][max_energy_index])).cos());
                         Ok(Swell::new(&Units::Metric, wave_height, period, Direction::from_degrees(direction as i32), Some(energy)))
                     }, 
