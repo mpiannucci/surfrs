@@ -381,7 +381,7 @@ pub fn pt_mean(
 
         if ip == 0 {
             for ik in 0..frequency.len() {
-                let mut energy = sumf[ik][ip] * dth;
+                let mut energy = sumf[ik][0] * dth;
                 // if ik > 0 && ik < frequency.len() - 1 {
                 //     let el = sumf[ik - 1][ip] * dth;
                 //     let eh = sumf[ik + 1][ip] * dth;
