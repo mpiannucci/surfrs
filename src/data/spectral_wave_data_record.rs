@@ -109,7 +109,13 @@ impl DirectionalSpectralWaveDataRecord {
         for (ik, _) in self.frequency.iter().enumerate() {
             for (ith, angle) in directions.iter().enumerate() {
                 let i = ik + (ith * self.frequency.len());
-                directional_spectra[i] = self.energy[ik] * (1.0/PI) * (0.5+self.first_polar_coefficient[ik]*(angle-self.mean_wave_direction[ik]).cos()+self.second_polar_coefficient[ik]*(2.0*(angle-self.primary_wave_direction[ik])).cos());
+                directional_spectra[i] = 
+                    self.energy[ik] * 
+                    (1.0/PI) * 
+                    (0.5
+                        + self.first_polar_coefficient[ik] * (angle-self.mean_wave_direction[ik].to_radians()).cos()
+                        + self.second_polar_coefficient[ik]*(2.0*(angle-self.primary_wave_direction[ik].to_radians())).cos()
+                    );
             }
         }
 
@@ -177,7 +183,7 @@ impl SwellProvider for DirectionalSpectralWaveDataRecord {
                         let mut spread_energy = 0.0;
                         for i in 0..10 {
                             let angle =  i as f64 * (360.0 / 10.0);
-                            spread_energy += energy * (1.0/PI) * (0.5+self.first_polar_coefficient[start..end][max_energy_index]*(angle-self.mean_wave_direction[start..end][max_energy_index]).cos()+self.second_polar_coefficient[start..end][max_energy_index]*(2.0*(angle-self.primary_wave_direction[start..end][max_energy_index])).cos());
+                            spread_energy += energy * (1.0/PI) * (0.5+self.first_polar_coefficient[start..end][max_energy_index]*(angle-self.mean_wave_direction[start..end][max_energy_index]).to_radians().cos()+self.second_polar_coefficient[start..end][max_energy_index]*(2.0*(angle-self.primary_wave_direction[start..end][max_energy_index]).to_radians()).cos());
                         }
                         Ok(Swell::new(&Units::Metric, wave_height, period, Direction::from_degrees(direction as i32), Some(spread_energy)))
                     }, 

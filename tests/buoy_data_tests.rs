@@ -7,8 +7,8 @@ use surfrs::data::forecast_spectral_wave_data_record::{ForecastSpectralWaveDataR
 use surfrs::data::meteorological_data_record::MeteorologicalDataRecordCollection;
 use surfrs::data::spectral_wave_data_record::{SpectralWaveDataRecordCollection, DirectionalSpectralWaveDataRecord};
 use surfrs::data::wave_data_record::{WaveDataRecordCollection};
-use surfrs::swell::SwellProvider;
-use surfrs::tools::analysis::watershed;
+use surfrs::swell::{SwellProvider, self};
+use surfrs::tools::analysis::{watershed, watershed2};
 use surfrs::units::{UnitConvertible, Units};
 
 fn read_mock_data(name: &str) -> String {
@@ -74,11 +74,10 @@ fn read_wave_spectra_data() {
     )
         .map(|(e, mwd, pwd, r1, r2)| DirectionalSpectralWaveDataRecord::from_data(e, mwd, pwd, r1, r2));
 
-    let swell_components = records
-        .next()
-        .unwrap()
-        .swell_data()
-        .unwrap()
+    let record = records.next().unwrap();
+    let swell_data = record.swell_data().unwrap();
+
+    let swell_components = swell_data
         .components
         .iter()
         .map(|s| s.to_string())
@@ -87,20 +86,35 @@ fn read_wave_spectra_data() {
     let control = "0.7 m @ 4.5 s 168° sse, 0.6 m @ 12.5 s 120° ese, 0.6 m @ 10.5 s 112° ese, 0.5 m @ 3.8 s 160° sse";
     let out = swell_components.join(", ");
 
-    let summary = records.next().clone().unwrap().swell_data().unwrap();
-    let mut component = summary.components[1].clone();
-    component.to_units(&Units::English);
-    println!("{} {}", component.clone(), component.energy.unwrap());
 
-    //let dir_step = (2.0 * PI) / 36.0;
-    //let directions = (0..36).map(|i| dir_step * (i as f64)).collect::<Vec<f64>>();
-    //let record = records.next().unwrap();
-    //println!("()()()()()))))(())())())()");
+    for mut component in swell_data.components {
+        component.to_units(&Units::English);
+        println!("{} {}", component.clone(), component.energy.unwrap());
+    }
+
+    let dir_count = 72usize;
+    let dir_step = (2.0 * PI) / dir_count as f64;
+    let directions = (0..dir_count).map(|i| dir_step * (i as f64)).collect::<Vec<f64>>();
+    let record = records.next().unwrap();
+    println!("+++++++++++++++++++++++++++++++++++++++++++++++++");
     //println!("{} x {}", record.frequency.len(), directions.len());
-    //let spectra = record.generate_spectra(&directions);
-    //println!("{:?}", spectra);
-    //let watershed = watershed(&spectra, record.frequency.len(), directions.len(), 5);
-    //println!("{:?}", watershed.unwrap());
+    let spectra = record.generate_spectra(&directions);
+
+    let mut energies = vec![0.0; record.frequency.len()];
+    for ik in 0..record.frequency.len() {
+        for ith in 0..dir_count {
+            let i = ik + (ith * record.frequency.len());
+            energies[ik] += dir_step * spectra[i];
+        }
+    }
+
+    println!("{:?}", record.energy);
+    println!("=");
+    println!("{:?}", energies);
+
+    // println!("{:?}", spectra);
+    //let watershed = watershed2(&spectra, record.frequency.len(), directions.len(), 100);
+    // println!("{:?}", watershed.unwrap());
 
     // assert_eq!(out, control);
 }
