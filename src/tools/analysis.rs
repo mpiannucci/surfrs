@@ -187,6 +187,8 @@ pub fn watershed(
 
     let min_value = data.iter().copied().fold(f64::INFINITY, f64::min);
     let max_value = data.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    println!("MIN: {}", min_value);
+    println!("MAX: {}", max_value);
 
     // Scale the data
     let fact = (steps as f64 - 1.0) / (max_value - min_value);
@@ -196,6 +198,9 @@ pub fn watershed(
         .iter()
         .map(|v| 1usize.max(steps.min((1.0 + (max_value - v) * fact).round() as usize)))
         .collect::<Vec<usize>>();
+
+    println!("akjsdlkjalksdjlajsda");
+    println!("{:?}", imi);
 
     // Sort the digitized data indices, so all levels are grouped in order
     let ind = argsort::<usize>(&imi);

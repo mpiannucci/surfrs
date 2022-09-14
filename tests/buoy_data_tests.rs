@@ -92,7 +92,7 @@ fn read_wave_spectra_data() {
         println!("{} {}", component.clone(), component.energy.unwrap());
     }
 
-    let dir_count = 72usize;
+    let dir_count = 36usize;
     let dir_step = (2.0 * PI) / dir_count as f64;
     let directions = (0..dir_count).map(|i| dir_step * (i as f64)).collect::<Vec<f64>>();
     println!("+++++++++++++++++++++++++++++++++++++++++++++++++");
@@ -113,9 +113,9 @@ fn read_wave_spectra_data() {
     println!("{:?}", record.frequency);
     println!("{:?}", energies);
 
-    // println!("{:?}", spectra);
-    //let watershed = watershed2(&spectra, record.frequency.len(), directions.len(), 100);
-    // println!("{:?}", watershed.unwrap());
+    println!("{:?}", spectra);
+    let watershed = watershed(&spectra, record.frequency.len(), directions.len(), 100);
+    println!("watershed {:?}", watershed.unwrap().0);
 
     // assert_eq!(out, control);
 }
@@ -147,4 +147,7 @@ fn read_spectral_forecast_station_data() {
     println!("{}", record.date);
     println!("{:?}", record.frequency);
     println!("{:?}", record.oned_spectra());
+
+    // let watershed = watershed(&record.energy, record.frequency.len(), record.direction.len(), 100);
+    // println!("{:?}", watershed.unwrap().0);
 }

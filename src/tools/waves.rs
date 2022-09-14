@@ -355,7 +355,7 @@ pub fn pt_mean(
         let hs= 4. * mo.max(0.0).sqrt();
 
         // If the derived swell height is too small, thow it away
-        if ip > 0 && hs < 0.05 {
+        if ip > 0 && hs < 0.2 {
             continue;
         }
 
