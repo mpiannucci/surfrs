@@ -74,7 +74,7 @@ fn read_wave_spectra_data() {
     )
         .map(|(e, mwd, pwd, r1, r2)| DirectionalSpectralWaveDataRecord::from_data(e, mwd, pwd, r1, r2));
 
-    let record = records.next().unwrap();
+    let record = records.skip(6).next().unwrap();
     let swell_data = record.swell_data().unwrap();
 
     let swell_components = swell_data
@@ -83,8 +83,8 @@ fn read_wave_spectra_data() {
         .map(|s| s.to_string())
         .collect::<Vec<String>>();
 
-    let control = "0.7 m @ 4.5 s 168° sse, 0.6 m @ 12.5 s 120° ese, 0.6 m @ 10.5 s 112° ese, 0.5 m @ 3.8 s 160° sse";
-    let out = swell_components.join(", ");
+    // let control = "0.7 m @ 4.5 s 168° sse, 0.6 m @ 12.5 s 120° ese, 0.6 m @ 10.5 s 112° ese, 0.5 m @ 3.8 s 160° sse";
+    // let out = swell_components.join(", ");
 
 
     for mut component in swell_data.components {
@@ -95,8 +95,8 @@ fn read_wave_spectra_data() {
     let dir_count = 72usize;
     let dir_step = (2.0 * PI) / dir_count as f64;
     let directions = (0..dir_count).map(|i| dir_step * (i as f64)).collect::<Vec<f64>>();
-    let record = records.next().unwrap();
     println!("+++++++++++++++++++++++++++++++++++++++++++++++++");
+    println!("{}", record.date);
     //println!("{} x {}", record.frequency.len(), directions.len());
     let spectra = record.generate_spectra(&directions);
 
@@ -108,8 +108,9 @@ fn read_wave_spectra_data() {
         }
     }
 
-    println!("{:?}", record.energy);
-    println!("=");
+
+    //println!("{:?}", record.energy);
+    println!("{:?}", record.frequency);
     println!("{:?}", energies);
 
     // println!("{:?}", spectra);
@@ -140,10 +141,10 @@ fn read_spectral_forecast_station_data() {
     let spectral_records_iter = data_collection.records();
     assert!(spectral_records_iter.is_ok());
 
-    let spectral_records: Vec<ForecastSpectralWaveDataRecord> = spectral_records_iter.unwrap().1.collect();
-    assert_eq!(spectral_records.len(), 385);
-
-    for (_, s) in spectral_records.iter().enumerate() {
-       assert_eq!(s.swell_data().is_ok(), true);
-    }
+    let mut spectral_records = spectral_records_iter.unwrap().1;
+    let record = spectral_records.skip(6).next().unwrap();
+    println!("++++++++");
+    println!("{}", record.date);
+    println!("{:?}", record.frequency);
+    println!("{:?}", record.oned_spectra());
 }
