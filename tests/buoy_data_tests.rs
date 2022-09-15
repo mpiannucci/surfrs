@@ -108,7 +108,6 @@ fn read_wave_spectra_data() {
         }
     }
 
-
     //println!("{:?}", record.energy);
     println!("{:?}", record.frequency);
     println!("{:?}", energies);
