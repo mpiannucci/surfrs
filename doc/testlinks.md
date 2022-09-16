@@ -6,3 +6,5 @@ https://dev.oceansmap.com/ott-coops/?permalink=N4IgtghgDgQjD2APEAuUB9Azgd1aANgHY
 http://www.cse.msu.edu/~cse902/S03/watershed.pdf
 
 https://www.ndbc.noaa.gov/wavemeas.pdf
+
+https://www.researchgate.net/publication/255607845_WAVE_SYSTEM_DIAGNOSTICS_FOR_NUMERICAL_WAVE_MODELS
