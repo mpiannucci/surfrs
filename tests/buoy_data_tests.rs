@@ -146,6 +146,7 @@ fn read_spectral_forecast_station_data() {
     println!("{}", record.date);
     println!("{:?}", record.frequency);
     println!("{:?}", record.oned_spectra());
+    println!("forecast watershed: {:?}", watershed(&record.energy, record.frequency.len(), record.direction.len(), 100).unwrap().0);
 
     // let watershed = watershed(&record.energy, record.frequency.len(), record.direction.len(), 100);
     // println!("{:?}", watershed.unwrap().0);

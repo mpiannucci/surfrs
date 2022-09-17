@@ -1,5 +1,7 @@
 use std::{collections::VecDeque, f64, marker};
 
+use image::{imageops, ImageBuffer};
+
 use crate::tools::{
     linspace::linspace,
     vector::{argsort, argsort_partial},
@@ -187,23 +189,41 @@ pub fn watershed(
 
     let min_value = data.iter().copied().fold(f64::INFINITY, f64::min);
     let max_value = data.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    let range = max_value - min_value;
     println!("MIN: {}", min_value);
     println!("MAX: {}", max_value);
+
+    // let dat = data.iter().map(|v| ((1.0 - (max_value - v) / range) * 255.0) as u8).collect();
+    // let im = image::GrayImage::from_raw(width as u32, height as u32, dat).unwrap();
+    // let blurred_im = imageops::blur(&im, 1.0);
+
+    // println!("blur: {:?}", blurred_im);
 
     // Scale the data
     let fact = (steps as f64 - 1.0) / (max_value - min_value);
 
     // Digitize the signal, mapping each energy value to a level from 0 to steps
+    // let imi = blurred_im
+    //     .as_raw()
+    //     .iter()
+    //     .map(|v| {
+    //         let scaled_v = min_value + ((*v as f64) / 255.0) * range;
+    //         1u8.max((steps as u8).min((1.0 + (max_value - scaled_v) * fact).round() as u8))
+    //     })
+    //     .collect::<Vec<u8>>();
+
     let imi = data
         .iter()
-        .map(|v| 1usize.max(steps.min((1.0 + (max_value - v) * fact).round() as usize)))
-        .collect::<Vec<usize>>();
+        .map(|v| {
+            1u8.max((steps as u8).min((1.0 + (max_value - v) * fact).round() as u8))
+        })
+        .collect::<Vec<u8>>();
 
     println!("akjsdlkjalksdjlajsda");
-    println!("{:?}", imi);
+    println!("imi: {:?}", imi);
 
     // Sort the digitized data indices, so all levels are grouped in order
-    let ind = argsort::<usize>(&imi);
+    let ind = argsort::<u8>(&imi);
 
     // Compute the nearest neighbor for every index ahead of time
     let neigh = (0..count)
@@ -225,7 +245,7 @@ pub fn watershed(
     let mut imd = vec![0; count];
 
     // Iterate the levels looking for the watersheds
-    for ih in 1..=steps {
+    for ih in 1u8..=(steps as u8) {
         m_save = m; // 0
 
         while m < count {
@@ -422,7 +442,9 @@ pub fn watershed2(
         .map(|i| *(&imi[*i].clone()))
         .collect::<Vec<usize>>();
 
-    let levels = linspace(digital_min, digital_max, steps).map(|v| v as usize).collect::<Vec<usize>>();
+    let levels = linspace(digital_min, digital_max, steps)
+        .map(|v| v as usize)
+        .collect::<Vec<usize>>();
 
     let mut level_indices: Vec<usize> = Vec::new();
     let mut current_level = 0;
