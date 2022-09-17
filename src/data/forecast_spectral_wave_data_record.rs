@@ -1,19 +1,17 @@
-use std::collections::VecDeque;
 use std::f64;
 use std::f64::consts::PI;
 use std::iter::Skip;
-use std::ops::Sub;
 use std::str::{FromStr, Lines};
 
-use chrono::{offset, DateTime, TimeZone, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::dimensional_data::DimensionalData;
 use crate::location::Location;
-use crate::swell::{Swell, SwellProvider, SwellProviderError, SwellSummary};
-use crate::tools::analysis::{detect_peaks, watershed, WatershedError, watershed2};
-use crate::tools::waves::{wavenu3, pt_mean};
+use crate::swell::{SwellProvider, SwellProviderError, SwellSummary};
+use crate::tools::analysis::{watershed};
+use crate::tools::waves::{pt_mean};
 use crate::units::{Direction, Measurement, UnitConvertible, Units};
 
 use super::parseable_data_record::DataRecordParsingError;
@@ -219,7 +217,7 @@ impl SwellProvider for ForecastSpectralWaveDataRecord {
             100,
         ) {
             Ok(result) => Ok(result), 
-            Err(e) => Err(SwellProviderError::InsufficientData("watershed segmentation of the spectra failed".into())),
+            Err(_) => Err(SwellProviderError::InsufficientData("watershed segmentation of the spectra failed".into())),
         }?;
 
         let (summary, components) = pt_mean(

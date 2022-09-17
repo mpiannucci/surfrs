@@ -13,7 +13,6 @@ mod tests {
 
 	#[test]
 	fn test_scaler_from_uv() {
-		// TODO
         let u = -3.79485; 
         let v = 0.55966;
         let speed_control = 3.8359;

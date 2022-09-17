@@ -5,7 +5,6 @@ use chrono::{DateTime, TimeZone, Utc};
 use csv::Reader;
 use serde::{Deserialize, Serialize};
 
-use crate::dimensional_data::DimensionalData;
 use crate::swell::{Swell, SwellProvider, SwellProviderError, SwellSummary};
 use crate::tools::analysis::detect_peaks;
 use crate::tools::waves::zero_spectral_moment;

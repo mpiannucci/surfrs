@@ -3,12 +3,12 @@ extern crate surfrs;
 use std::f64::consts::PI;
 use std::fs;
 use surfrs::data::forecast_cbulletin_wave_data_record::{ForecastCBulletinWaveRecordCollection, ForecastCBulletinWaveRecord};
-use surfrs::data::forecast_spectral_wave_data_record::{ForecastSpectralWaveDataRecordCollection, ForecastSpectralWaveDataRecord};
+use surfrs::data::forecast_spectral_wave_data_record::{ForecastSpectralWaveDataRecordCollection};
 use surfrs::data::meteorological_data_record::MeteorologicalDataRecordCollection;
 use surfrs::data::spectral_wave_data_record::{SpectralWaveDataRecordCollection, DirectionalSpectralWaveDataRecord};
 use surfrs::data::wave_data_record::{WaveDataRecordCollection};
-use surfrs::swell::{SwellProvider, self};
-use surfrs::tools::analysis::{watershed, watershed2};
+use surfrs::swell::{SwellProvider};
+use surfrs::tools::analysis::{watershed};
 use surfrs::units::{UnitConvertible, Units};
 
 fn read_mock_data(name: &str) -> String {
