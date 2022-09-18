@@ -1,3 +1,5 @@
+use std::ops::{Sub, SubAssign};
+
 
 /// Returns the sorted indices of the data vector in ascending order
 pub fn argsort<T: Ord>(data: &[T]) -> Vec<usize> {
@@ -13,9 +15,23 @@ pub fn argsort_partial<T: PartialOrd>(data: &[T]) -> Vec<usize> {
     indices
 }
 
+/// Returns the difference between the arrays n and n+1 items in a new vector
+pub fn diff<T>(data: &[T]) -> Vec<T> where T: std::ops::Sub<Output=T> + Copy {
+	let last = data.len() - 1;
+
+	(0..last + 1)
+		.map(|i| {
+			match i {
+				0 => data[1] - data[0],
+				_ => data[i] - data[i - 1],
+			}
+		})
+		.collect()
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{argsort, argsort_partial};
+    use super::{argsort, argsort_partial, diff};
 
 	#[test]
 	fn test_argsort_int() {
@@ -40,6 +56,19 @@ mod tests {
 
 		for i in 0..sorted_indexes_truth.len() {
 			assert_eq!(sorted_indexes_truth[i], argsorted_indexes[i]);
+		}
+	}
+
+	#[test]
+	fn test_diff() {
+		let test_data = vec![0, 2, 3, 4, 5, 8, 11, 15];
+		let diff_truth = vec![2, 2, 1, 1, 1, 3, 3, 4];
+
+		let result = diff(&test_data);
+		assert_eq!(result.len(), test_data.len());
+
+		for i in 0..diff_truth.len() {
+			assert_eq!(diff_truth[i], result[i]);
 		}
 	}
 }

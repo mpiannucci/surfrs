@@ -73,6 +73,40 @@ pub fn wavenu3(si: f64, h: f64) -> (f64, f64) {
     (k, cg)
 }
 
+// Chen and Thomson wavenumber approximation.
+pub fn wavenuma(angle_freq: f64, water_depth: f64) -> f64 {
+    let koh = 0.10194 * angle_freq * angle_freq * water_depth;
+    let d = [0.0, 0.6522, 0.4622, 0.0, 0.0864, 0.0675];
+    let mut a = 1.0;
+    for i in 1..d.len(){
+        a += d[i] * koh.powi(i as i32);
+    }
+    
+    (koh * (1.0 + 1.0 / (koh * a)).sqrt()) / water_depth
+}
+
+// Wave celerity C
+// When depth is not supplied use deep water approximation
+pub fn celerity(freq: f64, depth: Option<f64>) -> f64 {
+    if let Some(depth) = depth {
+        let angle_freq = 2.0 * PI * freq;
+        angle_freq / wavenuma(angle_freq, depth)
+    } else {
+        1.56 / freq
+    }
+}
+
+// Wavelength L
+// When depth is not suppliked use deep water approximation
+pub fn wavelength(freq: f64, depth: Option<f64>) -> f64 {
+    if let Some(depth) = depth {
+        let angle_freq = 2.0 * PI * freq;
+        return 2.0 * PI / wavenuma(angle_freq, depth)
+    } else {
+        1.56 / freq.powi(2)
+    }
+}
+
 /// Solves for the Breaking Wave Height and Breaking Water Depth given a swell and beach conditions. All units are metric, degrees, and gravity is 9.81 m/s.
 pub fn break_wave(
     period: f64,
