@@ -223,12 +223,12 @@ impl SwellProvider for ForecastSpectralWaveDataRecord {
         let (summary, components) = pt_mean(
             partition_count, 
             &imo, 
-            &self.energy, 
-            self.depth.value.unwrap(), 
-            self.wind_speed.value.unwrap(), 
-            self.wind_direction.value.as_ref().unwrap().radian(), 
             &self.frequency, 
-            &self.direction
+            &self.direction.iter().map(|d| d.radian()).collect::<Vec<f64>>(),
+            &self.energy, 
+            Some(self.depth.value.unwrap()), 
+            Some(self.wind_speed.value.unwrap()), 
+            Some(self.wind_direction.value.as_ref().unwrap().radian()), 
         );
 
         Ok(SwellSummary {

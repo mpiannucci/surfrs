@@ -194,12 +194,12 @@ pub fn steepness_coefficient(zero_moment: f64, second_moment: f64) -> f64 {
 pub fn pt_mean(
     num_partitions: usize,
     partition_map: &[i32],
-    energy: &[f64],
-    depth: f64,
-    wind_speed: f64,
-    wind_direction: f64,
     frequency: &[f64],
-    direction: &[Direction]
+    direction: &[f64],
+    energy: &[f64],
+    depth: Option<f64>,
+    wind_speed: Option<f64>,
+    wind_direction: Option<f64>,
 ) -> (Swell, Vec<Swell>) {
     let dera = 1.0f64.atan() / 45.0;
     let xfr = 1.07;
@@ -237,7 +237,10 @@ pub fn pt_mean(
 
     let wn = sig[1..]
         .iter()
-        .map(|s| wavenu3(*s, depth).0)
+        .map(|s| match depth {
+            Some(h) => wavenu3(*s, h).0, 
+            None => tpi / wavelength(*s, None),
+        })
         .collect::<Vec<f64>>();
 
     let c = (0..frequency.len())
@@ -251,7 +254,7 @@ pub fn pt_mean(
         .enumerate()
         .map(|(ith, th)| {
             let upar =
-                wsmult * wind_speed * 0.0f64.max((direction[ith].radian() - dera * wind_direction).cos());
+                wsmult * wind_speed * 0.0f64.max((direction[ith] - dera * wind_direction).cos());
             if upar < c_nk {
                 sig[sig.len() - 1]
             } else {
@@ -287,9 +290,8 @@ pub fn pt_mean(
     let (ecos, esin): (Vec<f64>, Vec<f64>) = direction
         .iter()
         .map(|d| {
-            let r = d.radian();
-            let mut ec = r.cos();
-            let mut es = r.sin();
+            let mut ec = d.cos();
+            let mut es = d.sin();
             if es.abs() < 1.0e-5 {
                 es = 0.0;
                 if ec > 0.5 {
