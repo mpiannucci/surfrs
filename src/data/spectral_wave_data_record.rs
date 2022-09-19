@@ -124,6 +124,7 @@ impl SwellProvider for DirectionalSpectralWaveDataRecord {
             None, 
             None, 
             None,
+            direction::DirectionConvention::From,
         )
         // ?;
 

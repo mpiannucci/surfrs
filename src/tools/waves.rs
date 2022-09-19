@@ -1,6 +1,6 @@
 use std::{f64::consts::PI, ops::Sub, vec};
 
-use crate::{swell::Swell, units::Direction, units::Units};
+use crate::{swell::Swell, units::{Direction, direction::DirectionConvention}, units::Units};
 
 const GRAVITY: f64 = 9.81;
 
@@ -203,6 +203,7 @@ pub fn pt_mean(
     depth: Option<f64>,
     wind_speed: Option<f64>,
     wind_direction: Option<f64>,
+    source_direction_convention: DirectionConvention,
 ) -> (Swell, Vec<Swell>) {
     const TPI: f64 = 2.0 * PI;
     let dera = 1.0f64.atan() / 45.0;
@@ -414,7 +415,13 @@ pub fn pt_mean(
         let peak_period = TPI / sig[ifpmax[ip] + 1];
 
         // This calculates the direction towards, not from
-        let mean_wave_direction = (270.0 - f64::atan2(sumey[ip], sumex[ip]).to_degrees()) % 360.0;
+        let raw_mean_wave_direction = f64::atan2(sumey[ip], sumex[ip]).to_degrees();
+        let mean_wave_direction = match source_direction_convention {
+            DirectionConvention::Met => (270.0 - raw_mean_wave_direction) % 360.0,
+            DirectionConvention::From => (360.0 + raw_mean_wave_direction) % 360.0,
+            DirectionConvention::Towards => (180.0 + raw_mean_wave_direction) % 360.0,
+        };
+        // let mean_wave_direction = (f64::atan2(sumey[ip], sumex[ip]).to_degrees()) % 360.0;
         // let sumexp = sumfx[ifpmax[ip]][ip] * dsii[ifpmax[ip]];
         // let sumeyp = sumfy[ifpmax[ip]][ip] * dsii[ifpmax[ip]];
         // let peak_wave_direction = (270.0 - f64::atan2(sumeyp, sumexp).to_degrees()) % 360.0;

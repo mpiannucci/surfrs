@@ -1,6 +1,6 @@
 use serde::{Serialize, Deserialize};
 
-use crate::{tools::{vector::diff, analysis::{WatershedError, watershed}, waves::pt_mean}, swell::{SwellProviderError, SwellSummary}};
+use crate::{tools::{vector::diff, analysis::{WatershedError, watershed}, waves::pt_mean}, swell::{SwellProviderError, SwellSummary}, units::direction::DirectionConvention};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Spectra {
@@ -64,7 +64,7 @@ impl Spectra {
     }
 
     /// Extract swell components
-    pub fn swell_data(&self, depth: Option<f64>, wind_speed: Option<f64>, wind_direction: Option<f64>) -> Result<crate::swell::SwellSummary, SwellProviderError> {
+    pub fn swell_data(&self, depth: Option<f64>, wind_speed: Option<f64>, wind_direction: Option<f64>, source_direction_convention: DirectionConvention) -> Result<crate::swell::SwellSummary, SwellProviderError> {
         let (imo, partition_count) = match watershed(
             &self.energy,
             self.frequency.len(),
@@ -86,6 +86,7 @@ impl Spectra {
             depth, 
             wind_speed, 
             wind_direction, 
+            source_direction_convention
         );
 
         Ok(SwellSummary {

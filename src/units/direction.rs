@@ -9,6 +9,13 @@ use super::CardinalDirection;
 use super::Units;
 use super::DataParseError;
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DirectionConvention {
+    From, 
+    Towards,
+    Met,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Direction {
     pub degrees: i32,

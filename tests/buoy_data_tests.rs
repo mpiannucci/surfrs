@@ -53,11 +53,17 @@ fn read_wave_direction_data() {
 
 #[test]
 fn read_wave_spectra_data() {
-    let raw_energy_data = read_mock_data("44097.data_spec");
-    let raw_mean_wave_direction_data = read_mock_data("44097.swdir");
-    let raw_primary_wave_direction_data = read_mock_data("44097.swdir2");
-    let raw_first_polar_coefficient_data = read_mock_data("44097.swr1");
-    let raw_second_polar_coefficient_data = read_mock_data("44097.swr2");
+    // let raw_energy_data = read_mock_data("44097.data_spec");
+    // let raw_mean_wave_direction_data = read_mock_data("44097.swdir");
+    // let raw_primary_wave_direction_data = read_mock_data("44097.swdir2");
+    // let raw_first_polar_coefficient_data = read_mock_data("44097.swr1");
+    // let raw_second_polar_coefficient_data = read_mock_data("44097.swr2");
+
+    let raw_energy_data = read_mock_data("44097.09182022.data_spec");
+    let raw_mean_wave_direction_data = read_mock_data("44097.09182022.swdir");
+    let raw_primary_wave_direction_data = read_mock_data("44097.09182022.swdir2");
+    let raw_first_polar_coefficient_data = read_mock_data("44097.09182022.swr1");
+    let raw_second_polar_coefficient_data = read_mock_data("44097.09182022.swr2");
 
     let mut energy_data_collection = SpectralWaveDataRecordCollection::from_data(raw_energy_data.as_str());
     let mut mean_wave_direction_data_collection = SpectralWaveDataRecordCollection::from_data(&raw_mean_wave_direction_data.as_str());

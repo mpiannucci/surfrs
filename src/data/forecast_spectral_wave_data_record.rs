@@ -212,7 +212,8 @@ impl SwellProvider for ForecastSpectralWaveDataRecord {
         self.spectra.swell_data(
             self.depth.value, 
             self.wind_speed.value, 
-            self.wind_direction.value.as_ref().map(|d| d.radian())
+            self.wind_direction.value.as_ref().map(|d| d.radian()), 
+            crate::units::direction::DirectionConvention::Met,
         )
     }
 }
