@@ -1,6 +1,6 @@
 use std::{f64::consts::PI, ops::Sub, vec};
 
-use crate::{units::Direction, units::Units, swell::Swell};
+use crate::{swell::Swell, units::Direction, units::Units};
 
 const GRAVITY: f64 = 9.81;
 
@@ -48,9 +48,9 @@ pub fn ldis(period: f64, depth: f64) -> Result<f64, Error> {
     }
 }
 
-/// Calculate wavenumber and group velocity from the improved 
+/// Calculate wavenumber and group velocity from the improved
 /// Eckard's formula by Beji (2003) using direct computation by approximation
-/// 
+///
 /// Parameter list
 /// ----------------------------------------------------------------
 ///  SI      Real   I   Intrinsic frequency (moving frame)  (rad/s)
@@ -58,7 +58,7 @@ pub fn ldis(period: f64, depth: f64) -> Result<f64, Error> {
 ///  K       Real   O   Wavenumber                          (rad/m)
 ///  CG      Real   O   Group velocity                       (m/s)
 /// ----------------------------------------------------------------
-/// 
+///
 pub fn wavenu3(si: f64, h: f64) -> (f64, f64) {
     const ZPI: f64 = 2.0 * PI;
     const KDMAX: f64 = 20.0;
@@ -66,9 +66,10 @@ pub fn wavenu3(si: f64, h: f64) -> (f64, f64) {
     let tp = si / ZPI;
     let kho = ZPI * ZPI * h / GRAVITY * tp * tp;
     let tmp = 1.55 + 1.3 * kho + 0.216 * kho * kho;
-    let kh = kho * (1.0 + kho.powf(1.09) * 1.0 / tmp.min(KDMAX).exp()) / KDMAX.min(kho).tanh().sqrt();
+    let kh =
+        kho * (1.0 + kho.powf(1.09) * 1.0 / tmp.min(KDMAX).exp()) / KDMAX.min(kho).tanh().sqrt();
     let k = kh / h;
-    let cg = 0.5 * (1.0 + (2.0 * kh/KDMAX.min(2.0 * kh).sinh())) * si / k;
+    let cg = 0.5 * (1.0 + (2.0 * kh / KDMAX.min(2.0 * kh).sinh())) * si / k;
 
     (k, cg)
 }
@@ -78,10 +79,10 @@ pub fn wavenuma(angle_freq: f64, water_depth: f64) -> f64 {
     let koh = 0.10194 * angle_freq * angle_freq * water_depth;
     let d = [0.0, 0.6522, 0.4622, 0.0, 0.0864, 0.0675];
     let mut a = 1.0;
-    for i in 1..d.len(){
+    for i in 1..d.len() {
         a += d[i] * koh.powi(i as i32);
     }
-    
+
     (koh * (1.0 + 1.0 / (koh * a)).sqrt()) / water_depth
 }
 
@@ -101,7 +102,7 @@ pub fn celerity(freq: f64, depth: Option<f64>) -> f64 {
 pub fn wavelength(freq: f64, depth: Option<f64>) -> f64 {
     if let Some(depth) = depth {
         let angle_freq = 2.0 * PI * freq;
-        return 2.0 * PI / wavenuma(angle_freq, depth)
+        return 2.0 * PI / wavenuma(angle_freq, depth);
     } else {
         1.56 / freq.powi(2)
     }
@@ -197,19 +198,18 @@ pub fn pt_mean(
     frequency: &[f64],
     direction: &[f64],
     energy: &[f64],
+    dk: &[f64],
+    dth: &[f64],
     depth: Option<f64>,
     wind_speed: Option<f64>,
     wind_direction: Option<f64>,
 ) -> (Swell, Vec<Swell>) {
-    let dera = 1.0f64.atan() / 45.0;
-    let xfr = 1.07;
-    let tpi = 2.0 * PI;
-    let fr1 = 0.035;
-    let wsmult = 1.7;
-    let dth = tpi / direction.len() as f64;
-    let sxfr = 0.5 * (xfr - 1. / xfr);
+    const TPI: f64 = 2.0 * PI;
+    let DERA = 1.0f64.atan() / 45.0;
+    const WSMULT: f64 = 1.7;
 
-    let mut sigma = fr1 * tpi / f64::powi(xfr, 2);
+    let fr1 = frequency[0];
+
     let sig = (0..frequency.len() + 2)
         .map(|ik| {
             if ik == 0 {
@@ -224,22 +224,36 @@ pub fn pt_mean(
         })
         .collect::<Vec<f64>>();
 
-    let dsip = sig.iter().map(|s| s * sxfr).collect::<Vec<f64>>();
+    let dsip = sig
+        .iter()
+        .enumerate()
+        .map(|(ik, s)| {
+            let xfr = if ik == 0 {
+                frequency[ik + 1] / frequency[ik]
+            } else if ik == frequency.len() + 1 {
+                frequency[ik - 2] / frequency[ik - 3]
+            } else {
+                frequency[ik - 1] / frequency[ik - 2]
+            };
+            let sxfr = 0.5 * (xfr - 1. / xfr); // 0.06771
+            s * sxfr
+        })
+        .collect::<Vec<f64>>();
 
     let mut dsii = vec![0.0; frequency.len()];
-    dsii[0] = 0.5 * sig[1] * (xfr - 1.0);
+    dsii[0] = 0.5 * sig[1] * ((frequency[1] / frequency[0]) - 1.0);
     for ik in 1..dsii.len() - 1 {
         dsii[ik] = dsip[ik];
     }
-    dsii[frequency.len() - 1] = 0.5 * sig[frequency.len()] * (xfr - 1.) / xfr;
+    dsii[frequency.len() - 1] = 0.5 * sig[frequency.len()] * ((frequency[frequency.len() - 1] / frequency[frequency.len() - 2])  - 1.) / (frequency[frequency.len() - 1] / frequency[frequency.len()]);
 
-    let fte = 0.25 * sig[frequency.len()] * dth * sig[frequency.len()];
+    let fte = 0.25 * sig[frequency.len()] * dth[dth.len() - 1] * sig[frequency.len()];
 
     let wn = sig[1..]
         .iter()
         .map(|s| match depth {
-            Some(h) => wavenu3(*s, h).0, 
-            None => tpi / wavelength(*s, None),
+            Some(h) => wavenu3(*s, h).0,
+            None => TPI / wavelength(*s, None),
         })
         .collect::<Vec<f64>>();
 
@@ -253,28 +267,32 @@ pub fn pt_mean(
         .iter()
         .enumerate()
         .map(|(ith, th)| {
-            let upar =
-                wsmult * wind_speed * 0.0f64.max((direction[ith] - dera * wind_direction).cos());
-            if upar < c_nk {
-                sig[sig.len() - 1]
-            } else {
-                let mut ik = frequency.len() - 2;
-                while ik >= 1 {
-                    if upar < c[ik] {
-                        break;
+            if let (Some(u_abs), Some(u_dir)) = (wind_speed, wind_direction) {
+                let upar = WSMULT * u_abs * 0.0f64.max((direction[ith] - DERA * u_dir).cos());
+                
+                if upar < c_nk {
+                    sig[sig.len() - 1]
+                } else {
+                    let mut ik = frequency.len() - 2;
+                    while ik >= 1 {
+                        if upar < c[ik] {
+                            break;
+                        }
+    
+                        ik = Sub::sub(ik, 1);
                     }
-
-                    ik = Sub::sub(ik, 1);
+    
+                    let mut rd = (c[ik] - upar) / (c[ik] - c[ik + 1]);
+                    if rd < 0.0 {
+                        ik = 0;
+                        rd = 0.0f64.max(rd + 1.0);
+                    }
+    
+                    // sig starts at 1 and goes to freqcount + 1
+                    rd * sig[ik + 2] + (1.0 - rd) * sig[ik + 1]
                 }
-
-                let mut rd = (c[ik] - upar) / (c[ik] - c[ik + 1]);
-                if rd < 0.0 {
-                    ik = 0;
-                    rd = 0.0f64.max(rd + 1.0);
-                }
-
-                // sig starts at 1 and goes to freqcount + 1
-                rd * sig[ik + 2] + (1.0 - rd) * sig[ik + 1]
+            } else {
+                sig[sig.len() - 1]
             }
         })
         .collect::<Vec<f64>>();
@@ -369,10 +387,11 @@ pub fn pt_mean(
             }
         }
 
-        let fteii = fte / (dth * sig[frequency.len() + 1]); 
+        let fteii = fte / (dth[dth.len() - 1] * sig[frequency.len() + 1]);
         sume[ip] += sumf[frequency.len() - 1][ip] * fteii;
         sume1[ip] += sumf[frequency.len() - 1][ip] * sig[frequency.len()] * fteii * (0.3333 / 0.25);
-        sume2[ip] += sumf[frequency.len() - 1][ip] * sig[frequency.len()].powi(2) * fteii * (0.5 / 0.25);
+        sume2[ip] +=
+            sumf[frequency.len() - 1][ip] * sig[frequency.len()].powi(2) * fteii * (0.5 / 0.25);
         sumem1[ip] += sumf[frequency.len() - 1][ip] / sig[frequency.len()] * fteii * (0.2 / 0.25);
         sumqp[ip] += sumf[frequency.len() - 1][ip] * fteii;
         sumew[ip] += sumfw[frequency.len() - 1][ip] * fteii;
@@ -387,15 +406,15 @@ pub fn pt_mean(
     let mut energy_distribution = vec![0.0; frequency.len()];
 
     for ip in 0..num_partitions + 1 {
-        let mo = sume[ip] * dth * 1.0 / tpi;
-        let hs= 4. * mo.max(0.0).sqrt();
+        let mo = sume[ip] * dth[0] * 1.0 / TPI;
+        let hs = 4. * mo.max(0.0).sqrt();
 
         // If the derived swell height is too small, thow it away
         if ip > 0 && hs < 0.2 {
             continue;
         }
 
-        let peak_period = tpi / sig[ifpmax[ip] + 1];
+        let peak_period = TPI / sig[ifpmax[ip] + 1];
 
         // This calculates the direction towards, not from
         let mean_wave_direction = (270.0 - f64::atan2(sumey[ip], sumex[ip]).to_degrees()) % 360.0;
@@ -404,10 +423,10 @@ pub fn pt_mean(
         // let peak_wave_direction = (270.0 - f64::atan2(sumeyp, sumexp).to_degrees()) % 360.0;
 
         // Parabolic fit around the spectral peak
-        let mut energy = sumf[ifpmax[ip]][ip] * dth;
+        let mut energy = sumf[ifpmax[ip]][ip] * dth[0];
         if ifpmax[ip] > 0 && ifpmax[ip] < frequency.len() - 1 {
-            let el = sumf[ifpmax[ip] - 1][ip] * dth;
-            let eh = sumf[ifpmax[ip] + 1][ip] * dth;
+            let el = sumf[ifpmax[ip] - 1][ip] * dth[0];
+            let eh = sumf[ifpmax[ip] + 1][ip] * dth[0];
             let numer = 0.125 * (el - eh).powf(2.0);
             let denom = el - 2.0 * energy + eh;
             if denom != 0.0 {
@@ -417,7 +436,13 @@ pub fn pt_mean(
 
         // let wind_sea_fraction = sumew[ip] / sume[ip];
 
-        let component = Swell::new(&Units::Metric, hs, peak_period, Direction::from_degrees(mean_wave_direction as i32), Some(energy));
+        let component = Swell::new(
+            &Units::Metric,
+            hs,
+            peak_period,
+            Direction::from_degrees(mean_wave_direction as i32),
+            Some(energy),
+        );
 
         if ip == 0 {
             summary = component;
@@ -430,17 +455,3 @@ pub fn pt_mean(
 
     (summary, components)
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

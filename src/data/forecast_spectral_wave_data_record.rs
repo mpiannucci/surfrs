@@ -9,9 +9,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::dimensional_data::DimensionalData;
 use crate::location::Location;
+use crate::spectra::Spectra;
 use crate::swell::{SwellProvider, SwellProviderError, SwellSummary};
-use crate::tools::analysis::{watershed};
-use crate::tools::waves::{pt_mean};
+use crate::tools::analysis::watershed;
+use crate::tools::waves::pt_mean;
 use crate::units::{Direction, Measurement, UnitConvertible, Units};
 
 use super::parseable_data_record::DataRecordParsingError;
@@ -162,43 +163,41 @@ pub struct ForecastSpectralWaveDataRecord {
     pub wind_direction: DimensionalData<Direction>,
     pub current_speed: DimensionalData<f64>,
     pub current_direction: DimensionalData<Direction>,
-    pub frequency: Vec<f64>,
-    pub direction: Vec<Direction>,
-    pub energy: Vec<f64>,
+    pub spectra: Spectra,
 }
 
-impl ForecastSpectralWaveDataRecord {
-    // Fortan arrays
-    // E(f, theta)
-    // f is row
-    // theta is columns
-    // fortran stores in column major
-    //      freq freq freq freq freq freq freq
-    // dir  E    E    E    E    E    E    E
-    // dir  E    E    E    E    E    E    E
-    // dir  E    E    E    E    E    E    E
+// impl ForecastSpectralWaveDataRecord {
+//     // Fortan arrays
+//     // E(f, theta)
+//     // f is row
+//     // theta is columns
+//     // fortran stores in column major
+//     //      freq freq freq freq freq freq freq
+//     // dir  E    E    E    E    E    E    E
+//     // dir  E    E    E    E    E    E    E
+//     // dir  E    E    E    E    E    E    E
 
-    /// directional resolution in radians
-    pub fn dth(&self) -> f64 {
-        (2.0 * PI) / self.direction.len() as f64
-    }
+//     /// directional resolution in radians
+//     pub fn dth(&self) -> f64 {
+//         (2.0 * PI) / self.direction.len() as f64
+//     }
 
-    /// Creates the one dimensional wave energy spectra from the 2d spectra data
-    pub fn oned_spectra(&self) -> Vec<f64> {
-        let freq_count = self.frequency.len();
-        let dth = self.dth();
+//     /// Creates the one dimensional wave energy spectra from the 2d spectra data
+//     pub fn oned_spectra(&self) -> Vec<f64> {
+//         let freq_count = self.frequency.len();
+//         let dth = self.dth();
 
-        let mut oned = vec![0.0; freq_count];
-        for ik in 0..freq_count {
-            for ith in 0..self.direction.len() {
-                let i = ik + (ith * freq_count);
-                oned[ik] += dth * self.energy[i];
-            }
-        }
+//         let mut oned = vec![0.0; freq_count];
+//         for ik in 0..freq_count {
+//             for ith in 0..self.direction.len() {
+//                 let i = ik + (ith * freq_count);
+//                 oned[ik] += dth * self.energy[i];
+//             }
+//         }
 
-        oned
-    }
-}
+//         oned
+//     }
+// }
 
 impl UnitConvertible<ForecastSpectralWaveDataRecord> for ForecastSpectralWaveDataRecord {
     fn to_units(&mut self, new_units: &Units) {
@@ -210,31 +209,11 @@ impl UnitConvertible<ForecastSpectralWaveDataRecord> for ForecastSpectralWaveDat
 
 impl SwellProvider for ForecastSpectralWaveDataRecord {
     fn swell_data(&self) -> Result<SwellSummary, crate::swell::SwellProviderError> {
-        let (imo, partition_count) = match watershed(
-            &self.energy,
-            self.frequency.len(),
-            self.direction.len(),
-            100,
-        ) {
-            Ok(result) => Ok(result), 
-            Err(_) => Err(SwellProviderError::InsufficientData("watershed segmentation of the spectra failed".into())),
-        }?;
-
-        let (summary, components) = pt_mean(
-            partition_count, 
-            &imo, 
-            &self.frequency, 
-            &self.direction.iter().map(|d| d.radian()).collect::<Vec<f64>>(),
-            &self.energy, 
-            Some(self.depth.value.unwrap()), 
-            Some(self.wind_speed.value.unwrap()), 
-            Some(self.wind_direction.value.as_ref().unwrap().radian()), 
-        );
-
-        Ok(SwellSummary {
-            summary, 
-            components,
-        })
+        self.spectra.swell_data(
+            self.depth.value, 
+            self.wind_speed.value, 
+            self.wind_direction.value.as_ref().map(|d| d.radian())
+        )
     }
 }
 
@@ -417,6 +396,12 @@ impl<'a> ForecastSpectralWaveRecordIterator<'a> {
         //let mut energy = vec![0.0; raw_energy.len()];
         //transpose::transpose(&raw_energy, &mut energy, self.metadata.direction.len(), self.metadata.frequency.len());
 
+        let spectra = Spectra::new(
+            self.metadata.frequency.clone(),
+            self.metadata.direction.iter().map(|d| d.radian()).collect(),
+            raw_energy,
+        );
+
         Ok(ForecastSpectralWaveDataRecord {
             date,
             location: Location::new(latitude, longitude, "".into()),
@@ -450,9 +435,7 @@ impl<'a> ForecastSpectralWaveRecordIterator<'a> {
                 measurement: Measurement::Direction,
                 unit: Units::Metric,
             },
-            frequency: self.metadata.frequency.clone(),
-            direction: self.metadata.direction.clone(),
-            energy: raw_energy,
+            spectra,
         })
     }
 }

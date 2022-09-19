@@ -1,6 +1,8 @@
-use crate::{tools::{vector::diff, analysis::{WatershedError, watershed}, waves::pt_mean}, swell::{SwellProvider, SwellProviderError, SwellSummary}};
+use serde::{Serialize, Deserialize};
 
+use crate::{tools::{vector::diff, analysis::{WatershedError, watershed}, waves::pt_mean}, swell::{SwellProviderError, SwellSummary}};
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Spectra {
     /// Frequency bins in hz
     pub frequency: Vec<f64>, 
@@ -79,6 +81,8 @@ impl Spectra {
             &self.frequency, 
             &self.direction,
             &self.energy, 
+            &self.dk(),
+            &self.dth(),
             depth, 
             wind_speed, 
             wind_direction, 
