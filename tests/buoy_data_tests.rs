@@ -79,6 +79,16 @@ fn read_wave_spectra_data() {
         .map(|(e, mwd, pwd, r1, r2)| DirectionalSpectralWaveDataRecord::from_data(&directions, e, mwd, pwd, r1, r2));
 
     let record = records.skip(6).next().unwrap();
+
+    println!("+++++++++++++++++++++++++++++++++++++++++++++++++");
+    println!("BUOY -- {}", record.date);
+    // println!("{:?}", record.spectra.frequency);
+    // println!("{:?}", record.spectra.oned());
+
+    let swell_data = record.swell_data();
+    assert!(swell_data.is_ok());
+    // assert_eq!(out, control);
+
     let swell_data = record.swell_data().unwrap();
 
     let swell_components = swell_data
@@ -92,14 +102,8 @@ fn read_wave_spectra_data() {
 
     for mut component in swell_data.components {
         component.to_units(&Units::English);
-        println!("{} {}", component.clone(), component.energy.unwrap());
+        println!("BUOY -- {} {}", component.clone(), component.energy.unwrap());
     }
-
-    println!("+++++++++++++++++++++++++++++++++++++++++++++++++");
-    println!("{}", record.date);
-    println!("{:?}", record.spectra.frequency);
-    println!("{:?}", record.spectra.oned());
-    // assert_eq!(out, control);
 }
 
 #[test]
@@ -126,11 +130,27 @@ fn read_spectral_forecast_station_data() {
     let mut spectral_records = spectral_records_iter.unwrap().1;
     let record = spectral_records.skip(6).next().unwrap();
     println!("++++++++");
-    println!("{}", record.date);
-    println!("{:?}", record.spectra.frequency);
-    println!("{:?}", record.spectra.oned());
-    println!("forecast watershed: {:?}", watershed(&record.spectra.energy, record.spectra.frequency.len(), record.spectra.direction.len(), 100).unwrap().0);
+    println!("FORECAST -- {}", record.date);
+    // println!("{:?}", record.spectra.frequency);
+    // println!("{:?}", record.spectra.oned());
+    // println!("forecast watershed: {:?}", watershed(&record.spectra.energy, record.spectra.frequency.len(), record.spectra.direction.len(), 100).unwrap().0);
 
     // let watershed = watershed(&record.energy, record.frequency.len(), record.direction.len(), 100);
     // println!("{:?}", watershed.unwrap().0);
+
+    let swell_data = record.swell_data().unwrap();
+
+    let swell_components = swell_data
+        .components
+        .iter()
+        .map(|s| s.to_string())
+        .collect::<Vec<String>>();
+
+    // let control = "0.7 m @ 4.5 s 168° sse, 0.6 m @ 12.5 s 120° ese, 0.6 m @ 10.5 s 112° ese, 0.5 m @ 3.8 s 160° sse";
+    // let out = swell_components.join(", ");
+
+    for mut component in swell_data.components {
+        component.to_units(&Units::English);
+        println!("FORECAST -- {} {}", component.clone(), component.energy.unwrap());
+    }
 }

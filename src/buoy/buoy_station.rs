@@ -354,7 +354,6 @@ impl<'de> Visitor<'de> for F64Visitor {
     where
         E: serde::de::Error,
     {
-        println!("HERRRREEEE");
         v.parse::<f64>().map_err(serde::de::Error::custom)
     }
 
@@ -362,7 +361,6 @@ impl<'de> Visitor<'de> for F64Visitor {
     where
         E: serde::de::Error,
     {
-        println!("HERRRREEEE 2222222");
         v.parse::<f64>().map_err(serde::de::Error::custom)
     }
 }

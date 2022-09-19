@@ -189,9 +189,6 @@ pub fn watershed(
 
     let min_value = data.iter().copied().fold(f64::INFINITY, f64::min);
     let max_value = data.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-    let range = max_value - min_value;
-    println!("MIN: {}", min_value);
-    println!("MAX: {}", max_value);
 
     // let dat = data.iter().map(|v| ((1.0 - (max_value - v) / range) * 255.0) as u8).collect();
     // let im = image::GrayImage::from_raw(width as u32, height as u32, dat).unwrap();
@@ -218,9 +215,6 @@ pub fn watershed(
             1u8.max((steps as u8).min((1.0 + (max_value - v) * fact).round() as u8))
         })
         .collect::<Vec<u8>>();
-
-    println!("akjsdlkjalksdjlajsda");
-    println!("imi: {:?}", imi);
 
     // Sort the digitized data indices, so all levels are grouped in order
     let ind = argsort::<u8>(&imi);
