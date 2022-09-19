@@ -230,6 +230,8 @@ pub fn pt_mean(
         .map(|(ik, s)| {
             let xfr = if ik == 0 {
                 frequency[ik + 1] / frequency[ik]
+            } else if ik == 1 {
+                frequency[ik] / frequency[ik - 1]
             } else if ik == frequency.len() + 1 {
                 frequency[ik - 2] / frequency[ik - 3]
             } else {
@@ -245,7 +247,7 @@ pub fn pt_mean(
     for ik in 1..dsii.len() - 1 {
         dsii[ik] = dsip[ik];
     }
-    dsii[frequency.len() - 1] = 0.5 * sig[frequency.len()] * ((frequency[frequency.len() - 1] / frequency[frequency.len() - 2])  - 1.) / (frequency[frequency.len() - 1] / frequency[frequency.len()]);
+    dsii[frequency.len() - 1] = 0.5 * sig[frequency.len()] * ((frequency[frequency.len() - 1] / frequency[frequency.len() - 2])  - 1.) / (frequency[frequency.len() - 1] / frequency[frequency.len() - 2]);
 
     let fte = 0.25 * sig[frequency.len()] * dth[dth.len() - 1] * sig[frequency.len()];
 

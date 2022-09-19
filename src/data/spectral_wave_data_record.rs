@@ -5,6 +5,7 @@ use chrono::{DateTime, TimeZone, Utc};
 use csv::Reader;
 use serde::{Deserialize, Serialize};
 
+use crate::spectra::Spectra;
 use crate::swell::{Swell, SwellProvider, SwellProviderError, SwellSummary};
 use crate::tools::analysis::detect_peaks;
 use crate::tools::waves::zero_spectral_moment;
@@ -57,6 +58,7 @@ impl ParseableDataRecord for SpectralWaveDataRecord {
             )
             .and_hms(row[3].parse().unwrap(), row[4].parse().unwrap(), 0);
 
+
         Ok(SpectralWaveDataRecord {
             date,
             separation_frequency: separation_frequency,
@@ -75,51 +77,29 @@ impl UnitConvertible<SpectralWaveDataRecord> for SpectralWaveDataRecord {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct DirectionalSpectralWaveDataRecord {
     pub date: DateTime<Utc>,
-    pub frequency: Vec<f64>,
-    pub energy: Vec<f64>,
-    pub mean_wave_direction: Vec<f64>,
-    pub primary_wave_direction: Vec<f64>, 
-    pub first_polar_coefficient: Vec<f64>, 
-    pub second_polar_coefficient: Vec<f64>,
+    pub spectra: Spectra,
 }
 
 impl DirectionalSpectralWaveDataRecord {
     pub fn from_data(
+        directions: &[f64],
         energy_spectra: SpectralWaveDataRecord,
         mean_wave_direction: SpectralWaveDataRecord,
         primary_wave_direction: SpectralWaveDataRecord,
         first_polar_coefficient: SpectralWaveDataRecord,
         second_polar_coefficient: SpectralWaveDataRecord,
     ) -> Self {
-        DirectionalSpectralWaveDataRecord {
-            date: energy_spectra.date.clone(),
-            frequency: energy_spectra.frequency.clone(),
-            energy: energy_spectra.value.clone(),
-            mean_wave_direction: mean_wave_direction.value.clone(), 
-            primary_wave_direction: primary_wave_direction.value.clone(),
-            first_polar_coefficient: first_polar_coefficient.value.clone(), 
-            second_polar_coefficient: second_polar_coefficient.value.clone(),
-        }
-    }
+        let mut directional_spectra = vec![0.0; energy_spectra.frequency.len() * directions.len()];
 
-    pub fn generate_spectra(&self, directions: &[f64]) -> Vec<f64> {
-        let mut directional_spectra = vec![0.0; self.frequency.len() * directions.len()];
-
-        for (ik, _) in self.frequency.iter().enumerate() {
+        for (ik, _) in energy_spectra.frequency.iter().enumerate() {
             for (ith, angle) in directions.iter().enumerate() {
-                let i = ik + (ith * self.frequency.len());
+                let i = ik + (ith * energy_spectra.frequency.len());
 
-                let mut first = (2.0 / 3.0) * self.first_polar_coefficient[ik] * (angle-self.mean_wave_direction[ik].to_radians()).cos();
-                // if first < 1.0e-5 {
-                //     first = 0.0;
-                // }
-                let mut second = (1.0 / 6.0) * self.second_polar_coefficient[ik]*(2.0*(angle-self.primary_wave_direction[ik].to_radians())).cos();
-                // if second < 1.0e-5 {
-                //     second = 0.0;
-                // }
+                let first = (2.0 / 3.0) * first_polar_coefficient.value[ik] * (angle-mean_wave_direction.value[ik].to_radians()).cos();
+                let second = (1.0 / 6.0) * second_polar_coefficient.value[ik]*(2.0*(angle-primary_wave_direction.value[ik].to_radians())).cos();
 
                 directional_spectra[i] = 
-                    self.energy[ik] * 
+                    energy_spectra.value[ik] * 
                     (1.0/PI) * 
                     (0.5
                         + first
@@ -128,101 +108,22 @@ impl DirectionalSpectralWaveDataRecord {
             }
         }
 
-        directional_spectra
+        let spectra = Spectra::new(energy_spectra.frequency.clone(), directions.to_vec(), directional_spectra);
+
+        DirectionalSpectralWaveDataRecord {
+            date: energy_spectra.date.clone(),
+            spectra,
+        }
     }
 }
 
 impl SwellProvider for DirectionalSpectralWaveDataRecord {
     fn swell_data(&self) -> Result<SwellSummary, SwellProviderError> {
-        let (minima_indexes, maxima_indexes) = detect_peaks(&&self.energy, 0.05);
-
-        let mut summary_max_energy = NEG_INFINITY;
-
-        let mut components = maxima_indexes
-            .iter()
-            .enumerate()
-            .map(|(meta_index, i)| {
-                let start = if meta_index == 0 {
-                    0
-                } else if i > &minima_indexes[meta_index - 1] {
-                    minima_indexes[meta_index - 1]
-                } else {
-                    0
-                };
-
-                let end = if meta_index >= minima_indexes.len() {
-                    self.energy.len()
-                } else {
-                    minima_indexes[meta_index]
-                };
-
-                let mut max_energy: Option<(usize, f64)> = None;
-                let mut zero_moment = 0.0f64;
-        
-                for (i, freq) in self.frequency[start..end].iter().enumerate() {
-                    let bandwidth = if i > 0 {
-                        (freq - self.frequency[start..end][i-1]).abs()
-                    } else if self.frequency[start..end].len() == 1 {
-                        *freq
-                    } else {
-                        (self.frequency[start..end][i+1] - freq).abs()
-                    };
-        
-                    zero_moment += zero_spectral_moment(self.energy[start..end][i], bandwidth);
-        
-                    if let Some(current_max_energy) = max_energy {
-                        if self.energy[start..end][i] > current_max_energy.1 {
-                            max_energy = Some((i, self.energy[start..end][i]));
-                        }
-                    } else {
-                        max_energy = Some((i, self.energy[start..end][i]));
-                    }
-                }
-        
-                match max_energy {
-                    Some((max_energy_index, energy)) => {
-                        if energy > summary_max_energy {
-                            summary_max_energy = energy;
-                        }
-
-                        let wave_height = 4.0 * zero_moment.sqrt();
-                        let period = 1.0 / self.frequency[start..end][max_energy_index];
-                        let direction = self.mean_wave_direction[start..end][max_energy_index].clone();
-                        // TODO: Integrate over directional spectra to match gfs wave
-                        let mut spread_energy = 0.0;
-                        for i in 0..10 {
-                            let angle =  i as f64 * (360.0 / 10.0);
-                            spread_energy += energy * (1.0/PI) * (0.5+self.first_polar_coefficient[start..end][max_energy_index]*(angle-self.mean_wave_direction[start..end][max_energy_index]).to_radians().cos()+self.second_polar_coefficient[start..end][max_energy_index]*(2.0*(angle-self.primary_wave_direction[start..end][max_energy_index]).to_radians()).cos());
-                        }
-                        Ok(Swell::new(&Units::Metric, wave_height, period, Direction::from_degrees(direction as i32), Some(spread_energy)))
-                    }, 
-                    None => Err(SwellProviderError::InsufficientData("Failed to extrsact the max energy frequency".to_string()))
-                }
-            })
-            .collect::<Result<Vec<_>, SwellProviderError>>()?;
-
-            // Sort swell components from highest energy to lowest energy 
-            components.sort_by(|s1, s2| s2.energy.clone().unwrap().value.unwrap().total_cmp(&s1.energy.clone().unwrap().value.unwrap()));
-
-            let dominant = components[0].clone();
-
-            // See https://www.ndbc.noaa.gov/waveobs.shtml
-            let wave_height = components
-                .iter()
-                .map(|c| c.wave_height.value.unwrap().powi(2))
-                .sum::<f64>()
-                .sqrt();
-
-            Ok(SwellSummary {
-                summary: Swell::new ( 
-                    &Units::Metric, 
-                    wave_height, 
-                    dominant.period.value.unwrap().clone(), 
-                    dominant.direction.value.unwrap().clone(), 
-                    Some(summary_max_energy)
-                ),
-                components,
-            })
+        self.spectra.swell_data(
+            None, 
+            None, 
+            None,
+        )
     }
 }
 

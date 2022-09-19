@@ -65,6 +65,10 @@ fn read_wave_spectra_data() {
     let mut first_polar_coefficient_collection = SpectralWaveDataRecordCollection::from_data(&raw_first_polar_coefficient_data.as_str());
     let mut second_polar_coefficient_collection = SpectralWaveDataRecordCollection::from_data(&raw_second_polar_coefficient_data.as_str());
     
+    let dir_count = 36usize;
+    let dir_step = (2.0 * PI) / dir_count as f64;
+    let directions = (0..dir_count).map(|i| dir_step * (i as f64)).collect::<Vec<f64>>();
+
     let mut records = itertools::izip!(
         energy_data_collection.records(), 
         mean_wave_direction_data_collection.records(), 
@@ -72,7 +76,7 @@ fn read_wave_spectra_data() {
         first_polar_coefficient_collection.records(), 
         second_polar_coefficient_collection.records(),
     )
-        .map(|(e, mwd, pwd, r1, r2)| DirectionalSpectralWaveDataRecord::from_data(e, mwd, pwd, r1, r2));
+        .map(|(e, mwd, pwd, r1, r2)| DirectionalSpectralWaveDataRecord::from_data(&directions, e, mwd, pwd, r1, r2));
 
     let record = records.skip(6).next().unwrap();
     let swell_data = record.swell_data().unwrap();
@@ -86,36 +90,15 @@ fn read_wave_spectra_data() {
     // let control = "0.7 m @ 4.5 s 168° sse, 0.6 m @ 12.5 s 120° ese, 0.6 m @ 10.5 s 112° ese, 0.5 m @ 3.8 s 160° sse";
     // let out = swell_components.join(", ");
 
-
     for mut component in swell_data.components {
         component.to_units(&Units::English);
         println!("{} {}", component.clone(), component.energy.unwrap());
     }
 
-    let dir_count = 36usize;
-    let dir_step = (2.0 * PI) / dir_count as f64;
-    let directions = (0..dir_count).map(|i| dir_step * (i as f64)).collect::<Vec<f64>>();
     println!("+++++++++++++++++++++++++++++++++++++++++++++++++");
     println!("{}", record.date);
-    //println!("{} x {}", record.frequency.len(), directions.len());
-    let spectra = record.generate_spectra(&directions);
-
-    let mut energies = vec![0.0; record.frequency.len()];
-    for ik in 0..record.frequency.len() {
-        for ith in 0..dir_count {
-            let i = ik + (ith * record.frequency.len());
-            energies[ik] += dir_step * spectra[i];
-        }
-    }
-
-    //println!("{:?}", record.energy);
-    println!("{:?}", record.frequency);
-    println!("{:?}", energies);
-
-    println!("{:?}", spectra);
-    let watershed = watershed(&spectra, record.frequency.len(), directions.len(), 100);
-    println!("watershed {:?}", watershed.unwrap().0);
-
+    println!("{:?}", record.spectra.frequency);
+    println!("{:?}", record.spectra.oned());
     // assert_eq!(out, control);
 }
 
