@@ -440,8 +440,6 @@ pub fn pt_mean(
 
         // let wind_sea_fraction = sumew[ip] / sume[ip];
 
-        println!("{mean_wave_direction}");
-
         let component = Swell::new(
             &Units::Metric,
             hs,
