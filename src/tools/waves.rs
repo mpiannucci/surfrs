@@ -205,10 +205,8 @@ pub fn pt_mean(
     wind_direction: Option<f64>,
 ) -> (Swell, Vec<Swell>) {
     const TPI: f64 = 2.0 * PI;
-    let DERA = 1.0f64.atan() / 45.0;
+    let dera = 1.0f64.atan() / 45.0;
     const WSMULT: f64 = 1.7;
-
-    let fr1 = frequency[0];
 
     let sig = (0..frequency.len() + 2)
         .map(|ik| {
@@ -267,10 +265,9 @@ pub fn pt_mean(
 
     let fcdir = direction
         .iter()
-        .enumerate()
-        .map(|(ith, th)| {
+        .map(|th| {
             if let (Some(u_abs), Some(u_dir)) = (wind_speed, wind_direction) {
-                let upar = WSMULT * u_abs * 0.0f64.max((direction[ith] - DERA * u_dir).cos());
+                let upar = WSMULT * u_abs * 0.0f64.max((th - dera * u_dir).cos());
                 
                 if upar < c_nk {
                     sig[sig.len() - 1]
@@ -404,8 +401,6 @@ pub fn pt_mean(
     // Compute pars
     let mut components: Vec<Swell> = Vec::new();
     let mut summary: Swell = Swell::new(&Units::Metric, 0.0, 0.0, Direction::from_degrees(0), None);
-
-    let mut energy_distribution = vec![0.0; frequency.len()];
 
     for ip in 0..num_partitions + 1 {
         let mo = sume[ip] * dth[0] * 1.0 / TPI;

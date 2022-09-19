@@ -1,3 +1,4 @@
+use std::borrow::BorrowMut;
 use std::f64::NEG_INFINITY;
 use std::f64::consts::PI;
 
@@ -124,6 +125,15 @@ impl SwellProvider for DirectionalSpectralWaveDataRecord {
             None, 
             None,
         )
+        // ?;
+
+        // swell_data.summary.direction.value.as_mut().unwrap().flip();
+        
+        // swell_data.components
+        //     .iter_mut()
+        //     .for_each(|s| s.direction.value.as_mut().unwrap().flip());
+
+        // Ok(swell_data)
     }
 }
 

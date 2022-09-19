@@ -38,6 +38,12 @@ impl Direction {
         }
     }
 
+    pub fn flip(&mut self) {
+        let degrees = (self.degrees + 180) % 360;
+        self.degrees = degrees;
+        self.direction = CardinalDirection::from_degrees(&degrees);
+    }
+
     pub fn cardinal_direction(&self) -> &CardinalDirection {
         &self.direction
     }
