@@ -3,6 +3,12 @@ use serde::{Serialize, Deserialize};
 use crate::{tools::{vector::diff, analysis::{WatershedError, watershed}, waves::pt_mean}, swell::{SwellProviderError, SwellSummary}, units::direction::DirectionConvention};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum SpectralAxis {
+    Frequency, 
+    Direction,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Spectra {
     /// Frequency bins in hz
     pub frequency: Vec<f64>, 
@@ -41,21 +47,39 @@ impl Spectra {
         diff(&self.direction)
     }
 
-    /// One dimensional representation of the energy across the frequency axis
-    /// Result is in m2/hz
-    pub fn oned(&self) -> Vec<f64> {
-        let dth = self.dth();
+    /// One dimensional representation of the energy across the given axis
+    /// Result is in m2/hz for SpectralAxis::Frequency or m2/rad for SpectralAxis::Direction
+    pub fn oned(&self, axis: SpectralAxis) -> Vec<f64> {
         let nk = self.nk();
         let nth = self.nth();
 
-        let mut oned = vec![0.0; nk];
-        for ik in 0..nk {
-            for ith in 0..nth {
-                let i = ik + (ith * nk);
-                oned[ik] += dth[ith] * self.energy[i];
+        match axis {
+            SpectralAxis::Frequency => {
+                let dth = self.dth();
+
+                let mut oned = vec![0.0; nk];
+                for ik in 0..nk {
+                    for ith in 0..nth {
+                        let i = ik + (ith * nk);
+                        oned[ik] += dth[ith] * self.energy[i];
+                    }
+                }
+                oned
+            }, 
+            SpectralAxis::Direction => {
+                let dk = self.dk(); 
+
+                let mut oned = vec![0.0; nth];
+                for ith in 0..nth {
+                    for ik in 0..nk {
+                        let i = ik + (ith * nk);
+                        oned[ith] += dk[ik] * self.energy[i];
+                    }
+                }
+
+                oned
             }
         }
-        oned
     }
 
     /// Partition the energy data into discrete swell components
