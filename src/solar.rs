@@ -12,7 +12,7 @@ pub struct SolarEvents {
 pub fn calculate_solar_events(
     location: &Location,
     date: &Date<Utc>,
-) -> (DateTime<Utc>, DateTime<Utc>) {
+) -> SolarEvents {
     let (sunrise, sunset) = sunrise::sunrise_sunset(
         location.absolute_latitude(),
         location.absolute_longitude(),
@@ -24,10 +24,10 @@ pub fn calculate_solar_events(
     let naive_sunrise = NaiveDateTime::from_timestamp(sunrise, 0);
     let naive_sunset = NaiveDateTime::from_timestamp(sunset, 0);
 
-    (
-        DateTime::<Utc>::from_utc(naive_sunrise, Utc),
-        DateTime::<Utc>::from_utc(naive_sunset, Utc),
-    )
+    SolarEvents{
+        sunrise: DateTime::<Utc>::from_utc(naive_sunrise, Utc),
+        sunset: DateTime::<Utc>::from_utc(naive_sunset, Utc),
+    }
 }
 
 #[cfg(test)]
@@ -43,6 +43,6 @@ mod tests {
         let location = Location::new(41.6, -71.5, "Narragansett Pier".into());
         let date = Date::<Utc>::from_utc(NaiveDate::from_ymd(2022, 07, 15), Utc);
 
-        let (sunrise, sunset) = calculate_solar_events(&location, &date);
+        let sunrise_sunset = calculate_solar_events(&location, &date);
     }
 }
