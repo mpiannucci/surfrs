@@ -1,5 +1,3 @@
-use std::ops::{Sub, SubAssign};
-
 
 /// Returns the sorted indices of the data vector in ascending order
 pub fn argsort<T: Ord>(data: &[T]) -> Vec<usize> {

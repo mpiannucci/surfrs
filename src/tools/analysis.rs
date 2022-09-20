@@ -1,10 +1,8 @@
-use std::{collections::VecDeque, f64, marker};
-
-use image::{imageops, ImageBuffer};
+use std::{collections::VecDeque, f64};
 
 use crate::tools::{
     linspace::linspace,
-    vector::{argsort, argsort_partial},
+    vector::{argsort},
 };
 
 /// Converted from MATLAB script at http://billauer.co.il/peakdet.html

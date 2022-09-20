@@ -1,5 +1,3 @@
-use std::borrow::BorrowMut;
-use std::f64::NEG_INFINITY;
 use std::f64::consts::PI;
 
 use chrono::{DateTime, TimeZone, Utc};
@@ -7,9 +5,7 @@ use csv::Reader;
 use serde::{Deserialize, Serialize};
 
 use crate::spectra::Spectra;
-use crate::swell::{Swell, SwellProvider, SwellProviderError, SwellSummary};
-use crate::tools::analysis::detect_peaks;
-use crate::tools::waves::zero_spectral_moment;
+use crate::swell::{SwellProvider, SwellProviderError, SwellSummary};
 use crate::units::*;
 
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};

@@ -10,9 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::dimensional_data::DimensionalData;
 use crate::location::Location;
 use crate::spectra::Spectra;
-use crate::swell::{SwellProvider, SwellProviderError, SwellSummary};
-use crate::tools::analysis::watershed;
-use crate::tools::waves::pt_mean;
+use crate::swell::{SwellProvider, SwellSummary};
 use crate::units::{Direction, Measurement, UnitConvertible, Units};
 
 use super::parseable_data_record::DataRecordParsingError;
