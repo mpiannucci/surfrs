@@ -162,6 +162,12 @@ impl BuoyStation {
         format!("https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod/gfs.{}{:02}{:02}/{:02}/wave/station/bulls.t{:02}z/gfswave.{}.spec", 
         model_date.year(), model_date.month(), model_date.day(), model_date.hour(), model_date.hour(), self.station_id)
     }
+
+    pub fn gfswave_lsl_url(&self, date: DateTime<Utc>) -> String {
+        let model_date = closest_model_datetime(date);
+        format!("https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod/gfs.{}{:02}{:02}/{:02}/wave/station/ls-l", 
+        model_date.year(), model_date.month(), model_date.day(), model_date.hour())
+    }
 }
 
 impl Station for BuoyStation {
