@@ -66,8 +66,9 @@ fn read_stations_latest_observations() {
 
     let raw_data = read_mock_data("latest_obs.txt");
     let mut data_collection = LatestObsDataRecordCollection::from_data(raw_data.as_str());
+    let latest_obs_records = data_collection.records().collect();
 
-    let feature_collection = latest_obs_feature_collection(&buoy_stations, &mut data_collection);
+    let feature_collection = latest_obs_feature_collection(&buoy_stations, &latest_obs_records);
     let serialized_feature_collection = serde_json::to_string(&feature_collection);
     assert!(serialized_feature_collection.is_ok());
 
