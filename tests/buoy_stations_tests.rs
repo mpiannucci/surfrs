@@ -68,7 +68,7 @@ fn read_stations_latest_observations() {
     let mut data_collection = LatestObsDataRecordCollection::from_data(raw_data.as_str());
     let latest_obs_records = data_collection.records().collect();
 
-    let feature_collection = latest_obs_feature_collection(&buoy_stations, &latest_obs_records);
+    let feature_collection = latest_obs_feature_collection(&buoy_stations.stations, &latest_obs_records);
     let serialized_feature_collection = serde_json::to_string(&feature_collection);
     assert!(serialized_feature_collection.is_ok());
 

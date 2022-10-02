@@ -226,7 +226,7 @@ impl<'a> LatestObsDataRecordCollection<'a> {
 }
 
 pub fn latest_obs_feature_collection<'a>(
-    buoy_stations: &'a BuoyStations,
+    buoy_stations: &'a Vec<BuoyStation>,
     latest_obs: &'a Vec<LatestObsDataRecord>,
 ) -> FeatureCollection {
     let latest_obs_map = latest_obs
@@ -234,7 +234,7 @@ pub fn latest_obs_feature_collection<'a>(
         .map(|lo| (lo.station_id.clone(), lo.clone()))
         .collect::<HashMap<String, LatestObsDataRecord>>();
 
-    let features = buoy_stations.stations.iter().map(|b| {
+    let features = buoy_stations.iter().map(|b| {
         let mut station_feature: Feature = b.clone().into();
 
         if let Some(latest_obs) = latest_obs_map.get(&b.station_id) {
