@@ -71,6 +71,9 @@ fn read_stations_latest_observations() {
     let serialized_feature_collection = serde_json::to_string(&feature_collection);
     assert!(serialized_feature_collection.is_ok());
 
-    let deserialized_feature_collection = serde_json::from_str::<FeatureCollection>(&serialized_feature_collection.unwrap());
+    let serialized_feature_collection = serialized_feature_collection.unwrap();
+    assert!(!serialized_feature_collection.contains("null"));
+
+    let deserialized_feature_collection = serde_json::from_str::<FeatureCollection>(&serialized_feature_collection);
     assert!(deserialized_feature_collection.is_ok());
 }

@@ -246,6 +246,18 @@ pub fn latest_obs_feature_collection<'a>(
             observation_data.remove("station_id");
             observation_data.remove("latitude");
             observation_data.remove("longitude");
+
+            observation_data.retain(|_, v| {
+                if let Some(v_obj) = v.as_object() {
+                    match v_obj.get("value") {
+                        Some(vv) => !vv.is_null(),
+                        None => true,
+                    }
+                } else {
+                    true
+                }
+             });
+
             station_feature.set_property("latest_observations", observation_data);
         }
 
