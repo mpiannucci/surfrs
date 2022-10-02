@@ -5,7 +5,7 @@ use std::fmt::{self, Display};
 use std::option::Option;
 use std::str::FromStr;
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd, Eq, Ord)]
 pub struct DimensionalData<T> {
     pub value: Option<T>,
     pub variable_name: String,
@@ -87,6 +87,47 @@ where
     }
 }
 
+impl <T> Serialize for DimensionalData<T> where T: Display + Serialize {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer {
+        
+            #[derive(Serialize)]
+            struct Extended<'a, T> {
+                pub value: &'a Option<T>,
+                pub variable_name: &'a String,
+                pub measurement: &'a Measurement,
+                pub unit: &'a Units,
+                pub unit_label: &'a str, 
+            }
+
+            let ext = Extended {
+                value: &self.value,
+                variable_name: &self.variable_name,
+                measurement: &self.measurement,
+                unit: &self.unit,
+                unit_label: self.unit_label(true), 
+            };
+
+            ext.serialize(serializer)
+    }
+}
+
 pub enum DimensionalDataParseError {
     InvalidString,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_dimensional_data_serialize() {
+        let dd = DimensionalData::<f64>::from_raw_data("4.0", "wave_height".to_string(), Measurement::Length, Units::English);
+        let dd_s = serde_json::to_string(&dd);
+        assert!(dd_s.is_ok());
+
+        let dd_new = serde_json::from_str::<DimensionalData<f64>>(dd_s.unwrap().as_str());
+        assert!(dd_new.is_ok());
+    }
 }
