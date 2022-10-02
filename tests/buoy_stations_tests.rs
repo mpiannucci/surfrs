@@ -1,10 +1,12 @@
 extern crate surfrs;
 
 use surfrs::buoy::BuoyStations;
+use surfrs::data::latest_obs_data_record::{LatestObsDataRecordCollection, latest_obs_feature_collection};
 use surfrs::station::Station;
-use std::fs::File;
+use std::fs::{File, self};
 use std::io::Read;
 use std::path::Path;
+use geojson::FeatureCollection;
 
 fn read_stations_mock() -> String {
     let stations_xml_path = Path::new("mock/activestations.xml");
@@ -14,6 +16,10 @@ fn read_stations_mock() -> String {
         .read_to_string(&mut raw_station_data)
         .unwrap();
     raw_station_data
+}
+
+fn read_mock_data(name: &str) -> String {
+    fs::read_to_string(format!("mock/{}", name)).unwrap()
 }
 
 #[test]
@@ -47,4 +53,24 @@ fn read_stations_xml() {
         restored_stations.stations.len(),
         buoy_stations.stations.len()
     );
+}
+
+#[test]
+fn read_stations_latest_observations() {
+    let raw_station_data = read_stations_mock();
+    let buoy_stations: BuoyStations = BuoyStations::from_raw_data(raw_station_data.as_ref());
+    assert_eq!(
+        buoy_stations.station_count,
+        buoy_stations.stations.len() as i64 - 1
+    );
+
+    let raw_data = read_mock_data("latest_obs.txt");
+    let mut data_collection = LatestObsDataRecordCollection::from_data(raw_data.as_str());
+
+    let feature_collection = latest_obs_feature_collection(&buoy_stations, &mut data_collection);
+    let serialized_feature_collection = serde_json::to_string(&feature_collection);
+    assert!(serialized_feature_collection.is_ok());
+
+    let deserialized_feature_collection = serde_json::from_str::<FeatureCollection>(&serialized_feature_collection.unwrap());
+    assert!(deserialized_feature_collection.is_ok());
 }

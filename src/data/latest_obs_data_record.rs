@@ -1,8 +1,16 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, TimeZone, Utc};
 use csv::Reader;
-use serde::{Serialize, Deserialize};
+use geojson::{Feature, FeatureCollection};
+use serde::{Deserialize, Serialize};
 
-use crate::{dimensional_data::DimensionalData, units::{Direction, Measurement, Units, UnitConvertible}, swell::{Swell, SwellProvider, SwellSummary}, buoy::BuoyStation};
+use crate::{
+    buoy::{BuoyStation, BuoyStations},
+    dimensional_data::DimensionalData,
+    swell::{Swell, SwellProvider, SwellSummary},
+    units::{Direction, Measurement, UnitConvertible, Units},
+};
 
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
 
@@ -41,6 +49,7 @@ impl ParseableDataRecord for LatestObsDataRecord {
         _: Option<&Self::Metadata>,
         row: &Vec<&str>,
     ) -> Result<LatestObsDataRecord, DataRecordParsingError> {
+        let station_id = row[0].to_string();
         let latitude = row[1].parse().unwrap();
         let longitude = row[2].parse().unwrap();
         let date = Utc
@@ -52,8 +61,8 @@ impl ParseableDataRecord for LatestObsDataRecord {
             .and_hms(row[6].parse().unwrap(), row[7].parse().unwrap(), 0);
 
         Ok(LatestObsDataRecord {
-            station_id: row[0].to_string(), 
-            latitude, 
+            station_id,
+            latitude,
             longitude,
             date,
             wind_direction: DimensionalData::from_raw_data(
@@ -191,28 +200,63 @@ impl<'a> LatestObsDataRecordCollection<'a> {
             .flexible(true)
             .from_reader(data.as_bytes());
 
-            LatestObsDataRecordCollection { reader }
+        LatestObsDataRecordCollection { reader }
     }
 
-    pub fn records(
-        &'a mut self,
-    ) -> impl Iterator<Item = LatestObsDataRecord> + 'a {
-        self.reader.records().map(
-            |result| -> Result<LatestObsDataRecord, DataRecordParsingError> {
-                match result {
-                    Ok(record) => {
-                        let filtered_record: Vec<&str> =
-                            record.iter().filter(|data| !data.is_empty()).collect();
-                        let mut met_data =
-                        LatestObsDataRecord::from_data_row(None, &filtered_record)?;
-                        met_data.to_units(&Units::Metric);
-                        Ok(met_data)
+    pub fn records(&'a mut self) -> impl Iterator<Item = LatestObsDataRecord> + 'a {
+        self.reader
+            .records()
+            .map(
+                |result| -> Result<LatestObsDataRecord, DataRecordParsingError> {
+                    match result {
+                        Ok(record) => {
+                            let filtered_record: Vec<&str> =
+                                record.iter().filter(|data| !data.is_empty()).collect();
+                            let mut met_data =
+                                LatestObsDataRecord::from_data_row(None, &filtered_record)?;
+                            met_data.to_units(&Units::Metric);
+                            Ok(met_data)
+                        }
+                        Err(e) => Err(DataRecordParsingError::ParseFailure(e.to_string())),
                     }
-                    Err(e) => Err(DataRecordParsingError::ParseFailure(e.to_string())),
-                }
-            },
-        )
-        .filter_map(|d| d.ok())
+                },
+            )
+            .filter_map(|d| d.ok())
+    }
+}
+
+pub fn latest_obs_feature_collection<'a>(
+    buoy_stations: &'a BuoyStations,
+    latest_obs: &'a mut LatestObsDataRecordCollection<'a>,
+) -> FeatureCollection {
+    let latest_obs_map = latest_obs
+        .records()
+        .map(|lo| (lo.station_id.clone(), lo))
+        .collect::<HashMap<String, LatestObsDataRecord>>();
+
+    let features = buoy_stations.stations.iter().map(|b| {
+        let mut station_feature: Feature = b.clone().into();
+
+        if let Some(latest_obs) = latest_obs_map.get(&b.station_id) {
+            let observation_data_value = serde_json::to_value(&latest_obs).unwrap();
+            let mut observation_data = observation_data_value
+                .as_object()
+                .unwrap()
+                .clone();
+            observation_data.remove("station_id");
+            observation_data.remove("latitude");
+            observation_data.remove("longitude");
+            station_feature.set_property("latest_observations", observation_data);
+        }
+
+        station_feature
+    })
+    .collect();
+
+    FeatureCollection {
+        bbox: None,
+        features,
+        foreign_members: None,
     }
 }
 
@@ -230,6 +274,7 @@ mod tests {
         let met_data = LatestObsDataRecord::from_data_row(None, &data_row).unwrap();
 
         assert_eq!(met_data.date.year(), 2022);
+        assert_eq!(met_data.station_id, "44097");
         assert_eq!(met_data.wave_height.value.unwrap(), 1.3);
         assert_eq!(met_data.mean_wave_direction.value.unwrap().degrees, 153);
         assert!(met_data.tide.value.is_none());
