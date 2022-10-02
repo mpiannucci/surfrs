@@ -4,6 +4,7 @@ use std::f64::consts::PI;
 use std::fs;
 use surfrs::data::forecast_cbulletin_wave_data_record::{ForecastCBulletinWaveRecordCollection, ForecastCBulletinWaveRecord};
 use surfrs::data::forecast_spectral_wave_data_record::{ForecastSpectralWaveDataRecordCollection};
+use surfrs::data::latest_obs_data_record::LatestObsDataRecordCollection;
 use surfrs::data::meteorological_data_record::MeteorologicalDataRecordCollection;
 use surfrs::data::spectral_wave_data_record::{SpectralWaveDataRecordCollection, DirectionalSpectralWaveDataRecord};
 use surfrs::data::wave_data_record::{WaveDataRecordCollection};
@@ -13,6 +14,15 @@ use surfrs::units::{UnitConvertible, Units};
 
 fn read_mock_data(name: &str) -> String {
     fs::read_to_string(format!("mock/{}", name)).unwrap()
+}
+
+#[test]
+fn read_latest_obs_data() {
+    let raw_data = read_mock_data("latest_obs.txt");
+    let mut data_collection = LatestObsDataRecordCollection::from_data(raw_data.as_str());
+    let data_records = data_collection.records();
+    
+    assert_eq!(data_records.count(), 865);
 }
 
 #[test]
