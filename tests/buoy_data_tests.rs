@@ -175,4 +175,6 @@ fn read_spectral_forecast_station_data() {
         component.to_units(&Units::English);
         println!("FORECAST -- {} {}", component.clone(), component.energy.unwrap());
     }
+
+    fs::write("contours.json", &record.spectra.contoured().unwrap().to_string());
 }

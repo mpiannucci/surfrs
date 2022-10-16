@@ -1,4 +1,5 @@
 use contour::{Contour, ContourBuilder};
+use geojson::{GeoJson, Feature, FeatureCollection};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -163,12 +164,25 @@ impl Spectra {
     }
 
     /// Contours
-    pub fn contoured(&self) -> Result<Vec<Contour>, ContourError> {
+    pub fn contoured(&self) -> Result<GeoJson, ContourError> {
         let c = ContourBuilder::new(self.nk() as u32, self.nth() as u32, true);
         let (min, max) = self.energy_range();
         let t = linspace(min, max, 10).collect::<Vec<f64>>();
 
-        c.contours(&self.energy, &t)
-            .map_err(|_| ContourError::ContourFailure)
+        let contours = c.contours(&self.energy, &t)
+            .map_err(|_| ContourError::ContourFailure)?;
+
+        let mut features: Vec<Feature> = Vec::new();
+        for c in contours.iter() {
+            let mut f = c.to_geojson();
+            f.properties.as_mut().unwrap().insert("value".into(), c.threshold().into());
+            features.push(f);
+        }
+
+        Ok(GeoJson::from(FeatureCollection {
+            bbox: None, 
+            features, 
+            foreign_members: None,
+        }))
     }
 }
