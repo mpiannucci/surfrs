@@ -1,19 +1,34 @@
-use serde::{Serialize, Deserialize};
+use contour::{Contour, ContourBuilder};
+use serde::{Deserialize, Serialize};
 
-use crate::{tools::{vector::diff, analysis::{WatershedError, watershed}, waves::pt_mean}, swell::{SwellProviderError, SwellSummary}, units::direction::DirectionConvention};
+use crate::{
+    swell::{SwellProviderError, SwellSummary},
+    tools::{
+        analysis::{watershed, WatershedError},
+        linspace::linspace,
+        vector::diff,
+        waves::pt_mean,
+    },
+    units::direction::DirectionConvention,
+};
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum ContourError {
+    ContourFailure,
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum SpectralAxis {
-    Frequency, 
+    Frequency,
     Direction,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Spectra {
     /// Frequency bins in hz
-    pub frequency: Vec<f64>, 
+    pub frequency: Vec<f64>,
     /// Direction bins in rad
-    pub direction: Vec<f64>, 
+    pub direction: Vec<f64>,
     /// Energy values in m2/hz/rad
     pub energy: Vec<f64>,
 }
@@ -21,8 +36,8 @@ pub struct Spectra {
 impl Spectra {
     pub fn new(frequency: Vec<f64>, direction: Vec<f64>, values: Vec<f64>) -> Self {
         Spectra {
-            frequency, 
-            direction, 
+            frequency,
+            direction,
             energy: values,
         }
     }
@@ -65,9 +80,9 @@ impl Spectra {
                     }
                 }
                 oned
-            }, 
+            }
             SpectralAxis::Direction => {
-                let dk = self.dk(); 
+                let dk = self.dk();
 
                 let mut oned = vec![0.0; nth];
                 for ith in 0..nth {
@@ -82,40 +97,78 @@ impl Spectra {
         }
     }
 
+    /// The value range of the energy data in the form of (min, max)
+    pub fn energy_range(&self) -> (f64, f64) {
+        let min = self
+            .energy
+            .iter()
+            .min_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap();
+        let max = self
+            .energy
+            .iter()
+            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap();
+        (*min, *max)
+    }
+
     /// Partition the energy data into discrete swell components
     pub fn partition(&self, levels: usize) -> Result<(Vec<i32>, usize), WatershedError> {
-        watershed(&self.energy, self.frequency.len(), self.direction.len(), levels)
+        watershed(
+            &self.energy,
+            self.frequency.len(),
+            self.direction.len(),
+            levels,
+        )
     }
 
     /// Extract swell components
-    pub fn swell_data(&self, depth: Option<f64>, wind_speed: Option<f64>, wind_direction: Option<f64>, source_direction_convention: DirectionConvention) -> Result<crate::swell::SwellSummary, SwellProviderError> {
+    pub fn swell_data(
+        &self,
+        depth: Option<f64>,
+        wind_speed: Option<f64>,
+        wind_direction: Option<f64>,
+        source_direction_convention: DirectionConvention,
+    ) -> Result<crate::swell::SwellSummary, SwellProviderError> {
         let (imo, partition_count) = match watershed(
             &self.energy,
             self.frequency.len(),
             self.direction.len(),
             100,
         ) {
-            Ok(result) => Ok(result), 
-            Err(_) => Err(SwellProviderError::InsufficientData("watershed segmentation of the spectra failed".into())),
+            Ok(result) => Ok(result),
+            Err(_) => Err(SwellProviderError::InsufficientData(
+                "watershed segmentation of the spectra failed".into(),
+            )),
         }?;
 
         let (summary, components) = pt_mean(
-            partition_count, 
-            &imo, 
-            &self.frequency, 
+            partition_count,
+            &imo,
+            &self.frequency,
             &self.direction,
-            &self.energy, 
+            &self.energy,
             &self.dk(),
             &self.dth(),
-            depth, 
-            wind_speed, 
-            wind_direction, 
-            source_direction_convention
+            depth,
+            wind_speed,
+            wind_direction,
+            source_direction_convention,
         );
 
         Ok(SwellSummary {
-            summary, 
+            summary,
             components,
         })
+    }
+
+    /// Contours
+    pub fn contoured(&self) -> Result<Vec<Contour>, ContourError> {
+        let c = ContourBuilder::new(self.nk() as u32, self.nth() as u32, true);
+        let (min, max) = self.energy_range();
+        let t = linspace(min, max, 10).collect::<Vec<f64>>();
+
+        c.contours(&self.energy, &t)
+            .map_err(|_| ContourError::ContourFailure)
     }
 }

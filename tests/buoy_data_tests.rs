@@ -20,9 +20,15 @@ fn read_mock_data(name: &str) -> String {
 fn read_latest_obs_data() {
     let raw_data = read_mock_data("latest_obs.txt");
     let mut data_collection = LatestObsDataRecordCollection::from_data(raw_data.as_str());
-    let data_records = data_collection.records();
+    let mut data_records = data_collection.records();
     
-    assert_eq!(data_records.count(), 865);
+    // assert_eq!(data_records.count(), 865);
+
+    let nantucket = data_records.find(|s| s.station_id == "44008");
+    assert!(nantucket.is_some());
+
+    let nantucket = nantucket.unwrap();
+    assert!(nantucket.wave_height.value.is_some());
 }
 
 #[test]
