@@ -5,6 +5,11 @@ use crate::tools::{
     vector::{argsort},
 };
 
+/// Linearly interpolate between and b by fraction frac
+pub fn lerp(a: &f64, b: &f64, frac: &f64) -> f64 {
+    a * (1.0 - frac) + (b * frac)
+}
+
 /// Converted from MATLAB script at http://billauer.co.il/peakdet.html
 ///     
 /// Returns two arrays
@@ -536,9 +541,16 @@ pub fn watershed2(
 
 #[cfg(test)]
 mod tests {
+    use super::lerp;
     use super::nearest_neighbors;
     use super::watershed;
     use rand;
+
+    #[test]
+    fn test_linear_interpolation() {
+        assert!((lerp(&4.0, &5.0, &0.5) - 4.5) < 0.00001);
+        assert!((lerp(&10.0, &15.0, &0.25) - 12.5) < 0.00001);
+    }
 
     #[test]
     fn test_nearest_neighbors() {
