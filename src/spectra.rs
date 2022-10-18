@@ -249,7 +249,7 @@ impl Spectra {
                         })
                         .collect();
                     let new_polygon = Geometry::new(Value::MultiPolygon(new_coordinates));
-                    f.geometry = Some(new_polygon.into());
+                    f.geometry = Some(new_polygon);
                 }
             }
 
