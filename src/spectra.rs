@@ -1,5 +1,5 @@
 use contour::{Contour, ContourBuilder};
-use geojson::{Feature, FeatureCollection, GeoJson, Value};
+use geojson::{Feature, FeatureCollection, GeoJson, Value, Geometry};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
@@ -248,7 +248,7 @@ impl Spectra {
                                 .collect()
                         })
                         .collect();
-                    let new_polygon = Value::MultiPolygon(new_coordinates);
+                    let new_polygon = Geometry::new(Value::MultiPolygon(new_coordinates));
                     f.geometry = Some(new_polygon.into());
                 }
             }
