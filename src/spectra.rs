@@ -30,7 +30,7 @@ pub struct Spectra {
     /// Frequency bins in hz
     pub frequency: Vec<f64>,
     /// Direction bins in rad
-    pub direction: Vec<f64>,
+    direction: Vec<f64>,
     /// Energy values in m2/hz/rad
     pub energy: Vec<f64>,
     /// Direction Convention
@@ -45,6 +45,16 @@ impl Spectra {
             energy: values,
             dir_convention,
         }
+    }
+
+    /// Period bins
+    pub fn period(&self) -> Vec<f64> {
+        self.frequency.iter().map(|f| 1.0 / f).collect()
+    }
+
+    /// Direction bins normalized to DirectionConvention::From in degrees
+    pub fn direction_deg(&self) -> Vec<f64> {
+        self.direction.iter().map(|d| self.dir_convention.normalize(d.to_degrees())).collect()
     }
 
     /// Number of frequency bins
@@ -235,8 +245,7 @@ impl Spectra {
                                     c.iter()
                                         .map(|point| {
                                             let x = 1.0 / self.ik(point[0]);
-                                            let y = self.ith(point[1]);
-                                            // let lng = min_lng
+                                            let y = self.dir_convention.normalize(self.ith(point[1]).to_degrees());
                                             //     + (max_lng - min_lng)
                                             //         * (point[0] / (grid.1 as f64));
                                             // let lat = max_lat

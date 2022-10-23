@@ -127,7 +127,11 @@ fn read_wave_spectra_data() {
         component.to_units(&Units::English);
         println!("BUOY -- {} {}", component.clone(), component.energy.unwrap());
     }
-    println!("{} - {:?}", record.spectra.nk(), record.spectra.dk());
+
+    println!("{:?}", &record.spectra.frequency);
+    println!("{:?}", &record.spectra.direction_deg());
+    println!("{:?}", &record.spectra.energy);
+
     fs::write("contours2.json", &record.spectra.contoured().unwrap().to_string());
 }
 
@@ -178,6 +182,10 @@ fn read_spectral_forecast_station_data() {
         component.to_units(&Units::English);
         println!("FORECAST -- {} {}", component.clone(), component.energy.unwrap());
     }
+
+    // println!("{:?}", &record.spectra.frequency);
+    // println!("{:?}", &record.spectra.direction_deg());
+    // println!("{:?}", &record.spectra.energy);
 
     fs::write("contours.json", &record.spectra.contoured().unwrap().to_string());
 }

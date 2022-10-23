@@ -16,6 +16,17 @@ pub enum DirectionConvention {
     Met,
 }
 
+impl DirectionConvention {
+    /// Normalizes direction to From convention in degrees
+    pub fn normalize(&self, dir: f64) -> f64 {
+        match self {
+            DirectionConvention::From => dir,
+            DirectionConvention::Towards => (dir + 180.0) % 360.0,
+            DirectionConvention::Met => (270.0 - dir) % 360.0,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Direction {
     pub degrees: i32,
