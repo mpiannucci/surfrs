@@ -1,12 +1,14 @@
+use std::ops::Mul;
+
 use contour::{Contour, ContourBuilder};
-use geojson::{Feature, FeatureCollection, GeoJson, Value, Geometry};
+use geojson::{Feature, FeatureCollection, GeoJson, Geometry, Value};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     swell::{SwellProviderError, SwellSummary},
     tools::{
-        analysis::{watershed, WatershedError, lerp},
+        analysis::{lerp, watershed, WatershedError},
         linspace::linspace,
         vector::diff,
         waves::pt_mean,
@@ -38,7 +40,12 @@ pub struct Spectra {
 }
 
 impl Spectra {
-    pub fn new(frequency: Vec<f64>, direction: Vec<f64>, values: Vec<f64>, dir_convention: DirectionConvention) -> Self {
+    pub fn new(
+        frequency: Vec<f64>,
+        direction: Vec<f64>,
+        values: Vec<f64>,
+        dir_convention: DirectionConvention,
+    ) -> Self {
         Spectra {
             frequency,
             direction,
@@ -54,7 +61,10 @@ impl Spectra {
 
     /// Direction bins normalized to DirectionConvention::From in degrees
     pub fn direction_deg(&self) -> Vec<f64> {
-        self.direction.iter().map(|d| self.dir_convention.normalize(d.to_degrees())).collect()
+        self.direction
+            .iter()
+            .map(|d| self.dir_convention.normalize(d.to_degrees()))
+            .collect()
     }
 
     /// Number of frequency bins
@@ -216,6 +226,15 @@ impl Spectra {
         })
     }
 
+    /// Bins the data into u8 bins
+    pub fn binned(&self, bin_count: u8) -> Vec<u8> {
+        let (min, max) = self.energy_range();
+        self.energy
+            .iter()
+            .map(|e| (((e - min) / (max - min)) * bin_count as f64) as u8)
+            .collect()
+    }
+
     /// Contours
     pub fn contoured(&self) -> Result<GeoJson, ContourError> {
         let c = ContourBuilder::new(self.nk() as u32, self.nth() as u32, true);
@@ -227,46 +246,50 @@ impl Spectra {
             .contours(&self.energy, &t)
             .map_err(|_| ContourError::ContourFailure)?;
 
-        let features: Vec<Feature> = contours.iter().map(|c| {
-            let mut f = c.to_geojson();
-            if let Some(g) = &f.geometry {
-                let geo_value: Value = g.value.clone();
-                let coords = match geo_value {
-                    Value::MultiPolygon(c) => Some(c),
-                    _ => None,
-                };
+        let features: Vec<Feature> = contours
+            .iter()
+            .map(|c| {
+                let mut f = c.to_geojson();
+                if let Some(g) = &f.geometry {
+                    let geo_value: Value = g.value.clone();
+                    let coords = match geo_value {
+                        Value::MultiPolygon(c) => Some(c),
+                        _ => None,
+                    };
 
-                if let Some(c) = coords {
-                    let new_coordinates: Vec<Vec<Vec<Vec<f64>>>> = c
-                        .iter()
-                        .map(|r| {
-                            r.iter()
-                                .map(|c| {
-                                    c.iter()
-                                        .map(|point| {
-                                            let x = 1.0 / self.ik(point[0]);
-                                            let y = self.dir_convention.normalize(self.ith(point[1]).to_degrees());
-                                            //     + (max_lng - min_lng)
-                                            //         * (point[0] / (grid.1 as f64));
-                                            // let lat = max_lat
-                                            //     - (max_lat - min_lat)
-                                            //         * (point[1] / (grid.0 as f64));
+                    if let Some(c) = coords {
+                        let new_coordinates: Vec<Vec<Vec<Vec<f64>>>> = c
+                            .iter()
+                            .map(|r| {
+                                r.iter()
+                                    .map(|c| {
+                                        c.iter()
+                                            .map(|point| {
+                                                let x = 1.0 / self.ik(point[0]);
+                                                let y = self
+                                                    .dir_convention
+                                                    .normalize(self.ith(point[1]).to_degrees());
+                                                //     + (max_lng - min_lng)
+                                                //         * (point[0] / (grid.1 as f64));
+                                                // let lat = max_lat
+                                                //     - (max_lat - min_lat)
+                                                //         * (point[1] / (grid.0 as f64));
 
-                                            vec![x, y]
-                                        })
-                                        .collect()
-                                })
-                                .collect()
-                        })
-                        .collect();
-                    let new_polygon = Geometry::new(Value::MultiPolygon(new_coordinates));
-                    f.geometry = Some(new_polygon);
+                                                vec![x, y]
+                                            })
+                                            .collect()
+                                    })
+                                    .collect()
+                            })
+                            .collect();
+                        let new_polygon = Geometry::new(Value::MultiPolygon(new_coordinates));
+                        f.geometry = Some(new_polygon);
+                    }
                 }
-            }
 
-            f
-        })
-        .collect::<Vec<Feature>>();
+                f
+            })
+            .collect::<Vec<Feature>>();
 
         Ok(GeoJson::from(FeatureCollection {
             bbox: None,
