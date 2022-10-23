@@ -105,7 +105,7 @@ impl DirectionalSpectralWaveDataRecord {
             }
         }
 
-        let spectra = Spectra::new(energy_spectra.frequency.clone(), directions.to_vec(), directional_spectra);
+        let spectra = Spectra::new(energy_spectra.frequency.clone(), directions.to_vec(), directional_spectra, direction::DirectionConvention::From);
 
         DirectionalSpectralWaveDataRecord {
             date: energy_spectra.date.clone(),
@@ -120,7 +120,6 @@ impl SwellProvider for DirectionalSpectralWaveDataRecord {
             None, 
             None, 
             None,
-            direction::DirectionConvention::From,
         )
         // ?;
 

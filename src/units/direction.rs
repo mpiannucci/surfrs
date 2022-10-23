@@ -9,7 +9,7 @@ use super::CardinalDirection;
 use super::Units;
 use super::DataParseError;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DirectionConvention {
     From, 
     Towards,

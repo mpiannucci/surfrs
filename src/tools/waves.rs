@@ -203,7 +203,7 @@ pub fn pt_mean(
     depth: Option<f64>,
     wind_speed: Option<f64>,
     wind_direction: Option<f64>,
-    source_direction_convention: DirectionConvention,
+    source_direction_convention: &DirectionConvention,
 ) -> (Swell, Vec<Swell>) {
     const TPI: f64 = 2.0 * PI;
     let dera = 1.0f64.atan() / 45.0;

@@ -11,7 +11,7 @@ use crate::dimensional_data::DimensionalData;
 use crate::location::Location;
 use crate::spectra::Spectra;
 use crate::swell::{SwellProvider, SwellSummary};
-use crate::units::{Direction, Measurement, UnitConvertible, Units};
+use crate::units::{Direction, Measurement, UnitConvertible, Units, direction};
 
 use super::parseable_data_record::DataRecordParsingError;
 
@@ -210,8 +210,7 @@ impl SwellProvider for ForecastSpectralWaveDataRecord {
         self.spectra.swell_data(
             self.depth.value, 
             self.wind_speed.value, 
-            self.wind_direction.value.as_ref().map(|d| d.radian()), 
-            crate::units::direction::DirectionConvention::Met,
+            self.wind_direction.value.as_ref().map(|d| d.radian())
         )
     }
 }
@@ -399,6 +398,7 @@ impl<'a> ForecastSpectralWaveRecordIterator<'a> {
             self.metadata.frequency.clone(),
             self.metadata.direction.iter().map(|d| d.radian()).collect(),
             raw_energy,
+            direction::DirectionConvention::Met
         );
 
         Ok(ForecastSpectralWaveDataRecord {

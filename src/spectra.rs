@@ -33,14 +33,17 @@ pub struct Spectra {
     pub direction: Vec<f64>,
     /// Energy values in m2/hz/rad
     pub energy: Vec<f64>,
+    /// Direction Convention
+    pub dir_convention: DirectionConvention,
 }
 
 impl Spectra {
-    pub fn new(frequency: Vec<f64>, direction: Vec<f64>, values: Vec<f64>) -> Self {
+    pub fn new(frequency: Vec<f64>, direction: Vec<f64>, values: Vec<f64>, dir_convention: DirectionConvention) -> Self {
         Spectra {
             frequency,
             direction,
             energy: values,
+            dir_convention,
         }
     }
 
@@ -170,7 +173,6 @@ impl Spectra {
         depth: Option<f64>,
         wind_speed: Option<f64>,
         wind_direction: Option<f64>,
-        source_direction_convention: DirectionConvention,
     ) -> Result<crate::swell::SwellSummary, SwellProviderError> {
         let (imo, partition_count) = match watershed(
             &self.energy,
@@ -195,7 +197,7 @@ impl Spectra {
             depth,
             wind_speed,
             wind_direction,
-            source_direction_convention,
+            &self.dir_convention,
         );
 
         Ok(SwellSummary {
