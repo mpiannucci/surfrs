@@ -5,9 +5,17 @@ use crate::tools::{
     vector::{argsort},
 };
 
-/// Linearly interpolate between and b by fraction frac
-pub fn lerp(a: &f64, b: &f64, frac: &f64) -> f64 {
-    a * (1.0 - frac) + (b * frac)
+/// Linearly interpolate between and b by fraction diff
+pub fn lerp(a: &f64, b: &f64, diff: &f64) -> f64 {
+    a * (1.0 - diff) + (b * diff)
+}
+
+/// Bilinearly interpolate 
+/// From https://github.com/kosinix/raster/blob/master/src/interpolate.rs
+pub fn bilerp(a: u8, b: u8, c: u8, d: u8, x_diff: f64, y_diff: f64) -> u8 {
+    // Y = A(1-w)(1-h) + B(w)(1-h) + C(h)(1-w) + Dwh
+    (a as f64 * (1.0 - x_diff) * (1.0 - y_diff) + b as f64 * (x_diff) * (1.0 - y_diff)
+        + c as f64 * (y_diff) * (1.0 - x_diff) + d as f64 * (x_diff * y_diff)) as u8
 }
 
 /// Converted from MATLAB script at http://billauer.co.il/peakdet.html
