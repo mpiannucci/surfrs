@@ -10,12 +10,17 @@ pub fn lerp(a: &f64, b: &f64, diff: &f64) -> f64 {
     a * (1.0 - diff) + (b * diff)
 }
 
-/// Bilinearly interpolate 
-/// From https://github.com/kosinix/raster/blob/master/src/interpolate.rs
-pub fn bilerp(a: u8, b: u8, c: u8, d: u8, x_diff: f64, y_diff: f64) -> u8 {
-    // Y = A(1-w)(1-h) + B(w)(1-h) + C(h)(1-w) + Dwh
-    (a as f64 * (1.0 - x_diff) * (1.0 - y_diff) + b as f64 * (x_diff) * (1.0 - y_diff)
-        + c as f64 * (y_diff) * (1.0 - x_diff) + d as f64 * (x_diff * y_diff)) as u8
+/// Bilinearly interpolate
+/// Where 
+///     a = x0y0
+///     b = x1y0
+///     c = x0y2
+///     d = x1y2
+/// Adapted from https://stackoverflow.com/a/8661834
+pub fn bilerp(a: f64, b: f64, c: f64, d: f64, x_diff: f64, y_diff: f64) -> f64 {
+    let l = (a * y_diff) + (c * (1.0 - y_diff));
+    let r = (b * y_diff) + (d * (1.0 - y_diff));
+    (l * x_diff) + (r * (1.0 - x_diff))
 }
 
 /// Converted from MATLAB script at http://billauer.co.il/peakdet.html

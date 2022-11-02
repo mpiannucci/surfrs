@@ -1,4 +1,4 @@
-use std::ops::Mul;
+use std::{ops::Mul, f64::consts::PI};
 
 use contour::{Contour, ContourBuilder};
 use geojson::{Feature, FeatureCollection, GeoJson, Geometry, Value};
@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     swell::{SwellProviderError, SwellSummary},
     tools::{
-        analysis::{lerp, watershed, WatershedError},
+        analysis::{lerp, watershed, WatershedError, bilerp},
         linspace::linspace,
         vector::diff,
         waves::pt_mean,
@@ -65,6 +65,11 @@ impl Spectra {
             .iter()
             .map(|d| self.dir_convention.normalize(d.to_degrees()))
             .collect()
+    }
+
+    /// Direction bins normalized to DirectionContention::From in radians
+    pub fn direction_rad(&self) -> Vec<f64> {
+        self.direction_deg().iter().map(|d| d.to_radians()).collect()
     }
 
     /// Number of frequency bins
@@ -125,6 +130,75 @@ impl Spectra {
         let v_lower = self.direction[i_lower as usize];
         let v_upper = self.direction[i_upper as usize];
         lerp(&v_lower, &v_upper, &frac)
+    }
+
+    /// Interpolated frequency index bounds for a given frequency
+    pub fn closest_k(&self, freq: f64) -> (usize, usize) {
+        let lower = self.frequency
+            .iter()
+            .position(|f| f.le(&freq))
+            .unwrap_or(self.frequency.len() - 1);
+        
+        if lower == self.frequency.len() - 1 {
+            (lower, lower)
+        } else {
+            (lower, lower + 1)
+        }
+    }
+
+    /// Interpolated direection index bounds for a given direction
+    pub fn closest_th(&self, dir: f64) -> (usize, usize) {
+        let lower = self.direction
+            .iter()
+            .position(|d| d.le(&dir))
+            .unwrap_or(0);
+        
+        if lower == self.direction.len() - 1 {
+            // Direction wraps around cuz its a circle
+            (lower, 0)
+        } else {
+            (lower, lower + 1)
+        }
+    }
+
+    /// Get the energy for a given frequency and direction index
+    pub fn energy_at(&self, ik: usize, ith: usize) -> f64 {
+        let isp = ik + (ith * self.frequency.len());
+        self.energy[isp]
+    }
+
+    /// Interpolated energy for an arbitrary frequency and direction combo
+    pub fn interp_energy(&self, freq: f64, dir: f64) -> f64 {
+
+        let (x1, x2) = self.closest_k(freq);
+        let (y1, y2) = self.closest_th(dir);
+
+        let f1 = self.frequency[x1];
+        let f2 = self.frequency[x2];
+        let x_diff = (freq - f1) / (f2 - f1);
+
+        let d1 = self.direction[y1];
+        let d2 = self.direction[y2];
+        let y_diff = (dir - d1) / (d2 - d1);
+
+        let a = self.energy_at(x1, y1);
+        let b = self.energy_at(x2, y1);
+        let c = self.energy_at(x1, y2);
+        let d = self.energy_at(x2, y2);
+
+        println!("============");
+        // println!("freq {freq}");
+        println!("dir {dir}");
+        // println!("a({f1},{d1}) {a}");
+        // println!("b({f2},{d1}) {b}");
+        // println!("c({f1},{d2}) {c}");
+        // println!("d({f2},{d2}) {d}");
+
+        let e = bilerp(a, b, c, d, x_diff, y_diff);
+
+        println!("e {e}");
+
+        e
     }
 
     /// One dimensional representation of the energy across the given axis
@@ -234,6 +308,36 @@ impl Spectra {
             .map(|e| (((e - min) / (max - min)) * bin_count as f64) as u8)
             .collect()
     }
+
+    /// Projects the energy data to cartesian coordinates
+    pub fn project_polar(&self, width: usize, height: usize) -> Vec<f64> {
+        let (xo, yo) = (width / 2, height / 2);
+
+        let mut polarized = vec![0.0; width * height];
+        for x in 0..width {
+            let xd = x as f64 - xo as f64;
+            for y in 0..height {
+                let yd = y as f64 - yo as f64;
+
+                // frequency
+                let r = (xd.powi(2) + yd.powi(2)).sqrt();
+                let r_frac = ((r - xo as f64) / (xo as f64)).abs();
+                let ik = r_frac * (self.frequency.len() as f64 - 1.0);
+                let freq = self.ik(ik);
+
+                // angle
+                let t = (3.0 * PI / 2.0) -  yd.atan2(xd);
+
+                let mut e = self.interp_energy(freq, t);
+                if e.is_nan() {
+                    e = 0.0;
+                }
+                polarized[x + (y * width)] = e;
+            }
+        }
+
+        polarized
+    } 
 
     /// Contours
     pub fn contoured(&self) -> Result<GeoJson, ContourError> {

@@ -184,8 +184,12 @@ fn read_spectral_forecast_station_data() {
     }
 
     // println!("{:?}", &record.spectra.frequency);
-    // println!("{:?}", &record.spectra.direction_deg());
-    // println!("{:?}", &record.spectra.energy);
 
-    fs::write("contours.json", &record.spectra.contoured().unwrap().to_string());
+    println!("---------------------");
+
+    fs::write("cartesian.txt", format!("{:?}", &record.spectra.energy));
+    fs::write("polar.txt", format!("{:?}", &record.spectra.project_polar(50, 50)));
+    println!("{:?}", &record.spectra.direction_rad());
+
+    // fs::write("contours.json", &record.spectra.contoured().unwrap().to_string());
 }
