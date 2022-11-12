@@ -183,5 +183,8 @@ fn read_spectral_forecast_station_data() {
         println!("FORECAST -- {} {}", component.clone(), component.energy.unwrap());
     }
 
+    let zero = 0.0f64.atan2(10.0).to_degrees();
+    println!("{zero}");
+
     fs::write("contours.json", &record.spectra.contoured().unwrap().to_string());
 }

@@ -327,7 +327,7 @@ impl Spectra {
                 let freq = self.ik(ik);
 
                 // angle
-                let t = (3.0 * PI / 2.0) -  yd.atan2(xd);
+                let t = yd.atan2(xd);
 
                 let mut e = self.interp_energy(freq, t);
                 if e.is_nan() {
