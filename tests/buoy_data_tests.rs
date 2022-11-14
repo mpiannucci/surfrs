@@ -130,7 +130,7 @@ fn read_wave_spectra_data() {
     }
 
     println!("buoy dirs: {:?}", &record.spectra.direction_deg());
-    let cart_e = record.spectra.project_cartesian(50, Some(25.0));
+    let cart_e = record.spectra.project_cartesian(50, Some(25.0), None);
     let (min_e, max_e) = record.spectra.energy_range();
     let binned_cart_e = bin(&cart_e, &min_e, &max_e, &255);
     println!("cartesian: {:?}", binned_cart_e);
@@ -187,7 +187,7 @@ fn read_spectral_forecast_station_data() {
     }
 
     println!("forecast dirs: {:?}", record.spectra.direction_deg());
-    println!("cartesian: {:?}", record.spectra.project_cartesian(50, Some(25.0)));
+    println!("cartesian: {:?}", record.spectra.project_cartesian(50, Some(25.0), None));
 
     fs::write("contours.json", &record.spectra.contoured().unwrap().to_string());
 }
