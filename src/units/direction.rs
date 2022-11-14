@@ -22,7 +22,7 @@ impl DirectionConvention {
         match self {
             DirectionConvention::From => dir,
             DirectionConvention::Towards => (dir + 180.0) % 360.0,
-            DirectionConvention::Met => (270.0 - dir) % 360.0,
+            DirectionConvention::Met => ((270.0 - dir) + 360.0) % 360.0,
         }
     }
 }

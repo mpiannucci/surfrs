@@ -3,6 +3,7 @@ use std::{ops::Mul, f64::consts::PI};
 use contour::{Contour, ContourBuilder};
 use geojson::{Feature, FeatureCollection, GeoJson, Geometry, Value};
 use itertools::Itertools;
+use kdtree::{KdTree, distance::squared_euclidean};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -162,6 +163,15 @@ impl Spectra {
         }
     }
 
+    pub fn energy_indices(&self) -> Vec<(usize, usize)> {
+        let nk = self.nk();
+        (0..self.energy.len()).map(|i| {
+            let ik = i % nk;
+            let ith = i / nk;
+            (ik, ith)
+        }).collect()
+    }
+
     /// Get the energy for a given frequency and direction index
     pub fn energy_at(&self, ik: usize, ith: usize) -> f64 {
         let isp = ik + (ith * self.frequency.len());
@@ -311,33 +321,60 @@ impl Spectra {
     }
 
     /// Projects the energy data to cartesian coordinates
-    pub fn project_polar(&self, width: usize, height: usize) -> Vec<f64> {
-        let (xo, yo) = (width / 2, height / 2);
+    pub fn project_cartesian(&self, size: usize) -> Vec<f64> {
+        let directions = self.direction_deg();
+        let periods = self.period();
 
-        let mut polarized = vec![0.0; width * height];
-        for x in 0..width {
-            let xd = x as f64 - xo as f64;
-            for y in 0..height {
-                let yd = y as f64 - yo as f64;
+        // If 0, 0 is the upper left corner
+        let origin = (size / 2, size / 2);
+        let max_period = periods
+            .iter()
+            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap();
+        let period_range = (0usize, *max_period);
 
-                // frequency
-                let r = (xd.powi(2) + yd.powi(2)).sqrt();
-                let r_frac = ((r - xo as f64) / (xo as f64)).abs();
-                let ik = r_frac * (self.frequency.len() as f64 - 1.0);
-                let freq = self.ik(ik);
+        // Build the kdtree of the cartesian coordinates for all of the points that we have 
+        let mut kdtree = KdTree::new(2);
+        self.energy_indices()
+            .iter()
+            .enumerate()
+            .for_each(|(i, (ik, ith))| {
+                let r = ((size / 2) as f64) * (periods[*ik] / period_range.1);
+                let t = (directions[*ith] + 270.0) % 360.0;
+                let x = (origin.0 as f64) + (r * t.to_radians().cos());
+                let y = (origin.1 as f64) + (r * t.to_radians().sin());
+                let p = [x, y];
+                let _  = kdtree.add(p, i);
+            });
 
-                // angle
-                let t = yd.atan2(xd);
+        // Create a new image of the specified sizing, and map the pixels to the 
+        // energy data using the kdtree representation
+        let mut cartesian = vec![0.0; size * size];
+        cartesian
+            .iter_mut()
+            .enumerate()
+            .for_each(|(i, ce)| {
+                let x = (i % size) as f64; 
+                let y = (i / size) as f64;
+                let p = [x, y];
 
-                let mut e = self.interp_energy(freq, t);
-                if e.is_nan() {
-                    e = 0.0;
+                let r = y.atan2(x);
+                if r > size as f64 {
+                    *ce = f64::NAN;
+                    return;
                 }
-                polarized[x + (y * width)] = e;
-            }
-        }
 
-        polarized
+                let Ok(nearest) = kdtree.nearest(&p, 1, &squared_euclidean) else {
+                    *ce = f64::NAN;
+                    return;
+                };
+
+                let nearest_i = nearest[0].1;
+                let nearest_energy = self.energy[*nearest_i];
+                *ce = nearest_energy;
+            });
+
+        cartesian
     } 
 
     /// Contours

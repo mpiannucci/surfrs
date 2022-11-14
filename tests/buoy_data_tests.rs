@@ -128,9 +128,8 @@ fn read_wave_spectra_data() {
         println!("BUOY -- {} {}", component.clone(), component.energy.unwrap());
     }
 
-    println!("{:?}", &record.spectra.frequency);
-    println!("{:?}", &record.spectra.direction_deg());
-    println!("{:?}", &record.spectra.energy);
+    println!("buoy dirs: {:?}", &record.spectra.direction_deg());
+    println!("cartesian: {:?}", record.spectra.project_cartesian(100));
 
     fs::write("contours2.json", &record.spectra.contoured().unwrap().to_string());
 }
@@ -183,8 +182,8 @@ fn read_spectral_forecast_station_data() {
         println!("FORECAST -- {} {}", component.clone(), component.energy.unwrap());
     }
 
-    let zero = 0.0f64.atan2(10.0).to_degrees();
-    println!("{zero}");
+    println!("forecast dirs: {:?}", record.spectra.direction_deg());
+    println!("cartesian: {:?}", record.spectra.project_cartesian(100));
 
     fs::write("contours.json", &record.spectra.contoured().unwrap().to_string());
 }
