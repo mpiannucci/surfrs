@@ -312,7 +312,7 @@ impl Spectra {
     }
 
     /// Projects the energy data to cartesian coordinates
-    pub fn project_cartesian(&self, size: usize) -> Vec<f64> {
+    pub fn project_cartesian(&self, size: usize, period_threshold: Option<f64>) -> Vec<f64> {
         let directions = self.direction_deg();
         let periods = self.period();
 
@@ -322,7 +322,8 @@ impl Spectra {
             .iter()
             .max_by(|a, b| a.partial_cmp(b).unwrap())
             .unwrap();
-        let period_range = (0usize, *max_period);
+        //let period_range = (0usize, *max_period);
+        let period_threshold = period_threshold.unwrap_or(*max_period); 
 
         // Build the kdtree of the cartesian coordinates for all of the points that we have 
         let mut kdtree = KdTree::new(2);
@@ -330,7 +331,11 @@ impl Spectra {
             .iter()
             .enumerate()
             .for_each(|(i, (ik, ith))| {
-                let r = ((size / 2) as f64) * (periods[*ik] / period_range.1);
+                if periods[*ik] > period_threshold {
+                    return;
+                }
+
+                let r = ((size / 2) as f64) * (periods[*ik] / period_threshold);
                 let t = (directions[*ith] + 270.0) % 360.0;
                 let x = (origin.0 as f64) + (r * t.to_radians().cos());
                 let y = (origin.1 as f64) + (r * t.to_radians().sin());
