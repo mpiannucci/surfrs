@@ -311,15 +311,6 @@ impl Spectra {
         })
     }
 
-    /// Bins the data into u8 bins
-    pub fn binned(&self, bin_count: u8) -> Vec<u8> {
-        let (min, max) = self.energy_range();
-        self.energy
-            .iter()
-            .map(|e| (((e - min) / (max - min)) * bin_count as f64) as u8)
-            .collect()
-    }
-
     /// Projects the energy data to cartesian coordinates
     pub fn project_cartesian(&self, size: usize) -> Vec<f64> {
         let directions = self.direction_deg();

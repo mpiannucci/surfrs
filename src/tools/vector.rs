@@ -27,9 +27,17 @@ pub fn diff<T>(data: &[T]) -> Vec<T> where T: std::ops::Sub<Output=T> + Copy {
 		.collect()
 }
 
+/// Converts a float iterable to an u8 vector for simple packing 
+pub fn bin(data: &[f64], min: &f64, max: &f64, bin_count: &u8) -> Vec<u8> {
+	data
+	.iter()
+	.map(|e| (((e - min) / (max - min)) * (*bin_count as f64)) as u8)
+	.collect()
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{argsort, argsort_partial, diff};
+    use super::{argsort, argsort_partial, diff, bin};
 
 	#[test]
 	fn test_argsort_int() {
@@ -67,6 +75,19 @@ mod tests {
 
 		for i in 0..diff_truth.len() {
 			assert_eq!(diff_truth[i], result[i]);
+		}
+	}
+
+	#[test]
+	fn test_bin() {
+		let test_data = vec![0.0, 0.0, 2.0, 3.0, 4.0, 5.0, 5.0, 5.0];
+		let binned_result = vec![0u8, 0, 102, 153, 204, 255, 255, 255];
+
+		let result = bin(&test_data, &0.0, &5.0, &255);
+		assert_eq!(result.len(), test_data.len());
+
+		for i in 0..binned_result.len() {
+			assert_eq!(binned_result[i], result[i]);
 		}
 	}
 }

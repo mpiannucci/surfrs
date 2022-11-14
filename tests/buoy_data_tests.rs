@@ -11,6 +11,7 @@ use surfrs::data::wave_data_record::{WaveDataRecordCollection};
 use surfrs::spectra;
 use surfrs::swell::{SwellProvider};
 use surfrs::tools::analysis::{watershed};
+use surfrs::tools::vector::bin;
 use surfrs::units::{UnitConvertible, Units};
 
 fn read_mock_data(name: &str) -> String {
@@ -129,7 +130,10 @@ fn read_wave_spectra_data() {
     }
 
     println!("buoy dirs: {:?}", &record.spectra.direction_deg());
-    println!("cartesian: {:?}", record.spectra.project_cartesian(100));
+    let cart_e = record.spectra.project_cartesian(100);
+    let (min_e, max_e) = record.spectra.energy_range();
+    let binned_cart_e = bin(&cart_e, &min_e, &max_e, &255);
+    println!("cartesian: {:?}", binned_cart_e);
 
     fs::write("contours2.json", &record.spectra.contoured().unwrap().to_string());
 }
