@@ -92,8 +92,8 @@ impl DirectionalSpectralWaveDataRecord {
             for (ith, angle) in directions.iter().enumerate() {
                 let i = ik + (ith * energy_spectra.frequency.len());
 
-                let first = (2.0 / 3.0) * first_polar_coefficient.value[ik] * (angle-mean_wave_direction.value[ik].to_radians()).cos();
-                let second = (1.0 / 6.0) * second_polar_coefficient.value[ik]*(2.0*(angle-primary_wave_direction.value[ik].to_radians())).cos();
+                let first = first_polar_coefficient.value[ik] * (angle-mean_wave_direction.value[ik].to_radians()).cos();
+                let second = second_polar_coefficient.value[ik]*(2.0*(angle-primary_wave_direction.value[ik].to_radians())).cos();
 
                 directional_spectra[i] = 
                     energy_spectra.value[ik] * 
