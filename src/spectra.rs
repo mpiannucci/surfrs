@@ -14,7 +14,7 @@ use crate::{
         vector::diff,
         waves::pt_mean,
     },
-    units::direction::DirectionConvention,
+    units::{direction::DirectionConvention, Direction},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -278,7 +278,7 @@ impl Spectra {
         depth: Option<f64>,
         wind_speed: Option<f64>,
         wind_direction: Option<f64>,
-    ) -> Result<crate::swell::SwellSummary, SwellProviderError> {
+    ) -> Result<(SwellSummary, Vec<Direction>), SwellProviderError> {
         let (imo, partition_count) = match watershed(
             &self.energy,
             self.frequency.len(),
@@ -291,7 +291,7 @@ impl Spectra {
             )),
         }?;
 
-        let (summary, components) = pt_mean(
+        let (summary, components, mean_directions) = pt_mean(
             partition_count,
             &imo,
             &self.frequency,
@@ -305,10 +305,10 @@ impl Spectra {
             &self.dir_convention,
         );
 
-        Ok(SwellSummary {
+        Ok((SwellSummary {
             summary,
             components,
-        })
+        }, mean_directions))
     }
 
     /// Projects the energy data to cartesian coordinates

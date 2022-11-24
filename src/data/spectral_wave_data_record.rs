@@ -5,7 +5,7 @@ use csv::Reader;
 use serde::{Deserialize, Serialize};
 
 use crate::spectra::Spectra;
-use crate::swell::{SwellProvider, SwellProviderError, SwellSummary};
+use crate::swell::{SwellProvider, SwellProviderError, SwellSummary, self};
 use crate::units::*;
 
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
@@ -116,20 +116,13 @@ impl DirectionalSpectralWaveDataRecord {
 
 impl SwellProvider for DirectionalSpectralWaveDataRecord {
     fn swell_data(&self) -> Result<SwellSummary, SwellProviderError> {
-        self.spectra.swell_data(
+        let (swell_summary, _) = self.spectra.swell_data(
             None, 
             None, 
             None,
-        )
-        // ?;
+        )?;
 
-        // swell_data.summary.direction.value.as_mut().unwrap().flip();
-        
-        // swell_data.components
-        //     .iter_mut()
-        //     .for_each(|s| s.direction.value.as_mut().unwrap().flip());
-
-        // Ok(swell_data)
+        Ok(swell_summary)
     }
 }
 

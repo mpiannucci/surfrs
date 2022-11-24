@@ -1,6 +1,10 @@
 use std::{f64::consts::PI, ops::Sub, vec};
 
-use crate::{swell::Swell, units::{Direction, direction::DirectionConvention}, units::Units};
+use crate::{
+    swell::Swell,
+    units::Units,
+    units::{direction::DirectionConvention, Direction},
+};
 
 const GRAVITY: f64 = 9.81;
 
@@ -185,12 +189,38 @@ pub fn steepness_coefficient(zero_moment: f64, second_moment: f64) -> f64 {
     (8.0 * PI * second_moment) / (9.81 * zero_moment.sqrt())
 }
 
-/// Calculate wavenumber and group velocity from the interpolation
-/// array filled by DISTAB from a given intrinsic frequency and the
-/// waterdepth.
-// pub fn wav_nu()
+/// Adjusted sin and cosine
+/// Ported from WW3 code: PTMEAN in w3partmd.f90
+pub fn edir(direction: &[f64]) -> (Vec<f64>, Vec<f64>) {
+    direction
+        .iter()
+        .map(|d| {
+            let mut ec = d.cos();
+            let mut es = d.sin();
+            if es.abs() < 1.0e-5 {
+                es = 0.0;
+                if ec > 0.5 {
+                    ec = 1.0;
+                } else {
+                    ec = -1.0;
+                }
+            }
 
-/// Calculates the Compute mean parameters per swell component given a discretized specrtral signal
+            if ec.abs() < 1.0e-5 {
+                ec = 0.0;
+                if es > 0.5 {
+                    es = 1.0;
+                } else {
+                    es = -1.0;
+                }
+            }
+
+            (ec, es)
+        })
+        .unzip()
+}
+
+/// Calculates the Compute mean parameters per swell component given a discretized spectral signal
 /// Ported from WW3 code: PTMEAN in w3partmd.f90
 pub fn pt_mean(
     num_partitions: usize,
@@ -204,7 +234,7 @@ pub fn pt_mean(
     wind_speed: Option<f64>,
     wind_direction: Option<f64>,
     source_direction_convention: &DirectionConvention,
-) -> (Swell, Vec<Swell>) {
+) -> (Swell, Vec<Swell>, Vec<Direction>) {
     const TPI: f64 = 2.0 * PI;
     let dera = 1.0f64.atan() / 45.0;
     const WSMULT: f64 = 1.7;
@@ -246,7 +276,10 @@ pub fn pt_mean(
     for ik in 1..dsii.len() - 1 {
         dsii[ik] = dsip[ik];
     }
-    dsii[frequency.len() - 1] = 0.5 * sig[frequency.len()] * ((frequency[frequency.len() - 1] / frequency[frequency.len() - 2])  - 1.) / (frequency[frequency.len() - 1] / frequency[frequency.len() - 2]);
+    dsii[frequency.len() - 1] = 0.5
+        * sig[frequency.len()]
+        * ((frequency[frequency.len() - 1] / frequency[frequency.len() - 2]) - 1.)
+        / (frequency[frequency.len() - 1] / frequency[frequency.len() - 2]);
 
     let fte = 0.25 * sig[frequency.len()] * dth[dth.len() - 1] * sig[frequency.len()];
 
@@ -269,7 +302,7 @@ pub fn pt_mean(
         .map(|th| {
             if let (Some(u_abs), Some(u_dir)) = (wind_speed, wind_direction) {
                 let upar = WSMULT * u_abs * 0.0f64.max((th - dera * u_dir).cos());
-                
+
                 if upar < c_nk {
                     sig[sig.len() - 1]
                 } else {
@@ -278,16 +311,16 @@ pub fn pt_mean(
                         if upar < c[ik] {
                             break;
                         }
-    
+
                         ik = Sub::sub(ik, 1);
                     }
-    
+
                     let mut rd = (c[ik] - upar) / (c[ik] - c[ik + 1]);
                     if rd < 0.0 {
                         ik = 0;
                         rd = 0.0f64.max(rd + 1.0);
                     }
-    
+
                     // sig starts at 1 and goes to freqcount + 1
                     rd * sig[ik + 2] + (1.0 - rd) * sig[ik + 1]
                 }
@@ -305,32 +338,7 @@ pub fn pt_mean(
     let mut sumfx = vec![vec![0.0; num_partitions + 1]; frequency.len()];
     let mut sumfy = vec![vec![0.0; num_partitions + 1]; frequency.len()];
 
-    let (ecos, esin): (Vec<f64>, Vec<f64>) = direction
-        .iter()
-        .map(|d| {
-            let mut ec = d.cos();
-            let mut es = d.sin();
-            if es.abs() < 1.0e-5 {
-                es = 0.0;
-                if ec > 0.5 {
-                    ec = 1.0;
-                } else {
-                    ec = -1.0;
-                }
-            }
-
-            if ec.abs() < 1.0e-5 {
-                ec = 0.0;
-                if es > 0.5 {
-                    es = 1.0;
-                } else {
-                    es = -1.0;
-                }
-            }
-
-            (ec, es)
-        })
-        .unzip();
+    let (ecos, esin): (Vec<f64>, Vec<f64>) = edir(direction);
 
     for ik in 0..frequency.len() {
         for ith in 0..direction.len() {
@@ -369,6 +377,8 @@ pub fn pt_mean(
     let mut efpmax = vec![0.0; num_partitions + 1];
     let mut ifpmax = vec![0; num_partitions + 1];
 
+    let fteii = fte / (dth[dth.len() - 1] * sig[frequency.len() + 1]);
+
     for ip in 0..num_partitions + 1 {
         for ik in 0..frequency.len() {
             sume[ip] += sumf[ik][ip] * dsii[ik];
@@ -387,7 +397,6 @@ pub fn pt_mean(
             }
         }
 
-        let fteii = fte / (dth[dth.len() - 1] * sig[frequency.len() + 1]);
         sume[ip] += sumf[frequency.len() - 1][ip] * fteii;
         sume1[ip] += sumf[frequency.len() - 1][ip] * sig[frequency.len()] * fteii * (0.3333 / 0.25);
         sume2[ip] +=
@@ -397,6 +406,22 @@ pub fn pt_mean(
         sumew[ip] += sumfw[frequency.len() - 1][ip] * fteii;
         sumex[ip] += sumfx[frequency.len() - 1][ip] * fteii;
         sumey[ip] += sumfy[frequency.len() - 1][ip] * fteii;
+    }
+
+    // Compute mean wave directions per frequency bin
+    let mut mean_frequency_directions = vec![Direction::from_degrees(0); frequency.len()];
+
+    for ik in 0..frequency.len() {
+        let sumexf = sumfx[ik][0] * dsii[ik] + sumfx[frequency.len() - 1][0] * fteii;
+        let sumeyf = sumfy[ik][0] * dsii[ik] + sumfy[frequency.len() - 1][0] * fteii;
+
+        let raw_mean_wave_direction = f64::atan2(sumeyf, sumexf).to_degrees();
+        let mean_wave_direction = match source_direction_convention {
+            DirectionConvention::Met => (270.0 - raw_mean_wave_direction) % 360.0,
+            DirectionConvention::From => (360.0 + raw_mean_wave_direction) % 360.0,
+            DirectionConvention::Towards => (180.0 + raw_mean_wave_direction) % 360.0,
+        };
+        mean_frequency_directions[ik] = Direction::from_degrees(mean_wave_direction as i32)
     }
 
     // Compute pars
@@ -457,5 +482,5 @@ pub fn pt_mean(
         components.sort_by(|sl, sr| sr.energy.partial_cmp(&sl.energy).unwrap());
     }
 
-    (summary, components)
+    (summary, components, mean_frequency_directions)
 }

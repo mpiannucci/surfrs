@@ -207,11 +207,13 @@ impl UnitConvertible<ForecastSpectralWaveDataRecord> for ForecastSpectralWaveDat
 
 impl SwellProvider for ForecastSpectralWaveDataRecord {
     fn swell_data(&self) -> Result<SwellSummary, crate::swell::SwellProviderError> {
-        self.spectra.swell_data(
+        let (swell_summary, _) = self.spectra.swell_data(
             self.depth.value, 
             self.wind_speed.value, 
             self.wind_direction.value.as_ref().map(|d| d.radian())
-        )
+        )?;
+
+        Ok(swell_summary)
     }
 }
 
