@@ -95,13 +95,17 @@ impl DirectionalSpectralWaveDataRecord {
                 let first = first_polar_coefficient.value[ik] * (angle-mean_wave_direction.value[ik].to_radians()).cos();
                 let second = second_polar_coefficient.value[ik]*(2.0*(angle-primary_wave_direction.value[ik].to_radians())).cos();
 
-                directional_spectra[i] = 
-                    energy_spectra.value[ik] * 
-                    (1.0/PI) * 
-                    (0.5
-                        + first
-                        + second
-                    );
+                let v =                     energy_spectra.value[ik] * 
+                (1.0/PI) * 
+                (0.5
+                    + first
+                    + second
+                );
+                directional_spectra[i] = if v >= 0.0 {
+                    v
+                } else {
+                    0.0
+                };
             }
         }
 
