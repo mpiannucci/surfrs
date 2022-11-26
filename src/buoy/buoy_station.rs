@@ -23,6 +23,23 @@ pub enum BuoyType {
     Other,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+#[serde(rename_all = "lowercase")]
+pub enum ModelDataSource {
+    NODD,
+    NOMADS,
+}
+
+impl ModelDataSource {
+    pub fn source_path(&self) -> &'static str {
+        match self {
+            ModelDataSource::NODD => "https://noaa-gfs-bdp-pds.s3.amazonaws.com", 
+            ModelDataSource::NOMADS => "https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod",
+        }
+        
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename = "station")]
 pub struct BuoyStation {
@@ -151,22 +168,44 @@ impl BuoyStation {
         )
     }
 
-    pub fn gfswave_bulletin_data_url(&self, date: DateTime<Utc>) -> String {
+    pub fn gfswave_bulletin_data_url(&self, source: &ModelDataSource, date: &DateTime<Utc>) -> String {
         let model_date = closest_model_datetime(date);
-        format!("https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod/gfs.{}{:02}{:02}/{:02}/wave/station/bulls.t{:02}z/gfswave.{}.cbull", 
-        model_date.year(), model_date.month(), model_date.day(), model_date.hour(), model_date.hour(), self.station_id)
+        format!(
+            "{}/gfs.{}{:02}{:02}/{:02}/wave/station/bulls.t{:02}z/gfswave.{}.cbull", 
+            source.source_path(),
+            model_date.year(), 
+            model_date.month(), 
+            model_date.day(), 
+            model_date.hour(), 
+            model_date.hour(), 
+            self.station_id
+        )
     }
 
-    pub fn gfswave_spectral_data_url(&self, date: DateTime<Utc>) -> String {
+    pub fn gfswave_spectral_data_url(&self, source: &ModelDataSource, date: &DateTime<Utc>) -> String {
         let model_date = closest_model_datetime(date);
-        format!("https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod/gfs.{}{:02}{:02}/{:02}/wave/station/bulls.t{:02}z/gfswave.{}.spec", 
-        model_date.year(), model_date.month(), model_date.day(), model_date.hour(), model_date.hour(), self.station_id)
+        format!(
+            "{}/gfs.{}{:02}{:02}/{:02}/wave/station/bulls.t{:02}z/gfswave.{}.spec", 
+            source.source_path(),
+            model_date.year(), 
+            model_date.month(), 
+            model_date.day(), 
+            model_date.hour(), 
+            model_date.hour(), 
+            self.station_id
+        )
     }
 
-    pub fn gfswave_lsl_url(&self, date: DateTime<Utc>) -> String {
+    pub fn gfswave_lsl_url(&self, source: &ModelDataSource, date: &DateTime<Utc>) -> String {
         let model_date = closest_model_datetime(date);
-        format!("https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod/gfs.{}{:02}{:02}/{:02}/wave/station/ls-l", 
-        model_date.year(), model_date.month(), model_date.day(), model_date.hour())
+        format!(
+            "{}/gfs.{}{:02}{:02}/{:02}/wave/station/ls-l", 
+            source.source_path(),
+            model_date.year(), 
+            model_date.month(), 
+            model_date.day(), 
+            model_date.hour()
+        )
     }
 }
 
