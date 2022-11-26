@@ -1,3 +1,3 @@
 mod buoy_station;
 
-pub use buoy_station::{BuoyStation, BuoyStations, BuoyType};
+pub use buoy_station::{BuoyStation, BuoyStations, BuoyType, ModelDataSource};
