@@ -1,20 +1,20 @@
-use std::{ops::Mul, f64::consts::PI};
+use std::{f64::consts::PI, ops::Mul};
 
 use contour::{Contour, ContourBuilder};
 use geojson::{Feature, FeatureCollection, GeoJson, Geometry, Value};
 use itertools::Itertools;
-use kdtree::{KdTree, distance::squared_euclidean};
+use kdtree::{distance::squared_euclidean, KdTree};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     swell::{SwellProviderError, SwellSummary},
     tools::{
-        analysis::{lerp, watershed, WatershedError, bilerp},
+        analysis::{bilerp, lerp, watershed, WatershedError},
         linspace::linspace,
         vector::diff,
         waves::pt_mean,
     },
-    units::direction::DirectionConvention,
+    units::{direction::DirectionConvention, Direction},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -70,7 +70,10 @@ impl Spectra {
 
     /// Direction bins normalized to DirectionContention::From in radians
     pub fn direction_rad(&self) -> Vec<f64> {
-        self.direction_deg().iter().map(|d| d.to_radians()).collect()
+        self.direction_deg()
+            .iter()
+            .map(|d| d.to_radians())
+            .collect()
     }
 
     /// Number of frequency bins
@@ -114,7 +117,7 @@ impl Spectra {
     }
 
     /// Interpolated direction for a given index
-    /// Used by the contour generator that does smoothing on its own 
+    /// Used by the contour generator that does smoothing on its own
     pub fn ith(&self, d_index: f64) -> f64 {
         let i_lower = d_index.floor();
         let i_upper = d_index.ceil();
@@ -136,11 +139,12 @@ impl Spectra {
 
     /// Interpolated frequency index bounds for a given frequency
     pub fn closest_k(&self, freq: f64) -> (usize, usize) {
-        let lower = self.frequency
+        let lower = self
+            .frequency
             .iter()
             .position(|f| f.le(&freq))
             .unwrap_or(self.frequency.len() - 1);
-        
+
         if lower == self.frequency.len() - 1 {
             (lower, lower)
         } else {
@@ -150,11 +154,8 @@ impl Spectra {
 
     /// Interpolated direection index bounds for a given direction
     pub fn closest_th(&self, dir: f64) -> (usize, usize) {
-        let lower = self.direction
-            .iter()
-            .position(|d| d.le(&dir))
-            .unwrap_or(0);
-        
+        let lower = self.direction.iter().position(|d| d.le(&dir)).unwrap_or(0);
+
         if lower == self.direction.len() - 1 {
             // Direction wraps around cuz its a circle
             (lower, 0)
@@ -165,11 +166,13 @@ impl Spectra {
 
     pub fn energy_indices(&self) -> Vec<(usize, usize)> {
         let nk = self.nk();
-        (0..self.energy.len()).map(|i| {
-            let ik = i % nk;
-            let ith = i / nk;
-            (ik, ith)
-        }).collect()
+        (0..self.energy.len())
+            .map(|i| {
+                let ik = i % nk;
+                let ith = i / nk;
+                (ik, ith)
+            })
+            .collect()
     }
 
     /// Get the energy for a given frequency and direction index
@@ -180,7 +183,6 @@ impl Spectra {
 
     /// Interpolated energy for an arbitrary frequency and direction combo
     pub fn interp_energy(&self, freq: f64, dir: f64) -> f64 {
-
         let (x1, x2) = self.closest_k(freq);
         let (y1, y2) = self.closest_th(dir);
 
@@ -245,6 +247,62 @@ impl Spectra {
                 oned
             }
         }
+    }
+
+    /// Calculate the given frequency moment i
+    pub fn mom_f(&self, mom_i: i32) -> Vec<f64> {
+        let nth = self.nth();
+        let nk = self.nk();
+        let dk = self.dk();
+
+        let mut moment = vec![0.0; nth];
+
+        for ik in 0..nk {
+            let fp = self.frequency[ik].powi(mom_i);
+            for ith in 0..nth {
+                moment[ith] += fp * self.energy_at(ik, ith) * dk[ik];
+            }
+        }
+
+        moment
+    }
+
+    /// Calculate the given directional moment i
+    pub fn mom_d(&self, mom_i: i32) -> Vec<(f64, f64)> {
+        let nk = self.nk();
+        let nth = self.nth();
+        let dth = self.dth();
+
+        let mut moment = vec![(0.0, 0.0); nk];
+
+        for ith in 0..nth {
+            let cs = self.direction[ith].cos().powi(mom_i);
+            let ss = self.direction[ith].sin().powi(mom_i);
+            for ik in 0..nk {
+                let mv = dth[ith] * self.energy_at(ik, ith);
+                moment[ik].0 += mv * ss;
+                moment[ik].1 += mv * cs;
+            }
+        }
+
+        moment
+    }
+
+    /// Calculate the mean wave direction for every frequency point
+    pub fn mean_wave_direction_f(&self) -> Vec<f64> {
+        let momd = self.mom_d(1);
+
+        momd
+            .iter()
+            .map(|(esin, ecos)| {
+                let dm = esin.atan2(*ecos).to_degrees();
+                match self.dir_convention {
+                    DirectionConvention::Met => (270.0 - dm) % 360.0,
+                    DirectionConvention::From => (360.0 + dm) % 360.0,
+                    DirectionConvention::Towards => (180.0 + dm) % 360.0,
+                }
+            })
+            .collect()
     }
 
     /// The value range of the energy data in the form of (min, max)
@@ -312,7 +370,12 @@ impl Spectra {
     }
 
     /// Projects the energy data to cartesian coordinates
-    pub fn project_cartesian(&self, size: usize, period_threshold: Option<f64>, exp_scale: Option<f64>) -> Vec<f64> {
+    pub fn project_cartesian(
+        &self,
+        size: usize,
+        period_threshold: Option<f64>,
+        exp_scale: Option<f64>,
+    ) -> Vec<f64> {
         let directions = self.direction_deg();
         let periods = self.period();
 
@@ -324,9 +387,9 @@ impl Spectra {
             .unwrap();
         let exp_scale = exp_scale.unwrap_or(1.0);
         let period_threshold = period_threshold.unwrap_or(*max_period);
-        let period_scale_threshold = period_threshold.powf(exp_scale); 
+        let period_scale_threshold = period_threshold.powf(exp_scale);
 
-        // Build the kdtree of the cartesian coordinates for all of the points that we have 
+        // Build the kdtree of the cartesian coordinates for all of the points that we have
         let mut kdtree = KdTree::new(2);
         self.energy_indices()
             .iter()
@@ -335,44 +398,42 @@ impl Spectra {
                 if periods[*ik] > period_threshold {
                     return;
                 }
-                
-                let r = ((size / 2) as f64) * (periods[*ik].powf(exp_scale) / period_scale_threshold);
+
+                let r =
+                    ((size / 2) as f64) * (periods[*ik].powf(exp_scale) / period_scale_threshold);
                 let t = (directions[*ith] + 270.0) % 360.0;
                 let x = (origin.0 as f64) + (r * t.to_radians().cos());
                 let y = (origin.1 as f64) + (r * t.to_radians().sin());
                 let p = [x, y];
-                let _  = kdtree.add(p, i);
+                let _ = kdtree.add(p, i);
             });
 
-        // Create a new image of the specified sizing, and map the pixels to the 
+        // Create a new image of the specified sizing, and map the pixels to the
         // energy data using the kdtree representation
         let mut cartesian = vec![0.0; size * size];
-        cartesian
-            .iter_mut()
-            .enumerate()
-            .for_each(|(i, ce)| {
-                let x = (i % size) as f64; 
-                let y = (i / size) as f64;
-                let p = [x, y];
+        cartesian.iter_mut().enumerate().for_each(|(i, ce)| {
+            let x = (i % size) as f64;
+            let y = (i / size) as f64;
+            let p = [x, y];
 
-                let r = y.atan2(x);
-                if r > size as f64 {
-                    *ce = f64::NAN;
-                    return;
-                }
+            let r = y.atan2(x);
+            if r > size as f64 {
+                *ce = f64::NAN;
+                return;
+            }
 
-                let Ok(nearest) = kdtree.nearest(&p, 1, &squared_euclidean) else {
+            let Ok(nearest) = kdtree.nearest(&p, 1, &squared_euclidean) else {
                     *ce = f64::NAN;
                     return;
                 };
 
-                let nearest_i = nearest[0].1;
-                let nearest_energy = self.energy[*nearest_i];
-                *ce = nearest_energy;
-            });
+            let nearest_i = nearest[0].1;
+            let nearest_energy = self.energy[*nearest_i];
+            *ce = nearest_energy;
+        });
 
         cartesian
-    } 
+    }
 
     /// Contours
     pub fn contoured(&self) -> Result<GeoJson, ContourError> {
