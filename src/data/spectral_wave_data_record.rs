@@ -124,7 +124,7 @@ impl SwellProvider for DirectionalSpectralWaveDataRecord {
             None, 
             None, 
             None,
-            Some(0.5),
+            None,
         )
         // ?;
 
