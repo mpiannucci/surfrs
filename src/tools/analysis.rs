@@ -1,9 +1,8 @@
 use std::{collections::VecDeque, f64};
 
-use crate::tools::{
-    linspace::linspace,
-    vector::{argsort},
-};
+use image::imageops;
+
+use crate::tools::{linspace::linspace, vector::argsort};
 
 /// Linearly interpolate between and b by fraction diff
 pub fn lerp(a: &f64, b: &f64, diff: &f64) -> f64 {
@@ -11,7 +10,7 @@ pub fn lerp(a: &f64, b: &f64, diff: &f64) -> f64 {
 }
 
 /// Bilinearly interpolate
-/// Where 
+/// Where
 ///     a = x0y0
 ///     b = x1y0
 ///     c = x0y2
@@ -197,6 +196,7 @@ pub fn watershed(
     width: usize,
     height: usize,
     steps: usize,
+    blur: Option<f32>,
 ) -> Result<(Vec<i32>, usize), WatershedError> {
     let count = width * height;
     if data.len() != count {
@@ -206,31 +206,33 @@ pub fn watershed(
     let min_value = data.iter().copied().fold(f64::INFINITY, f64::min);
     let max_value = data.iter().copied().fold(f64::NEG_INFINITY, f64::max);
 
-    // let dat = data.iter().map(|v| ((1.0 - (max_value - v) / range) * 255.0) as u8).collect();
-    // let im = image::GrayImage::from_raw(width as u32, height as u32, dat).unwrap();
-    // let blurred_im = imageops::blur(&im, 1.0);
-
-    // println!("blur: {:?}", blurred_im);
-
     // Scale the data
     let fact = (steps as f64 - 1.0) / (max_value - min_value);
 
     // Digitize the signal, mapping each energy value to a level from 0 to steps
-    // let imi = blurred_im
-    //     .as_raw()
-    //     .iter()
-    //     .map(|v| {
-    //         let scaled_v = min_value + ((*v as f64) / 255.0) * range;
-    //         1u8.max((steps as u8).min((1.0 + (max_value - scaled_v) * fact).round() as u8))
-    //     })
-    //     .collect::<Vec<u8>>();
+    // If a blur is specified, apply it 
+    let imi = if let Some(blur) = blur {
+        let range = max_value - min_value;
+        let dat = data
+            .iter()
+            .map(|v| ((1.0 - (max_value - v) / range) * 255.0) as u8)
+            .collect();
+        let im = image::GrayImage::from_raw(width as u32, height as u32, dat).unwrap();
+        let blurred_im = imageops::blur(&im, blur);
 
-    let imi = data
-        .iter()
-        .map(|v| {
-            1u8.max((steps as u8).min((1.0 + (max_value - v) * fact).round() as u8))
-        })
-        .collect::<Vec<u8>>();
+        blurred_im
+            .as_raw()
+            .iter()
+            .map(|v| {
+                let scaled_v = min_value + ((*v as f64) / 255.0) * range;
+                1u8.max((steps as u8).min((1.0 + (max_value - scaled_v) * fact).round() as u8))
+            })
+            .collect::<Vec<u8>>()
+    } else {
+        data.iter()
+            .map(|v| 1u8.max((steps as u8).min((1.0 + (max_value - v) * fact).round() as u8)))
+            .collect::<Vec<u8>>()
+    };
 
     // Sort the digitized data indices, so all levels are grouped in order
     let ind = argsort::<u8>(&imi);
@@ -603,7 +605,7 @@ mod tests {
         const HEIGHT: usize = 5;
         let data: [f64; WIDTH * HEIGHT] = rand::random();
 
-        let watershed_result = watershed(&data, WIDTH, HEIGHT, 50);
+        let watershed_result = watershed(&data, WIDTH, HEIGHT, 50, None);
         assert!(watershed_result.is_ok());
     }
 }

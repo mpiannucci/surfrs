@@ -321,12 +321,13 @@ impl Spectra {
     }
 
     /// Partition the energy data into discrete swell components
-    pub fn partition(&self, levels: usize) -> Result<(Vec<i32>, usize), WatershedError> {
+    pub fn partition(&self, levels: usize, blur: Option<f32>) -> Result<(Vec<i32>, usize), WatershedError> {
         watershed(
             &self.energy,
             self.frequency.len(),
             self.direction.len(),
             levels,
+            blur
         )
     }
 
@@ -336,12 +337,11 @@ impl Spectra {
         depth: Option<f64>,
         wind_speed: Option<f64>,
         wind_direction: Option<f64>,
+        blur: Option<f32>,
     ) -> Result<crate::swell::SwellSummary, SwellProviderError> {
-        let (imo, partition_count) = match watershed(
-            &self.energy,
-            self.frequency.len(),
-            self.direction.len(),
+        let (imo, partition_count) = match self.partition(
             100,
+            blur
         ) {
             Ok(result) => Ok(result),
             Err(_) => Err(SwellProviderError::InsufficientData(
