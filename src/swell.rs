@@ -126,4 +126,15 @@ impl SwellSummary {
 
         indexes
     }
+
+    /// Returns a filtered vector of components that has removed the probably false components
+    pub fn filtered_components(&self) -> Vec<Swell> {
+        let false_components = self.probable_false_components();
+        self.components
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| !false_components.contains(i))
+            .map(|(_, s)| s.clone())
+            .collect()
+    }
 }
