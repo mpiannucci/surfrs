@@ -113,9 +113,14 @@ impl SwellSummary {
                 continue;
             }
 
+            let truth_direction = self.components[i_components[0]].direction.value.as_ref().unwrap();
+
             // Assuming sorted from max to min energy already 
             for i in 1..i_components.len() {
-                indexes.push(i_components[i]);
+                let idx = i_components[i];
+                if truth_direction.is_opposite(self.components[idx].direction.value.as_ref().unwrap()) {
+                    indexes.push(idx);
+                }
             }
         }
 

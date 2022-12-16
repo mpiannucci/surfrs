@@ -73,6 +73,11 @@ impl Direction {
     pub fn invert(&self) -> Direction {
         Direction::from_degrees((self.degrees + 180) % 360)
     }
+
+    pub fn is_opposite(&self, other: &Direction) -> bool {
+        let diff = (self.degrees - other.degrees).abs();
+        diff >= 170 && diff <= 190
+    }
 }
 
 impl fmt::Display for Direction {
