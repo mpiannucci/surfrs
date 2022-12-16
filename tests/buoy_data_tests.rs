@@ -113,7 +113,9 @@ fn read_wave_spectra_data() {
     assert!(swell_data.is_ok());
     // assert_eq!(out, control);
 
-    let swell_data = record.swell_data().unwrap();
+    let mut swell_data = record.swell_data().unwrap();
+
+    let false_components = swell_data.probable_false_components();
 
     let swell_components = swell_data
         .components
@@ -124,10 +126,11 @@ fn read_wave_spectra_data() {
     // let control = "0.7 m @ 4.5 s 168° sse, 0.6 m @ 12.5 s 120° ese, 0.6 m @ 10.5 s 112° ese, 0.5 m @ 3.8 s 160° sse";
     // let out = swell_components.join(", ");
 
-    for mut component in swell_data.components {
+    swell_data.components.iter_mut().enumerate().for_each(|(i, component)| {
+        let is_false_positive = false_components.contains(&i);
         component.to_units(&Units::English);
-        println!("BUOY -- {} {}", component.clone(), component.energy.unwrap());
-    }
+        println!("BUOY -- {} {} {}", &component, component.energy.clone().unwrap(), !is_false_positive);
+    });
 
     println!("buoy dirs: {:?}", &record.spectra.direction_deg());
     let cart_e = record.spectra.project_cartesian(50, Some(25.0), None);
