@@ -208,7 +208,7 @@ pub fn pt_mean(
     const TPI: f64 = 2.0 * PI;
     let dera = 1.0f64.atan() / 45.0;
     const WSMULT: f64 = 1.7;
-
+    
     let sig = (0..frequency.len() + 2)
         .map(|ik| {
             if ik == 0 {

@@ -27,6 +27,20 @@ pub fn diff<T>(data: &[T]) -> Vec<T> where T: std::ops::Sub<Output=T> + Copy {
 		.collect()
 }
 
+/// Returns the difference between the arrays n and n+1 items in a new vector with absolute value applied
+pub fn diff_abs(data: &[f64]) -> Vec<f64> {
+	let last = data.len() - 1;
+
+	(0..last + 1)
+		.map(|i| {
+			match i {
+				0 => (data[1] - data[0]).abs(),
+				_ => (data[i] - data[i - 1]).abs(),
+			}
+		})
+		.collect()
+}
+
 /// Converts a float iterable to an u8 vector for simple packing 
 pub fn bin(data: &[f64], min: &f64, max: &f64, bin_count: &u8) -> Vec<u8> {
 	data
@@ -93,14 +107,14 @@ mod tests {
 		let test_data = vec![0.0, 0.0, 2.0, 3.0, 4.0, 5.0, 5.0, 5.0];
 		let binned_result = vec![0u8, 0, 102, 153, 204, 255, 255, 255];
 
-		let result = bin(&test_data, &0.0, &5.0, &255);
+		let result = bin(&test_data, &-0.0, &5.0, &255);
 		assert_eq!(result.len(), test_data.len());
 
 		for i in 0..binned_result.len() {
 			assert_eq!(binned_result[i], result[i]);
 		}
 
-		let unbinned_result = unbin(&result, &0.0, &5.0, &255);
+		let unbinned_result = unbin(&result, &-0.0, &5.0, &255);
 		for i in 0..unbinned_result.len() {
 			assert!((unbinned_result[i] - test_data[i]).abs() < 0.00001);
 		}

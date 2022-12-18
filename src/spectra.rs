@@ -1,8 +1,5 @@
-use std::{f64::consts::PI, ops::Mul};
-
 use contour::{Contour, ContourBuilder};
 use geojson::{Feature, FeatureCollection, GeoJson, Geometry, Value};
-use itertools::Itertools;
 use kdtree::{distance::squared_euclidean, KdTree};
 use serde::{Deserialize, Serialize};
 
@@ -11,10 +8,10 @@ use crate::{
     tools::{
         analysis::{bilerp, lerp, watershed, WatershedError},
         linspace::linspace,
-        vector::diff,
+        vector::{diff},
         waves::pt_mean,
     },
-    units::{direction::DirectionConvention, Direction},
+    units::{direction::DirectionConvention},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -74,6 +71,11 @@ impl Spectra {
             .iter()
             .map(|d| d.to_radians())
             .collect()
+    }
+
+    /// The raw direction bins in radians
+    pub fn direction_raw(&self) -> Vec<f64> {
+        self.direction.clone()
     }
 
     /// Number of frequency bins
