@@ -31,12 +31,22 @@ pub fn diff<T>(data: &[T]) -> Vec<T> where T: std::ops::Sub<Output=T> + Copy {
 pub fn bin(data: &[f64], min: &f64, max: &f64, bin_count: &u8) -> Vec<u8> {
 	data
 	.iter()
-	.map(|e| (((e - min) / (max - min)) * (*bin_count as f64)) as u8)
+	.map(|v| (((v - min) / (max - min)) * (*bin_count as f64)) as u8)
+	.collect()
+}
+
+/// Converts a u8 iterable to an float vector from simple packing 
+pub fn unbin(data: &[u8], min: &f64, max: &f64, bin_count: &u8) -> Vec<f64> {
+	data
+	.iter()
+	.map(|v| min + (((*v as f64) / (*bin_count as f64)) * (max - min)))
 	.collect()
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::tools::vector::unbin;
+
     use super::{argsort, argsort_partial, diff, bin};
 
 	#[test]
@@ -88,6 +98,11 @@ mod tests {
 
 		for i in 0..binned_result.len() {
 			assert_eq!(binned_result[i], result[i]);
+		}
+
+		let unbinned_result = unbin(&result, &0.0, &5.0, &255);
+		for i in 0..unbinned_result.len() {
+			assert!((unbinned_result[i] - test_data[i]).abs() < 0.00001);
 		}
 	}
 }
