@@ -56,8 +56,8 @@ impl Units {
             (Units::Kelvin, Measurement::Temperature, true) => "K",
             (Units::Kelvin, Measurement::Temperature, false) => "kelvin",
 
-            (_, Measurement::WaveEnergy, true) => "m^2Hz", 
-            (_, Measurement::WaveEnergy, false) => "meters squared hertz",
+            (_, Measurement::WaveEnergy, true) => "m²/Hz", 
+            (_, Measurement::WaveEnergy, false) => "meters squared per hertz",
             (_, Measurement::Visibility, true) => "nmi",
             (_, Measurement::Visibility, false) => "nautical miles",
             (_, Measurement::Time, true) => "s",
