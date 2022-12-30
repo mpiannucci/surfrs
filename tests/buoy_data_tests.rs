@@ -26,7 +26,7 @@ fn read_latest_obs_data() {
     
     // assert_eq!(data_records.count(), 865);
 
-    let nantucket = data_records.find(|s| s.station_id == "44008");
+    let nantucket = data_records.find(|s| s.station_id == "44097");
     assert!(nantucket.is_some());
 
     let nantucket = nantucket.unwrap();

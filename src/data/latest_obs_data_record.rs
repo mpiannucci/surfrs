@@ -42,6 +42,7 @@ impl LatestObsDataRecord {
     }
 }
 
+// #STN     LAT      LON  YYYY MM DD hh mm WDIR WSPD   GST WVHT  DPD APD MWD   PRES  PTDY  ATMP  WTMP  DEWP  VIS   TIDE
 impl ParseableDataRecord for LatestObsDataRecord {
     type Metadata = ();
 
@@ -113,34 +114,34 @@ impl ParseableDataRecord for LatestObsDataRecord {
                 Measurement::Pressure,
                 Units::Metric,
             ),
-            air_temperature: DimensionalData::from_raw_data(
+            air_pressure_tendency: DimensionalData::from_raw_data(
                 row[16],
+                "air pressure tendency".into(),
+                Measurement::Pressure,
+                Units::Metric,
+            ),
+            air_temperature: DimensionalData::from_raw_data(
+                row[17],
                 "air temperature".into(),
                 Measurement::Temperature,
                 Units::Metric,
             ),
             water_temperature: DimensionalData::from_raw_data(
-                row[17],
+                row[18],
                 "water temperature".into(),
                 Measurement::Temperature,
                 Units::Metric,
             ),
             dewpoint_temperature: DimensionalData::from_raw_data(
-                row[18],
+                row[19],
                 "dewpoint temperature".into(),
                 Measurement::Temperature,
                 Units::Metric,
             ),
             visibility: DimensionalData::from_raw_data(
-                row[19],
+                row[20],
                 "".into(),
                 Measurement::Visibility,
-                Units::Metric,
-            ),
-            air_pressure_tendency: DimensionalData::from_raw_data(
-                row[20],
-                "air pressure tendency".into(),
-                Measurement::Pressure,
                 Units::Metric,
             ),
             tide: DimensionalData::from_raw_data(
@@ -280,15 +281,16 @@ mod tests {
 
     #[test]
     fn test_latest_obs_row_parse() {
-        let raw_data = "44097  40.967  -71.126 2022 06 23 20 56  MM    MM    MM  1.3   7  5.0 153     MM    MM    MM  17.5    MM   MM     MM";
+        let raw_data = "44097  40.967  -71.124 2022 12 30 01 26  MM    MM    MM  1.7   6  4.9 212     MM    MM    MM  10.3    MM   MM     MM";
         let data_row: Vec<&str> = raw_data.split_whitespace().collect();
 
         let met_data = LatestObsDataRecord::from_data_row(None, &data_row).unwrap();
 
         assert_eq!(met_data.date.year(), 2022);
         assert_eq!(met_data.station_id, "44097");
-        assert_eq!(met_data.wave_height.value.unwrap(), 1.3);
-        assert_eq!(met_data.mean_wave_direction.value.unwrap().degrees, 153);
+        assert_eq!(met_data.wave_height.value.unwrap(), 1.7);
+        assert_eq!(met_data.mean_wave_direction.value.unwrap().degrees, 212);
+        assert_eq!(met_data.water_temperature.value.unwrap(), 10.3);
         assert!(met_data.tide.value.is_none());
     }
 }
