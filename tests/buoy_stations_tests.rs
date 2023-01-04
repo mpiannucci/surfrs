@@ -28,7 +28,7 @@ fn read_stations_xml() {
     let buoy_stations: BuoyStations = BuoyStations::from_raw_data(raw_station_data.as_ref());
     assert_eq!(
         buoy_stations.station_count,
-        buoy_stations.stations.len() as i64 - 1
+        buoy_stations.stations.len() - 1
     );
 
     let bi_station_res = buoy_stations.find_station("44097");
@@ -61,7 +61,7 @@ fn read_stations_latest_observations() {
     let buoy_stations: BuoyStations = BuoyStations::from_raw_data(raw_station_data.as_ref());
     assert_eq!(
         buoy_stations.station_count,
-        buoy_stations.stations.len() as i64 - 1
+        buoy_stations.stations.len() - 1
     );
 
     let raw_data = read_mock_data("latest_obs.txt");

@@ -4,3 +4,4 @@ pub mod linspace;
 pub mod math;
 pub mod waves;
 pub mod vector;
+pub mod serde;

@@ -270,7 +270,7 @@ pub struct BuoyStations {
     pub stations: Vec<BuoyStation>,
 
     #[serde(rename = "count")]
-    pub station_count: i64,
+    pub station_count: usize,
 }
 
 impl BuoyStations {

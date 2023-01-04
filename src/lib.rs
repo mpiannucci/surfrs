@@ -6,5 +6,6 @@ pub mod solar;
 pub mod spectra;
 pub mod station;
 pub mod swell;
+pub mod tide;
 pub mod tools;
 pub mod units;
