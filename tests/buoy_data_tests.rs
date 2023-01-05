@@ -8,9 +8,7 @@ use surfrs::data::latest_obs_data_record::LatestObsDataRecordCollection;
 use surfrs::data::meteorological_data_record::MeteorologicalDataRecordCollection;
 use surfrs::data::spectral_wave_data_record::{SpectralWaveDataRecordCollection, DirectionalSpectralWaveDataRecord};
 use surfrs::data::wave_data_record::{WaveDataRecordCollection};
-use surfrs::spectra;
 use surfrs::swell::{SwellProvider};
-use surfrs::tools::analysis::{watershed};
 use surfrs::tools::vector::bin;
 use surfrs::units::{UnitConvertible, Units};
 

@@ -1,10 +1,9 @@
 
-
-// https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=20230102%2021:10&end_date=20230110%2021:10&station=8454658&product=predictions&datum=MTL&interval=&units=english&time_zone=gmt&application=web_services&format=json
-
 use chrono::prelude::*;
 use serde::{Serialize, Deserialize, de, Deserializer};
 use serde_json::Value;
+
+// https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=20230102%2021:10&end_date=20230110%2021:10&station=8454658&product=predictions&datum=MTL&interval=&units=english&time_zone=gmt&application=web_services&format=json
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum TidalEvent {
@@ -41,10 +40,20 @@ fn tidal_value_f64<'de, D: Deserializer<'de>>(deserializer: D) -> Result<f64, D:
     })
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TidalDataRecordCollection {
+    #[serde(rename = "predictions")]
+    pub records: Vec<TidalDataRecord>,
+}
+
+impl TidalDataRecordCollection {
+    pub fn from_json(data: &str) -> Result<Self, serde_json::Error> {
+        serde_json::from_str(data)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use std::default;
-
     use chrono::Datelike;
     use chrono::Timelike;
 
