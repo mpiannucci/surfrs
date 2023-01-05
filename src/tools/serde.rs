@@ -25,13 +25,6 @@ impl<'de> Visitor<'de> for F64Visitor {
         Ok(v.into())
     }
 
-    fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        v.parse::<f64>().map_err(serde::de::Error::custom)
-    }
-
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
