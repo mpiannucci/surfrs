@@ -32,12 +32,15 @@ impl ParseableDataRecord for WaveDataRecord {
         row: &Vec<&str>,
     ) -> Result<WaveDataRecord, DataRecordParsingError> {
         let date = Utc
-            .ymd(
+            .with_ymd_and_hms(
                 row[0].parse().unwrap(),
                 row[1].parse().unwrap(),
                 row[2].parse().unwrap(),
+                row[3].parse().unwrap(),
+                row[4].parse().unwrap(),
+                0,
             )
-            .and_hms(row[3].parse().unwrap(), row[4].parse().unwrap(), 0);
+            .unwrap();
 
         Ok(WaveDataRecord {
             date,
@@ -192,7 +195,8 @@ mod tests {
                 .swell_wave_direction
                 .value
                 .unwrap_or(Direction::from_degrees(270))
-                .cardinal_direction().clone(),
+                .cardinal_direction()
+                .clone(),
             CardinalDirection::East
         );
         assert_eq!(
@@ -200,7 +204,8 @@ mod tests {
                 .wind_wave_direction
                 .value
                 .unwrap_or(Direction::from_degrees(270))
-                .cardinal_direction().clone(),
+                .cardinal_direction()
+                .clone(),
             CardinalDirection::East
         );
         assert!((wave_data.wave_height.value.unwrap_or(0.0) - 2.0).abs() < 0.0001);

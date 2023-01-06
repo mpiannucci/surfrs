@@ -91,7 +91,7 @@ fn read_wave_spectra_data() {
     let dir_step = (2.0 * PI) / dir_count as f64;
     let directions = (0..dir_count).map(|i| dir_step * (i as f64)).collect::<Vec<f64>>();
 
-    let mut records = itertools::izip!(
+    let records = itertools::izip!(
         energy_data_collection.records(), 
         mean_wave_direction_data_collection.records(), 
         primary_wave_direction_data_collection.records(), 
@@ -115,7 +115,7 @@ fn read_wave_spectra_data() {
 
     let false_components = swell_data.probable_false_components();
 
-    let swell_components = swell_data
+    let _swell_components = swell_data
         .components
         .iter()
         .map(|s| s.to_string())
@@ -138,7 +138,7 @@ fn read_wave_spectra_data() {
 
     println!("buoy mwd:: {:?}", &record.spectra.mean_wave_direction_f());
 
-    fs::write("contours2.json", &record.spectra.contoured().unwrap().to_string());
+    let _ = fs::write("contours2.json", &record.spectra.contoured().unwrap().to_string());
 }
 
 #[test]
@@ -162,7 +162,7 @@ fn read_spectral_forecast_station_data() {
     let spectral_records_iter = data_collection.records();
     assert!(spectral_records_iter.is_ok());
 
-    let mut spectral_records = spectral_records_iter.unwrap().1;
+    let spectral_records = spectral_records_iter.unwrap().1;
     let record = spectral_records.skip(6).next().unwrap();
     println!("++++++++");
     println!("FORECAST -- {}", record.date);
@@ -175,7 +175,7 @@ fn read_spectral_forecast_station_data() {
 
     let swell_data = record.swell_data().unwrap();
 
-    let swell_components = swell_data
+    let _swell_components = swell_data
         .components
         .iter()
         .map(|s| s.to_string())
@@ -194,5 +194,5 @@ fn read_spectral_forecast_station_data() {
 
     println!("forecast mwd:: {:?}", &record.spectra.mean_wave_direction_f());
 
-    fs::write("contours.json", &record.spectra.contoured().unwrap().to_string());
+    let _ = fs::write("contours.json", &record.spectra.contoured().unwrap().to_string());
 }

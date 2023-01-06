@@ -48,13 +48,15 @@ impl ParseableDataRecord for SpectralWaveDataRecord {
         };
 
         let date = Utc
-            .ymd(
+            .with_ymd_and_hms(
                 row[0].parse().unwrap(),
                 row[1].parse().unwrap(),
                 row[2].parse().unwrap(),
+                row[3].parse().unwrap(),
+                row[4].parse().unwrap(),
+                0,
             )
-            .and_hms(row[3].parse().unwrap(), row[4].parse().unwrap(), 0);
-
+            .unwrap();
 
         Ok(SpectralWaveDataRecord {
             date,
@@ -92,24 +94,22 @@ impl DirectionalSpectralWaveDataRecord {
             for (ith, angle) in directions.iter().enumerate() {
                 let i = ik + (ith * energy_spectra.frequency.len());
 
-                let first = first_polar_coefficient.value[ik] * (angle-mean_wave_direction.value[ik].to_radians()).cos();
-                let second = second_polar_coefficient.value[ik]*(2.0*(angle-primary_wave_direction.value[ik].to_radians())).cos();
+                let first = first_polar_coefficient.value[ik]
+                    * (angle - mean_wave_direction.value[ik].to_radians()).cos();
+                let second = second_polar_coefficient.value[ik]
+                    * (2.0 * (angle - primary_wave_direction.value[ik].to_radians())).cos();
 
-                let v =                     energy_spectra.value[ik] * 
-                (1.0/PI) * 
-                (0.5
-                    + first
-                    + second
-                );
-                directional_spectra[i] = if v >= 0.0 {
-                    v
-                } else {
-                    0.0
-                };
+                let v = energy_spectra.value[ik] * (1.0 / PI) * (0.5 + first + second);
+                directional_spectra[i] = if v >= 0.0 { v } else { 0.0 };
             }
         }
 
-        let spectra = Spectra::new(energy_spectra.frequency.clone(), directions.to_vec(), directional_spectra, direction::DirectionConvention::From);
+        let spectra = Spectra::new(
+            energy_spectra.frequency.clone(),
+            directions.to_vec(),
+            directional_spectra,
+            direction::DirectionConvention::From,
+        );
 
         DirectionalSpectralWaveDataRecord {
             date: energy_spectra.date.clone(),
@@ -120,16 +120,11 @@ impl DirectionalSpectralWaveDataRecord {
 
 impl SwellProvider for DirectionalSpectralWaveDataRecord {
     fn swell_data(&self) -> Result<SwellSummary, SwellProviderError> {
-        self.spectra.swell_data(
-            None, 
-            None, 
-            None,
-            Some(0.8),
-        )
+        self.spectra.swell_data(None, None, None, Some(0.8))
         // ?;
 
         // swell_data.summary.direction.value.as_mut().unwrap().flip();
-        
+
         // swell_data.components
         //     .iter_mut()
         //     .for_each(|s| s.direction.value.as_mut().unwrap().flip());

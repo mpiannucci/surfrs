@@ -263,7 +263,7 @@ impl<'a> ForecastSpectralWaveRecordIterator<'a> {
             DataRecordParsingError::ParseFailure(format!("Failed to parse minute: {}", e))
         })?;
 
-        let date = Utc.ymd(year, month, day).and_hms(hour, minute, 0);
+        let date = Utc.with_ymd_and_hms(year, month, day, hour, minute, 0).unwrap();
 
         let line = self.lines.next().ok_or(DataRecordParsingError::EOF)?;
 

@@ -6,7 +6,7 @@ use geojson::{Feature, FeatureCollection};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    buoy::{BuoyStation, BuoyStations},
+    buoy_station::{BuoyStation},
     dimensional_data::DimensionalData,
     swell::{Swell, SwellProvider, SwellSummary},
     units::{Direction, Measurement, UnitConvertible, Units},
@@ -54,12 +54,14 @@ impl ParseableDataRecord for LatestObsDataRecord {
         let latitude = row[1].parse().unwrap();
         let longitude = row[2].parse().unwrap();
         let date = Utc
-            .ymd(
-                row[3].parse().unwrap(),
-                row[4].parse().unwrap(),
-                row[5].parse().unwrap(),
-            )
-            .and_hms(row[6].parse().unwrap(), row[7].parse().unwrap(), 0);
+            .with_ymd_and_hms(
+                row[3].parse().unwrap(), 
+                row[4].parse().unwrap(), 
+                row[5].parse().unwrap(), 
+                row[6].parse().unwrap(), 
+                row[7].parse().unwrap(),
+                0
+            ).unwrap();
 
         Ok(LatestObsDataRecord {
             station_id,

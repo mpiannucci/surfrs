@@ -1,6 +1,6 @@
 use std::{path::Path, fs::File, io::Read};
 
-use surfrs::tide::tide_station::TideStations;
+use surfrs::tide_station::TideStations;
 
 extern crate surfrs;
 

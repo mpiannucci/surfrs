@@ -198,7 +198,7 @@ pub fn pt_mean(
     frequency: &[f64],
     direction: &[f64],
     energy: &[f64],
-    dk: &[f64],
+    _dk: &[f64],
     dth: &[f64],
     depth: Option<f64>,
     wind_speed: Option<f64>,

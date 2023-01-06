@@ -1,4 +1,4 @@
-use contour::{Contour, ContourBuilder};
+use contour::{ContourBuilder};
 use geojson::{Feature, FeatureCollection, GeoJson, Geometry, Value};
 use kdtree::{distance::squared_euclidean, KdTree};
 use serde::{Deserialize, Serialize};
@@ -441,7 +441,7 @@ impl Spectra {
     pub fn contoured(&self) -> Result<GeoJson, ContourError> {
         let c = ContourBuilder::new(self.nk() as u32, self.nth() as u32, true);
 
-        let (min, max) = self.energy_range();
+        let (_min, max) = self.energy_range();
         let t = linspace(0.10, max, 10).collect::<Vec<f64>>();
 
         let contours = c

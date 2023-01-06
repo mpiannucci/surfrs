@@ -1,6 +1,6 @@
 extern crate surfrs;
 
-use surfrs::buoy::BuoyStations;
+use surfrs::buoy_station::BuoyStations;
 use surfrs::data::latest_obs_data_record::{LatestObsDataRecordCollection, latest_obs_feature_collection};
 use surfrs::station::Station;
 use std::fs::{File, self};

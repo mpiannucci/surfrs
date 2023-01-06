@@ -104,7 +104,8 @@ impl FromStr for ForecastCBulletinWaveRecordMetadata {
                     })?;
                 let minute = 0;
 
-                Ok(Utc.ymd(year, month, day).and_hms(hour, minute, 0))
+                let d = Utc.with_ymd_and_hms(year, month, day, hour, minute, 0).unwrap();
+                Ok(d)
             }
             None => Err(DataRecordParsingError::ParseFailure(
                 "Failed to capture model run date from regex".into(),
@@ -144,7 +145,7 @@ impl ParseableDataRecord for ForecastCBulletinWaveRecord {
         })?;
 
         let model_date = match metadata {
-            Some(m) => Ok(m.model_run_date.date()), 
+            Some(m) => Ok(m.model_run_date.date_naive()), 
             None => Err(DataRecordParsingError::InvalidData),
         }?;
 
@@ -154,7 +155,7 @@ impl ParseableDataRecord for ForecastCBulletinWaveRecord {
             model_date.month()
         };
 
-        let date = Utc.ymd(model_date.year(), month, day).and_hms(hour, 0, 0);
+        let date = Utc.with_ymd_and_hms(model_date.year(), month, day, hour, 0, 0).unwrap();
 
         let significant_wave_height = DimensionalData::from_raw_data(
             row[1],
@@ -340,7 +341,7 @@ mod tests {
     fn test_wave_cbulletin_row_parse() {
         let metadata = ForecastCBulletinWaveRecordMetadata {
             location: Location::new(40.98, -71.12, "".into()),
-            model_run_date: Utc.ymd(2020, 5, 19).and_hms(18, 0, 0),
+            model_run_date: Utc.with_ymd_and_hms(2020, 05, 19, 18, 0, 0).unwrap()
         };
 
         let row = "0118  3  2 04 142  2 07 163                                        ";

@@ -1,4 +1,4 @@
-use chrono::{Date, DateTime, Datelike, NaiveDateTime, Utc};
+use chrono::{DateTime, Datelike, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::location::Location;
@@ -11,7 +11,7 @@ pub struct SolarEvents {
 
 pub fn calculate_solar_events(
     location: &Location,
-    date: &Date<Utc>,
+    date: &DateTime<Utc>,
 ) -> SolarEvents {
     let (sunrise, sunset) = sunrise::sunrise_sunset(
         location.absolute_latitude(),
@@ -21,8 +21,8 @@ pub fn calculate_solar_events(
         date.day(),
     );
 
-    let naive_sunrise = NaiveDateTime::from_timestamp(sunrise, 0);
-    let naive_sunset = NaiveDateTime::from_timestamp(sunset, 0);
+    let naive_sunrise = NaiveDateTime::from_timestamp_opt(sunrise, 0).unwrap();
+    let naive_sunset = NaiveDateTime::from_timestamp_opt(sunset, 0).unwrap();
 
     SolarEvents{
         sunrise: DateTime::<Utc>::from_utc(naive_sunrise, Utc),
@@ -32,7 +32,7 @@ pub fn calculate_solar_events(
 
 #[cfg(test)]
 mod tests {
-    use chrono::{Date, NaiveDate, Utc};
+    use chrono::{NaiveDate, Utc, DateTime};
 
     use crate::location::Location;
 
@@ -41,8 +41,8 @@ mod tests {
     #[test]
     fn test_solar_events() {
         let location = Location::new(41.6, -71.5, "Narragansett Pier".into());
-        let date = Date::<Utc>::from_utc(NaiveDate::from_ymd(2022, 07, 15), Utc);
+        let date = DateTime::<Utc>::from_utc(NaiveDate::from_ymd_opt(2022, 07, 15).unwrap().and_hms_opt(0, 0, 0).unwrap(), Utc);
 
-        let sunrise_sunset = calculate_solar_events(&location, &date);
+        let _ = calculate_solar_events(&location, &date);
     }
 }

@@ -40,8 +40,14 @@ impl ParseableDataRecord for MeteorologicalDataRecord {
         row: &Vec<&str>,
     ) -> Result<MeteorologicalDataRecord, DataRecordParsingError> {
         let date = Utc
-            .ymd(row[0].parse().unwrap(), row[1].parse().unwrap(), row[2].parse().unwrap())
-            .and_hms(row[3].parse().unwrap(), row[4].parse().unwrap(), 0);
+        .with_ymd_and_hms(
+            row[0].parse().unwrap(), 
+            row[1].parse().unwrap(), 
+            row[2].parse().unwrap(), 
+            row[3].parse().unwrap(), 
+            row[4].parse().unwrap(), 
+            0
+        ).unwrap();
 
         Ok(MeteorologicalDataRecord {
             date,
