@@ -1,10 +1,13 @@
 use std::collections::HashSet;
 
 use chrono::{DateTime, Datelike, Timelike, Utc};
-use gribberish::{message::Message};
+use gribberish::message::Message;
 use serde::{Deserialize, Serialize};
 
-use crate::{tools::date::closest_gfs_model_datetime, location::{Location, normalize_longitude, normalize_latitude}};
+use crate::{
+    location::{normalize_latitude, normalize_longitude, Location},
+    tools::date::closest_gfs_model_datetime,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "lowercase")]
@@ -65,14 +68,14 @@ pub trait NOAAModel {
         let lng_step = (bbox.2 - bbox.0).abs() / lng_size as f64;
         let lat_step = (bbox.3 - bbox.1).abs() / lat_size as f64;
 
-        let lng_index = location.relative_longitude() - normalize_longitude(bbox.0) / lng_step;
-        let lat_index = location.relative_latitude() - normalize_latitude(bbox.0) / lat_step;
+        let lng_index = (location.relative_longitude() - normalize_longitude(bbox.0)) / lng_step;
+        let lat_index = (location.relative_latitude() - normalize_latitude(bbox.1)) / lat_step;
 
         let floored_lng = lng_index.floor() as usize;
         let ceiled_lng = lng_index.ceil() as usize;
         let floored_lat = lat_index.floor() as usize;
         let ceiled_lat = lat_index.ceil() as usize;
-
+        
         let mut indexes = HashSet::new();
         indexes.insert(floored_lng + (floored_lat * lng_size));
         indexes.insert(ceiled_lng + (floored_lat * lng_size));
@@ -83,62 +86,64 @@ pub trait NOAAModel {
         let data = message.data()?;
 
         // TODO: THis is just simple average, should do real interpolation eventually
-        let sum = indexes.iter().fold(0.0, |acc, i| acc + data[*i]);
+        let sum = indexes.iter().fold(0.0, |acc, i| {
+            acc + data[*i]
+        });
         let value = sum / avg_count as f64;
 
         Ok(value)
     }
 }
 
-pub struct GFSWave {
-    id: &'static str, 
+pub struct GFSWaveModel {
+    id: &'static str,
     name: &'static str,
     description: &'static str,
 }
 
-impl GFSWave {
+impl GFSWaveModel {
     pub fn atlantic() -> Self {
-        GFSWave { 
-            id: "atlocn.0p16", 
-            name: "GFS Wave Atlantic", 
+        GFSWaveModel {
+            id: "atlocn.0p16",
+            name: "GFS Wave Atlantic",
             description: "GFS Wave Model: Atlantic 0.16 degree",
         }
     }
 
     pub fn west_coast() -> Self {
-        GFSWave { 
-            id: "wcoast.0p16", 
-            name: "GFS Wave West Coast US", 
+        GFSWaveModel {
+            id: "wcoast.0p16",
+            name: "GFS Wave West Coast US",
             description: "GFS Wave Model: US West Coast 0.16 degree",
         }
     }
 
     pub fn east_pacific() -> Self {
-        GFSWave { 
-            id: "epacif.0p16", 
-            name: "GFS Wave East Pacific", 
+        GFSWaveModel {
+            id: "epacif.0p16",
+            name: "GFS Wave East Pacific",
             description: "GFS Wave Model: East Pacific 0.16 degree",
         }
     }
 
     pub fn global_16() -> Self {
-        GFSWave { 
-            id: "global.0p16", 
-            name: "GFS Wave Global", 
+        GFSWaveModel {
+            id: "global.0p16",
+            name: "GFS Wave Global",
             description: "GFS Wave Model: Global 0.16 degree",
         }
     }
 
     pub fn global_25() -> Self {
-        GFSWave { 
-            id: "global.0p25", 
-            name: "GFS Wave Global", 
+        GFSWaveModel {
+            id: "global.0p25",
+            name: "GFS Wave Global",
             description: "GFS Wave Model: Global 0.25 degree",
         }
     }
 }
 
-impl NOAAModel for GFSWave {
+impl NOAAModel for GFSWaveModel {
     fn id(&self) -> &'static str {
         self.id
     }
@@ -190,20 +195,19 @@ impl NOAAModel for GFSWave {
 
 #[cfg(test)]
 mod tests {
-    use chrono::{Utc, TimeZone, DateTime};
+    use chrono::{DateTime, TimeZone, Utc};
 
-    use crate::model::GFSWave;
+    use crate::model::GFSWaveModel;
 
-    use super::{NOAAModel, ModelDataSource};
-
+    use super::{ModelDataSource, NOAAModel};
 
     #[test]
     fn test_gfs_wave_url() {
         let truth = "https://storage.googleapis.com/global-forecast-system/gfs.20230117/06/wave/gridded/gfswave.t06z.atlocn.0p16.f115.grib2";
 
         let date: DateTime<Utc> = Utc.with_ymd_and_hms(2023, 01, 17, 13, 0, 0).unwrap();
-        
-        let gfs_wave = GFSWave::atlantic();
+
+        let gfs_wave = GFSWaveModel::atlantic();
         let url = gfs_wave.create_url(&ModelDataSource::NODDGCP, 115, Some(date));
         assert_eq!(url, truth);
 

@@ -89,8 +89,36 @@ impl Location {
 
     pub fn within_bbox(&self, bbox: &(f64, f64, f64, f64)) -> bool {
         let within_lng = normalize_longitude(bbox.0) <= self.longitude &&  self.longitude <= normalize_longitude(bbox.2);
-        let within_lat = normalize_latitude(bbox.1) <= self.longitude &&  self.longitude <= normalize_latitude(bbox.3);
+        let within_lat = normalize_latitude(bbox.1) <= self.latitude &&  self.latitude <= normalize_latitude(bbox.3);
         within_lng && within_lat
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use crate::location::normalize_latitude;
+
+    use super::{Location, normalize_longitude};
+
+    #[test]
+    fn test_normalize_coords() {
+        let normal_start_lng = normalize_longitude(260.0);
+        assert!((normal_start_lng - -100.0).abs() < 0.00001);
+
+        let normal_start_lng = normalize_longitude(90.0);
+        assert!((normal_start_lng - 90.0).abs() < 0.00001);
+
+        let normal_start_lat = normalize_latitude(100.0);
+        assert!((normal_start_lat - -80.0).abs() < 0.00001);
+
+        let normal_start_lat = normalize_latitude(85.0);
+        assert!((normal_start_lat - 85.0).abs() < 0.00001);
+    }
+
+    #[test]
+    fn test_within_bbox() {
+        let location = Location::new(41.35, -71.4, "Block Island Sound".into());
+        let bbox = (260.0, -0.00010999999999228294, 310.0001, 55.0);
+        assert!(location.within_bbox(&bbox));
+    }
+}
