@@ -3,6 +3,22 @@ use serde::{Deserialize, Serialize};
 use std::{f64};
 use std::string::String;
 
+pub fn normalize_latitude(latitude: f64) -> f64 {
+    if latitude > 90.0 {
+        latitude - 180.0
+    } else {
+        latitude
+    }
+}
+
+pub fn normalize_longitude(longitude: f64) -> f64 {
+    if longitude > 180.0 {
+        longitude - 360.0
+    } else {
+        longitude
+    }
+}
+
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Location {
     pub name: String,
@@ -69,6 +85,12 @@ impl Location {
         let r = unit.earths_radius();
 
         c * r
+    }
+
+    pub fn within_bbox(&self, bbox: &(f64, f64, f64, f64)) -> bool {
+        let within_lng = normalize_longitude(bbox.0) <= self.longitude &&  self.longitude <= normalize_longitude(bbox.2);
+        let within_lat = normalize_latitude(bbox.1) <= self.longitude &&  self.longitude <= normalize_latitude(bbox.3);
+        within_lng && within_lat
     }
 }
 

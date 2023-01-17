@@ -20,6 +20,7 @@ sunrise = "1.0.0"
 contour = { version = "0.7.0", features = ["geojson"] }
 kdtree = "0.5.1"
 image = "0.24.5"
+gribberish = { git = "https://github.com/mpiannucci/gribberish" }
 
 [dev-dependencies]
 reqwest = { version = "0.11", features = ["json"] }
