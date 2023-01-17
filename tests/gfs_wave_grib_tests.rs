@@ -18,5 +18,14 @@ fn extract_wave_data_record() {
     let messages = read_messages(&buf).collect::<Vec<_>>();
     let wave_data = GFSWaveGribPointDataRecord::from_messages(&model, &messages, &location);
 
-    println!("{:?}", wave_data);
+    println!("{}", wave_data.date);
+    println!("{:?}", wave_data.swell_components[0].to_string());
+    println!("{:?}", wave_data.swell_components[1].to_string());
+    println!("{:?}", wave_data.swell_components[2].to_string());
+    println!("{:?}", wave_data.swell_components[3].to_string());
 }
+
+// 260 - 288.6 - 310
+// 0 - 41.35 - 55
+
+//41.35

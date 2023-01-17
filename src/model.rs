@@ -64,33 +64,52 @@ pub trait NOAAModel {
 
         // GFS Wave grids are all regular, so we can just get the four neighbors
         let (lat_size, lng_size) = message.grid_dimensions()?;
+        let (start, end) = message.grid_bounds()?;
 
-        let lng_step = (bbox.2 - bbox.0).abs() / lng_size as f64;
-        let lat_step = (bbox.3 - bbox.1).abs() / lat_size as f64;
+        let lng_step = (end.1 - start.1) / lng_size as f64;
+        let lat_step = (end.0 - start.0) / lat_size as f64;
 
-        let lng_index = (location.relative_longitude() - normalize_longitude(bbox.0)) / lng_step;
-        let lat_index = (location.relative_latitude() - normalize_latitude(bbox.1)) / lat_step;
+        let lng_index = ((location.relative_longitude() - normalize_longitude(start.1)) / lng_step)
+            .abs()
+            .round() as usize;
+        let lat_index = ((location.relative_latitude() - normalize_latitude(start.0)) / lat_step)
+            .abs()
+            .round() as usize;
 
-        let floored_lng = lng_index.floor() as usize;
-        let ceiled_lng = lng_index.ceil() as usize;
-        let floored_lat = lat_index.floor() as usize;
-        let ceiled_lat = lat_index.ceil() as usize;
-        
-        let mut indexes = HashSet::new();
-        indexes.insert(floored_lng + (floored_lat * lng_size));
-        indexes.insert(ceiled_lng + (floored_lat * lng_size));
-        indexes.insert(floored_lng + (ceiled_lat * lng_size));
-        indexes.insert(ceiled_lng + (ceiled_lat * lng_size));
+        // let floored_lng = lng_index.floor() as usize;
+        // let ceiled_lng = lng_index.ceil() as usize;
+        // let floored_lat = lat_index.floor() as usize;
+        // let ceiled_lat = lat_index.ceil() as usize;
 
-        let avg_count = indexes.len();
+        // let mut indexes = HashSet::new();
+        // indexes.insert(floored_lng + (floored_lat * lng_size));
+        // indexes.insert(ceiled_lng + (floored_lat * lng_size));
+        // indexes.insert(floored_lng + (ceiled_lat * lng_size));
+        // indexes.insert(ceiled_lng + (ceiled_lat * lng_size));
+
+        // let (lat, lng) = message.latitude_longitude_arrays()?;
+
+        // let mut avg_count = 0;
+        // let data = message.data()?;
+
+        // // TODO: THis is just simple average, should do real interpolation eventually
+        // let sum = indexes.iter()
+        // .filter(|i| {
+        //     let normal_lat = normalize_latitude(lat[**i]);
+        //     let normal_lng = normalize_longitude(lng[**i]);
+        //     (normal_lat - location.relative_latitude()).abs() <= lat_step.abs() && (normal_lng - location.relative_longitude()).abs() <= lng_step.abs()
+        // })
+        // .fold(0.0, |acc, i| {
+        //     avg_count += 1;
+        //     acc + data[*i]
+        // });
+        // let value = sum / avg_count as f64;
+
+        // println!("avg_count: {avg_count}");
+
         let data = message.data()?;
-
-        // TODO: THis is just simple average, should do real interpolation eventually
-        let sum = indexes.iter().fold(0.0, |acc, i| {
-            acc + data[*i]
-        });
-        let value = sum / avg_count as f64;
-
+        let latlng_index = lng_index + lng_size * lat_index;
+        let value = data[latlng_index];
         Ok(value)
     }
 }
