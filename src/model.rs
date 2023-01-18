@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use chrono::{DateTime, Datelike, Timelike, Utc};
 use gribberish::message::Message;
 use serde::{Deserialize, Serialize};
@@ -75,37 +73,6 @@ pub trait NOAAModel {
         let lat_index = ((location.relative_latitude() - normalize_latitude(start.0)) / lat_step)
             .abs()
             .round() as usize;
-
-        // let floored_lng = lng_index.floor() as usize;
-        // let ceiled_lng = lng_index.ceil() as usize;
-        // let floored_lat = lat_index.floor() as usize;
-        // let ceiled_lat = lat_index.ceil() as usize;
-
-        // let mut indexes = HashSet::new();
-        // indexes.insert(floored_lng + (floored_lat * lng_size));
-        // indexes.insert(ceiled_lng + (floored_lat * lng_size));
-        // indexes.insert(floored_lng + (ceiled_lat * lng_size));
-        // indexes.insert(ceiled_lng + (ceiled_lat * lng_size));
-
-        // let (lat, lng) = message.latitude_longitude_arrays()?;
-
-        // let mut avg_count = 0;
-        // let data = message.data()?;
-
-        // // TODO: THis is just simple average, should do real interpolation eventually
-        // let sum = indexes.iter()
-        // .filter(|i| {
-        //     let normal_lat = normalize_latitude(lat[**i]);
-        //     let normal_lng = normalize_longitude(lng[**i]);
-        //     (normal_lat - location.relative_latitude()).abs() <= lat_step.abs() && (normal_lng - location.relative_longitude()).abs() <= lng_step.abs()
-        // })
-        // .fold(0.0, |acc, i| {
-        //     avg_count += 1;
-        //     acc + data[*i]
-        // });
-        // let value = sum / avg_count as f64;
-
-        // println!("avg_count: {avg_count}");
 
         let data = message.data()?;
         let latlng_index = lng_index + lng_size * lat_index;
