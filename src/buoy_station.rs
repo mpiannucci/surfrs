@@ -195,7 +195,7 @@ impl BuoyStation {
         match source {
             ModelDataSource::NODDAWS => "https://noaa-gfs-bdp-pds.s3.amazonaws.com", 
             ModelDataSource::NOMADS => "https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod",
-            ModelDataSource::NODDGCP => "https://storage.googleapis.com/global-forecast-system/",
+            ModelDataSource::NODDGCP => "https://storage.googleapis.com/global-forecast-system",
         }
         
     }
