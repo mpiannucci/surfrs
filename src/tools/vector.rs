@@ -57,9 +57,33 @@ pub fn unbin(data: &[u8], min: &f64, max: &f64, bin_count: &u8) -> Vec<f64> {
 	.collect()
 }
 
+pub fn min_max_fill(data: &mut Vec<f64>, fill_value: f64) -> (f64, f64) {
+    let mut min = f64::INFINITY;
+    let mut max = f64::NEG_INFINITY;
+
+    data
+        .iter_mut()
+        .for_each(|v| {
+            if v.is_nan() {
+                *v = fill_value;
+                return;
+            }
+
+            if *v > max {
+                max = *v;
+            }
+            
+            if *v < min {
+                min = *v;
+            }
+        });
+
+    (min, max)
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::tools::vector::unbin;
+    use crate::tools::vector::{unbin, min_max_fill};
 
     use super::{argsort, argsort_partial, diff, bin};
 
@@ -119,4 +143,14 @@ mod tests {
 			assert!((unbinned_result[i] - test_data[i]).abs() < 0.00001);
 		}
 	}
+
+	#[test]
+    fn fix_vector() {
+        let mut vector = vec![0., 1., 2., 3., 4., 5., f64::NAN];
+        let (min, max) = min_max_fill(&mut vector, -9999.0);
+
+        assert_eq!(min.floor() as i32, 0);
+        assert_eq!(max.floor() as i32, 5);
+        assert_eq!(vector[6].floor() as i32, -9999);
+    }
 }

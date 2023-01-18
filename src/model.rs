@@ -60,7 +60,7 @@ pub trait NOAAModel {
             return Err("location is not within the models bounds".into());
         }
 
-        // GFS Wave grids are all regular, so we can just get the four neighbors
+        // This only works for regular grids.
         let (lat_size, lng_size) = message.grid_dimensions()?;
         let (start, end) = message.grid_bounds()?;
 
@@ -78,6 +78,17 @@ pub trait NOAAModel {
         let latlng_index = lng_index + lng_size * lat_index;
         let value = data[latlng_index];
         Ok(value)
+    }
+
+    fn contour_data(&self, message: &Message) -> Result<String, String> {
+        // This only works for regular grids.
+        let (lat_size, lng_size) = message.grid_dimensions()?;
+        let (start, end) = message.grid_bounds()?;
+
+        let lng_step = (end.1 - start.1) / lng_size as f64;
+        let lat_step = (end.0 - start.0) / lat_size as f64;
+
+        Err("Unimplemented".into())
     }
 }
 
