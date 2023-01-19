@@ -34,5 +34,5 @@ fn extract_wave_data_record() {
     };
 
     let contour_data = serde_json::to_string(&collection).unwrap();
-    fs::write("wvsgw.json", contour_data);
+    _ = fs::write("wvsgw.json", contour_data);
 }

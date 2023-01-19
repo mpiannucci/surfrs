@@ -1,5 +1,4 @@
-use contour::{ContourBuilder};
-use geojson::{Feature, FeatureCollection, GeoJson, Geometry, Value};
+use geojson::{FeatureCollection, GeoJson};
 use kdtree::{distance::squared_euclidean, KdTree};
 use serde::{Deserialize, Serialize};
 
@@ -7,11 +6,12 @@ use crate::{
     swell::{SwellProviderError, SwellSummary},
     tools::{
         analysis::{bilerp, lerp, watershed, WatershedError},
+        contour::{compute_contours, ContourError},
         linspace::linspace,
-        vector::{diff},
-        waves::pt_mean, contour::ContourError,
+        vector::diff,
+        waves::pt_mean,
     },
-    units::{direction::DirectionConvention},
+    units::direction::DirectionConvention,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -289,8 +289,7 @@ impl Spectra {
     pub fn mean_wave_direction_f(&self) -> Vec<f64> {
         let momd = self.mom_d(1);
 
-        momd
-            .iter()
+        momd.iter()
             .map(|(esin, ecos)| {
                 let dm = esin.atan2(*ecos).to_degrees();
                 match self.dir_convention {
@@ -318,13 +317,17 @@ impl Spectra {
     }
 
     /// Partition the energy data into discrete swell components
-    pub fn partition(&self, levels: usize, blur: Option<f32>) -> Result<(Vec<i32>, usize), WatershedError> {
+    pub fn partition(
+        &self,
+        levels: usize,
+        blur: Option<f32>,
+    ) -> Result<(Vec<i32>, usize), WatershedError> {
         watershed(
             &self.energy,
             self.frequency.len(),
             self.direction.len(),
             levels,
-            blur
+            blur,
         )
     }
 
@@ -336,10 +339,7 @@ impl Spectra {
         wind_direction: Option<f64>,
         blur: Option<f32>,
     ) -> Result<crate::swell::SwellSummary, SwellProviderError> {
-        let (imo, partition_count) = match self.partition(
-            100,
-            blur
-        ) {
+        let (imo, partition_count) = match self.partition(100, blur) {
             Ok(result) => Ok(result),
             Err(_) => Err(SwellProviderError::InsufficientData(
                 "watershed segmentation of the spectra failed".into(),
@@ -434,59 +434,22 @@ impl Spectra {
 
     /// Contours
     pub fn contoured(&self) -> Result<GeoJson, ContourError> {
-        let c = ContourBuilder::new(self.nk() as u32, self.nth() as u32, true);
-
         let (_min, max) = self.energy_range();
         let t = linspace(0.10, max, 10).collect::<Vec<f64>>();
 
-        let contours = c
-            .contours(&self.energy, &t)
-            .map_err(|_| ContourError::ContourFailure)?;
-
-        let features: Vec<Feature> = contours
-            .iter()
-            .map(|c| {
-                let mut f = c.to_geojson();
-                if let Some(g) = &f.geometry {
-                    let geo_value: Value = g.value.clone();
-                    let coords = match geo_value {
-                        Value::MultiPolygon(c) => Some(c),
-                        _ => None,
-                    };
-
-                    if let Some(c) = coords {
-                        let new_coordinates: Vec<Vec<Vec<Vec<f64>>>> = c
-                            .iter()
-                            .map(|r| {
-                                r.iter()
-                                    .map(|c| {
-                                        c.iter()
-                                            .map(|point| {
-                                                let x = 1.0 / self.ik(point[0]);
-                                                let y = self
-                                                    .dir_convention
-                                                    .normalize(self.ith(point[1]).to_degrees());
-                                                //     + (max_lng - min_lng)
-                                                //         * (point[0] / (grid.1 as f64));
-                                                // let lat = max_lat
-                                                //     - (max_lat - min_lat)
-                                                //         * (point[1] / (grid.0 as f64));
-
-                                                vec![x, y]
-                                            })
-                                            .collect()
-                                    })
-                                    .collect()
-                            })
-                            .collect();
-                        let new_polygon = Geometry::new(Value::MultiPolygon(new_coordinates));
-                        f.geometry = Some(new_polygon);
-                    }
-                }
-
-                f
-            })
-            .collect::<Vec<Feature>>();
+        let features = compute_contours(
+            &self.energy,
+            self.nk(),
+            self.nth(),
+            &t,
+            Some(|point: &Vec<f64>| {
+                let x = 1.0 / self.ik(point[0]);
+                let y = self
+                    .dir_convention
+                    .normalize(self.ith(point[1]).to_degrees());
+                vec![x, y]
+            }),
+        )?;
 
         Ok(GeoJson::from(FeatureCollection {
             bbox: None,
