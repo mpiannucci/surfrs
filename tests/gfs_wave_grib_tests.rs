@@ -1,7 +1,8 @@
-use std::{path::Path, fs::File, io::Read};
+use std::{path::Path, fs::{File, self}, io::Read};
 
+use geojson::FeatureCollection;
 use gribberish::message::{read_messages};
-use surfrs::{model::GFSWaveModel, location::Location, data::gfs_wave_grib_point_data_record::GFSWaveGribPointDataRecord};
+use surfrs::{model::GFSWaveModel, model::NOAAModel, location::Location, data::gfs_wave_grib_point_data_record::GFSWaveGribPointDataRecord};
 
 #[test]
 fn extract_wave_data_record() {
@@ -23,9 +24,15 @@ fn extract_wave_data_record() {
     println!("{:?}", wave_data.swell_components[1].to_string());
     println!("{:?}", wave_data.swell_components[2].to_string());
     println!("{:?}", wave_data.swell_components[3].to_string());
+
+    let wave_message = messages.iter().find(|m| m.variable_abbrev().unwrap_or("".into()) == "HTSGW").unwrap();
+    let wave_features = model.contour_data(wave_message, Some(0.0), Some(5.0), Some(20)).unwrap();
+    let collection =  FeatureCollection {
+        bbox: None,
+        features: wave_features,
+        foreign_members: None,
+    };
+
+    let contour_data = serde_json::to_string(&collection).unwrap();
+    fs::write("wvsgw.json", contour_data);
 }
-
-// 260 - 288.6 - 310
-// 0 - 41.35 - 55
-
-//41.35

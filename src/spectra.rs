@@ -9,15 +9,10 @@ use crate::{
         analysis::{bilerp, lerp, watershed, WatershedError},
         linspace::linspace,
         vector::{diff},
-        waves::pt_mean,
+        waves::pt_mean, contour::ContourError,
     },
     units::{direction::DirectionConvention},
 };
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum ContourError {
-    ContourFailure,
-}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum SpectralAxis {

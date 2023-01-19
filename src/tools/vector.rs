@@ -57,7 +57,7 @@ pub fn unbin(data: &[u8], min: &f64, max: &f64, bin_count: &u8) -> Vec<f64> {
 	.collect()
 }
 
-pub fn min_max_fill(data: &mut Vec<f64>, fill_value: f64) -> (f64, f64) {
+pub fn min_max_fill(data: &mut [f64], fill_value: f64) -> (f64, f64) {
     let mut min = f64::INFINITY;
     let mut max = f64::NEG_INFINITY;
 
