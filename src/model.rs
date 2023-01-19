@@ -1,10 +1,11 @@
 use chrono::{DateTime, Datelike, Timelike, Utc};
+use contour::ContourBuilder;
 use gribberish::message::Message;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     location::{normalize_latitude, normalize_longitude, Location},
-    tools::date::closest_gfs_model_datetime,
+    tools::{date::closest_gfs_model_datetime, linspace::linspace, vector::min_max_fill},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -83,12 +84,58 @@ pub trait NOAAModel {
     fn contour_data(&self, message: &Message) -> Result<String, String> {
         // This only works for regular grids.
         let (lat_size, lng_size) = message.grid_dimensions()?;
+        let data_count = lat_size * lng_size;
         let (start, end) = message.grid_bounds()?;
 
         let lng_step = (end.1 - start.1) / lng_size as f64;
         let lat_step = (end.0 - start.0) / lat_size as f64;
 
-        Err("Unimplemented".into())
+        let mut data = message.data()?;
+        let (min, max) = min_max_fill(&mut data, -99999.0);
+
+        let thresholds: Vec<f64> = linspace::<f64>(min, max, 20).collect();
+        let contour_builder = ContourBuilder::new(lat_size as u32, lng_size as u32, true);
+        let contours = match contour_builder.contours(&data[..data_count].as_ref(), &thresholds)
+        {
+            Ok(contours) => Ok(contours),
+            Err(e) => {
+                println!("Error contouring: {e}");
+                Err(format!("Failed to countour grib data: {e}"))
+            }
+        }?
+        .iter()
+        .map(|c| c.to_geojson())
+        .collect::<Vec<_>>();
+
+        // contours.iter_mut().for_each(|f| {
+        //     let polygons = f.geometry();
+
+        //     if let Some(c) = coords {
+        //         let new_coordinates: Vec<Vec<Vec<Vec<f64>>>> = c
+        //             .iter()
+        //             .map(|r| {
+        //                 r.iter()
+        //                     .map(|c| {
+        //                         c.iter()
+        //                             .map(|point| {
+        //                                 let lng = start.1
+        //                                     + (end.1 - start.1) * (point[0] / (lng_size as f64));
+        //                                 let lat = end.0
+        //                                     - (end.0 - start.0) * (point[1] / (lat_size as f64));
+
+        //                                 vec![lng, lat]
+        //                             })
+        //                             .collect()
+        //                     })
+        //                     .collect()
+        //             })
+        //             .collect();
+        //         let new_polygon = Value::MultiPolygon(new_coordinates);
+        //         f.geometry = Some(new_polygon.into());
+        //     }
+        // });
+
+        serde_json::to_string(&contours).map_err(|e| format!("Failed to serialize contours: {e}"))
     }
 }
 
