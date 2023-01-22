@@ -1,0 +1,191 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+
+<title>NDBC - Real Time Raw Spectral Wave Information</title>
+<meta http-equiv="Content-Type" content="Text/html; charset=iso-8859-1"/>
+<meta name="DC.title" content="National Data Buoy Center"/>
+<meta name="DC.description" content="An index to the various types of marine observations provided by the National Data Buoy Center."/>
+<meta name="description" content="An index to the various types of marine observations provided by the National Data Buoy Center."/>
+<meta name="DC.subject" content="weather, buoy, weather buoy, marine, forecast, hurricane, wind, wave, offshore, surfing, temperature, meteorology, climate, ocean"/>
+<meta name="DC.creator" content="US Department of Commerce, National Oceanic and Atmospheric Administration, National Weather Service, National Data Buoy Center"/>
+<meta name="DC.language" scheme="DCTERMS.RFC1766" content="EN-US"/>
+<meta name="DC.format" content="text/html;charset=iso-8859-1"/>
+<meta name="DC.date.created" scheme="ISO8601" content="1996-11-08"/>
+<meta name="DC.date.reviewed" scheme="ISO8601" content="2016-05-10"/>
+<link rel="stylesheet" href="/style/ndbc.css" type="text/css" />
+</head>
+
+<!-- Start Top Navbar -->
+<body class="claro">
+
+<div id="topnav" class="noprint">
+<table cellspacing="0" cellpadding="0" border="0" width="100%">
+<tr><td>
+<table cellspacing="0" cellpadding="0" border="0" width="100%" style="background-image:url(/images/nws/topbanner.jpg)">
+	<tr>
+	<td align="right" height="19"><a href="#contents"><img src="/images/nws/skipgraphic.gif" alt="Skip Navigation Links" width="1" height="1" border="0" /></a> <a href="https://www.weather.gov/"><span class="nwslink">weather.gov</span></a>&nbsp;</td>
+	</tr>
+</table>
+
+<table cellspacing="0" cellpadding="0" border="0" width="100%">
+	<tr>
+		<td><a href="https://www.noaa.gov/"><img src="/images/nws/noaaleft.jpg" alt="NOAA logo-Select to go to the NOAA homepage" width="85" height="78" border="0" /></a></td>
+		<td width="500" height="78" align="center" nowrap="nowrap"><img src="/images/nws/ndbc_title.jpg" width="500" height="78" alt="NDBC Title Graphic" border="0" usemap="#NDBCLinkMap"/><map id="NDBCLinkMap" name="NDBCLinkMap"><area shape="rect" coords="62,20,452,54" href="/" alt="Click to go to NDBC home page" /></map></td>
+		<td width="100%" style="background-image:url(/images/nws/wfo_bkgrnd.jpg)">&nbsp;</td>
+		<td align="right"><a href="https://www.weather.gov/"><img src="/images/nws/nwsright.jpg" alt="Select to go to the NWS homepage" width="85" height="78" border="0" /></a></td>
+	</tr>
+</table>
+
+<table cellspacing="0" cellpadding="0" border="0" style=" background-color:#0a2390; background-image:url(/images/nws/navbkgrnd.gif)" width="100%">
+	<tr>
+		<td align="left" valign="top" width="94"><img src="/images/nws/navbarleft.jpg" alt="" width="94" height="23" border="0" /></td>
+		<td width="15%" align="center" nowrap="nowrap"><a href="/" class="nav">Home</a></td>
+		<td width="15%" align="center"><a href="/ndbc.shtml" class="nav">About Us</a></td>
+		<td width="15%" align="center"><a href="/contact_us.shtml" class="nav">Contact Us</a></td>
+		<td align="right" class="searchinput" width="40%" nowrap="nowrap"><form method="get" action="https://search.usa.gov/search" style="margin-bottom:0; margin-top:0;">
+			<label for="Search" class="yellow">Search&nbsp;</label>
+			<input type="hidden" name="affiliate" value="ndbc.noaa.gov" />
+			<input type="hidden" name="v:project" value="firstgov" />
+			<input type="text" name="query" value="NDBC Web Site" onclick="this.value='';return(true);" size="20" maxlength="256" id="Search" />
+			<input type="submit" value="Search" />
+		</form></td>
+		<td width="10%">&nbsp;</td>
+		<td align="right" valign="bottom" width="24"><img src="/images/nws/navbarendcap.jpg" alt="" width="24" height="23" border="0" /></td>
+	</tr>
+</table>
+</td></tr></table>
+</div>
+<!-- End Top Navbar -->
+
+
+<!-- Start Side Navbar -->
+
+<div id="contentdiv">
+<table id="contenttable" width="700" border="0" cellspacing="0" cellpadding="0">
+	<tr valign="top">
+	<td id="sidenav" class="noprint" width="150" bgcolor="#0a2390" align="left" valign="top" style="margin-top:5px" nowrap="nowrap">
+			<form id="station_form" method="get" action="/station_page.php" style="margin-bottom:0">
+			&nbsp;<span class="yellow"><label for="station">Station ID Search</label></span><br />
+			&nbsp;&nbsp;&nbsp;&nbsp;<span class="searchinput"><input name="station" id="station" value="" size="8" maxlength="7" />
+			<input type="submit" value="Go"/></span></form>
+			&nbsp;&nbsp;&nbsp;&nbsp;<a href="/to_station.shtml" title="View a list of available stations ordered by owner" class="nav">Station List</a><br /><br />
+
+			&nbsp;<span class="yellow">Data Access</span><br />
+			&nbsp;&nbsp;&nbsp;&nbsp;<a href="/mobile/" title="Access latest marine observations on your mobile device" class="nav">Mobile Access</a><br />
+			&nbsp;&nbsp;&nbsp;&nbsp;<span class="yellow">Interactive Maps</span><br />
+			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="/obs.shtml" class="nav">All Stations</a><br />
+			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="/obs.shtml?lat=13&lon=-173&zoom=2&pgm=tsunami" title="Deep Ocean Assessment and Reporting of Tsunamis" class="nav">DART&#174;</a><br />
+			&nbsp;&nbsp;&nbsp;&nbsp;<a href="/os.shtml" title="Get a tabular list of recent marine observations near a specific location" class="nav">Obs Search</a><br />
+			&nbsp;&nbsp;&nbsp;&nbsp;<a href="/ship_obs.php" title="View a list of recent marine observations from ships" class="nav">Ship Obs Report</a><br />
+			&nbsp;&nbsp;&nbsp;&nbsp;<a href="/buoycams.shtml" title="BuoyCAMs" class="nav">BuoyCAMs</a><br />
+			&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://tao.ndbc.noaa.gov/" title="Tropical Atmosphere Ocean" class="nav">TAO</a><br />
+			&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://dods.ndbc.noaa.gov/" title="NDBC DODS Server" class="nav">DODS</a><br />
+                        &nbsp;&nbsp;&nbsp;&nbsp;<a href="https://dods.ndbc.noaa.gov/oceansites/" title="NDBC OceanSITES GDAC" class="nav">OceanSITES</a><br />
+			&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://hfradar.ndbc.noaa.gov/" title="View ocean surface currents measured by High Frequency Radar" class="nav">HF Radar</a><br />
+			&nbsp;&nbsp;&nbsp;&nbsp;<a href="http://osmc.noaa.gov/Monitor/OSMC/OSMC.html" title="Observing System Monitoring Center (OSMC)" class="nav">OSMC</a><br />
+			&nbsp;&nbsp;&nbsp;&nbsp;<a href="/dial.shtml" title="Listen to latest marine observations on your phone" class="nav">Dial-A-Buoy</a><br />
+			&nbsp;&nbsp;&nbsp;&nbsp;<a href="/rss_access.shtml" title="Latest marine observations via RSS Feeds" class="nav">RSS Feeds <img src='/images/feed-icon-14x14.png' alt='Image indicating link to RSS feed access page' width='14' height='14' border='0' /></a><br />
+                        &nbsp;&nbsp;&nbsp;&nbsp;<a href="/widgets/" title="Add latest marine observations for a given station to your web site" class="nav">Web Widget</a><br />
+			&nbsp;&nbsp;&nbsp;&nbsp;<a href="/docs/ndbc_web_data_guide.pdf" title="How to access data on the NDBC web site" class="nav">Web Data Guide</a><br />
+
+			&nbsp;&nbsp;&nbsp;&nbsp;<a href="/ops.shtml" title="Maintenance schedule for NDBC stations" class="nav">Maintenance Schedule</a><br />
+			&nbsp;&nbsp;&nbsp;&nbsp;<a href="/wstat.shtml" title="Status report for NDBC Stations" class="nav">Station Status Report</a><br /><br />
+
+			&nbsp;<span class="yellow">Program Info</span><br />
+			&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://tao.ndbc.noaa.gov/proj_overview/proj_overview_ndbc.shtml" title="Tropical Atmosphere Ocean" class="nav">TAO</a><br />
+			&nbsp;&nbsp;&nbsp;&nbsp;<a href="/dart/dart.shtml" title="Deep Ocean Assessment and Reporting of Tsunamis" class="nav">DART&#174;</a><br />
+			&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://ioos.noaa.gov/" title="Integrated Ocean Observing System (IOOS&#174;)" class="nav">IOOS&#174;</a><br /><br />
+
+			&nbsp;<span class="yellow">Publications</span><br />
+			&nbsp;&nbsp;&nbsp;&nbsp;<a href="/pea/ndbc_final_pea_20180104.pdf" title="NDBC Final Programmatic Environmental Assessment" class="nav">NDBC PEA</a><br />
+			&nbsp;&nbsp;&nbsp;&nbsp;<a href="/pea/ndbc_fonsi_signed_20180102.pdf" title="NDBC Finding of No Significant Impact" class="nav">NDBC FONSI</a><br />
+			&nbsp;&nbsp;&nbsp;&nbsp;<a href="/NDBCHandbookofAutomatedDataQualityControl2009.pdf" title="Handbook of Automated Data Quality Control Checks and Procedures" class="nav">NDBC DQC Handbook</a><br />
+			<br />
+
+			&nbsp;<span class="yellow"><a href="/visitorinfo.shtml" class="nav">Visitor Information</a></span><br />
+			&nbsp;<br />
+			<a href="https://www.usa.gov/"><img src="/images/usagov_logo.gif" title="USA.gov is the U.S. government's official web portal to all federal, state and local government web resources and services" alt="USA.gov is the U.S. government's official web portal to all federal, state and local government web resources and services." width="110" height="30" hspace="3" vspace="3" border="0" /></a><br />
+		</td>
+		<td id="contentarea" valign="top" width="560"><a name="contents"></a>
+	<div id="notices" class="noprint">
+		<!-- Put notices here -->
+        </div>
+		
+                <h1 style="text-align:center; margin:3px;">Real Time Raw Spectral Wave Information</h1>
+                
+
+<!-- End Side Navbar -->
+
+
+
+<h2>Date/Time Format (YYYY MM DD hh)</h2>
+
+<p>The date/time is of the form, 'YYYY MM DD hh', which represents the
+year, month, day and hour of the measurement in GMT.  GMT is Greenwich
+Mean Time and is five hours ahead of Eastern Standard Time.  For Daylight
+Savings Time, the difference is one hour less.  In other words, 12 GMT
+is 7 AM EST (8 AM EDT).  For West Coast mariners, Pacific Standard Time
+=  GMT - 8 hours.</p>
+
+<h2>Separation Frequency</h2>
+
+<p>This is the approximate frequency which separates the long wavelength waves
+(swell, which typically have been generated at a remote location) and the
+shorter wavelength waves (wind waves generated locally). This is a gross
+approximation which attempts to provide a better idea of the sea state
+and allows the estimation of the "steepness" of the waves.</p>
+
+<h2>Spectral Wave Density (Frequency)...</h2>
+
+<p>Energy in (meter*meter)/Hz, for each Frequency (typically from 0.03 Hz to
+0.40 Hz, but may vary with some stations). Repeats until the end of the
+recorded spectrum is reached.</p>
+
+<p>For more information on the mathematics behind the measuring of 
+surface water waves, see the <a href="/wave.shtml">waves</a> help section.</p> 
+        
+<!-- Start Tail -->
+
+		<div id="footer" class="noprint" style="clear:both;">
+			<hr width="100%" size="1" noshade="noshade" />
+				<div id="footer-flexbox" class="footer-flexbox" width="100%">
+					<a class="socialMediaLink" href="/ndbcexit.php?url=https://www.facebook.com/NWSNDBC&amp;blurb=NDBC%20on%20Facebook"><img src="/images/facebook_logo.png" class="socialMediaLogo" height="21" width="21" alt="Facebook Logo" title="NDBC on Facebook"/>&nbsp;NDBC on Facebook</a><br />
+					<a class="socialMediaLink" href="/ndbcexit.php?url=https://www.linkedin.com/company/noaa&amp;blurb=NOAA%20on%20LinkedIn"><img src="/images/linkedin_logo.png" class="socialMediaLogo" height="21" width="25" alt="LinkedIn Logo" title="NDBC on LinkedIn"/>&nbsp;NOAA on LinkedIn</a><br />
+					<a class="socialMediaLink" href="/ndbcexit.php?url=https://www.twitter.com/databuoycenter&amp;blurb=NDBC%20on%20Twitter"><img src="/images/twitter.png" class="socialMediaLogo" height="21" width="25" alt="Twitter Logo" title="NDBC on Twitter"/>&nbsp;NDBC on Twitter</a><br />
+				</div>
+			<table width="100%" cellpadding="2" border="0">
+				<tr valign="top">
+					<td width="70%" align="left" class="footertext"><a href="https://www.commerce.gov/"><span class="footertext">U.S. Dept. of Commerce</span></a><br />
+					<a href="https://www.noaa.gov/"><span class="footertext">National Oceanic and Atmospheric Administration</span></a><br />
+					<a href="https://www.weather.gov/"><span class="footertext">National Weather Service</span></a><br />
+					National Data Buoy Center<br />
+					Bldg. 3205<br />
+					Stennis Space Center, MS 39529<br />
+					<a href="/contact_us.shtml"><span class="footertext">Contact&nbsp;Us</span></a><br />
+					Page last modified: January  8, 2020</td>
+					<td width="15%" align="left">
+					<a href="https://www.weather.gov/disclaimer" target="_blank" rel="noopener" onclick="window.open('https://www.weather.gov/disclaimer','_blank','width=750,height=550,top=0,left=0,menubar=yes,toolbar=yes,scrollbars=yes');return false"><span class="footertext">Disclaimer</span></a><br />
+					<a href="https://www.cio.noaa.gov/services_programs/info_quality.html" target="_blank" rel="noopener" onclick="window.open('https://www.cio.noaa.gov/services_programs/info_quality.html','_blank','width=750,height=550,top=0,left=0,menubar=yes,toolbar=yes,scrollbars=yes');return false"><span class="footertext">Information&nbsp;Quality</span></a><br />
+					<a href="https://www.weather.gov/glossary" target="_blank" rel="noopener" onclick="window.open('https://www.weather.gov/glossary','_blank','width=750,height=550,top=0,left=0,menubar=yes,toolbar=yes,scrollbars=yes');return false"><span class="footertext">Glossary</span></a></td>
+					<td width="15%" align="left">
+					<a href="https://www.weather.gov/privacy" target="_blank" rel="noopener" onclick="window.open('https://www.weather.gov/privacy','_blank','width=750,height=550,top=0,left=0,menubar=yes,toolbar=yes,scrollbars=yes');return false"><span class="footertext">Privacy Policy</span></a><br />
+					<a href="https://www.noaa.gov/foia-freedom-of-information-act" target="_blank" rel="noopener" onclick="window.open('https://www.noaa.gov/foia-freedom-of-information-act','_blank','width=750,height=550,top=0,left=0,menubar=yes,toolbar=yes,scrollbars=yes');return false"><span class="footertext">Freedom&nbsp;of&nbsp;Information</span></a><br />
+					<a href="/ndbc.shtml"><span class="footertext">About Us</span></a><br />
+					<a href="https://www.weather.gov/careers" target="_blank" rel="noopener" onclick="window.open('https://www.weather.gov/careers','_blank','width=750,height=550,top=0,left=0,menubar=yes,toolbar=yes,scrollbars=yes');return false"><span class="footertext">Career&nbsp;Opportunities</span></a></td>
+				</tr>
+			</table>
+		</div>
+		</td>
+	</tr>
+</table>
+</div>
+<script id="_fed_an_ua_tag" type="text/javascript" src="/js/federated-analytics.js?agency=DOC&amp;subagency=NOAA&amp;pua=UA-33523145-1"></script>
+</body>
+
+<!-- End Tail -->
+
+
+
+
+</html> 
