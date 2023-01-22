@@ -256,7 +256,7 @@ fn read_waimea_spectra_data() {
         .map(|i| dir_step * (i as f64))
         .collect::<Vec<f64>>();
 
-    let mut records = itertools::izip!(
+    let records = itertools::izip!(
         energy_data_collection.records(),
         mean_wave_direction_data_collection.records(),
         primary_wave_direction_data_collection.records(),

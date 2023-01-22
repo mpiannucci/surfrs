@@ -1,6 +1,7 @@
 use chrono::{DateTime, Datelike, Timelike, Utc};
 use geojson::Feature;
 use gribberish::message::Message;
+use itertools::Either;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -92,14 +93,36 @@ pub trait NOAAModel {
         threshold_count: Option<usize>,
     ) -> Result<Vec<Feature>, String> {
         // This only works for regular grids.
-        let (lat_size, lng_size) = message.grid_dimensions()?;
-        let data_count = lat_size * lng_size;
-        let (start, end) = message.grid_bounds()?;
+        let (lat_size, mut lng_size) = message.grid_dimensions()?;
+        let mut data_count = lat_size * lng_size;
+        let (start, mut end) = message.grid_bounds()?;
 
-        // let lng_step = (end.1 - start.1) / lng_size as f64;
-        // let lat_step = (end.0 - start.0) / lat_size as f64;
+        let lng_step = (end.1 - start.1) / lng_size as f64;
+        let diff = normalize_longitude(end.1) - normalize_longitude(start.1);
 
-        let mut data = message.data()?;
+        let mut data = if diff.abs() - lng_step.abs() < 0.001 {
+            let data = message.data()?;
+            let data = data
+                .iter()
+                .enumerate()
+                .flat_map(|(i, v)| {
+                    let lng_index = i % lng_size;
+                    if lng_index == lng_size - 1 {
+                        let lat_index = i / lng_size;
+                        Either::Left([*v, *(&data[lat_index * lng_size])].into_iter())
+                    } else {
+                        Either::Right(std::iter::once(*v))
+                    }
+                })
+                .collect(); 
+            end.1 = (end.1 + lng_step).ceil();
+            lng_size += 1;
+            data_count = lat_size * lng_size;
+            data
+        } else {
+            message.data()?
+        };
+
         let (min, max) = min_max_fill(&mut data, -99999.0);
         let thresholds = linspace(
             threshold_min.unwrap_or(min),
