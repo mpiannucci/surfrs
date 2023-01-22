@@ -7,12 +7,13 @@ pub enum ContourError {
     ContourFailure,
 }
 
-pub fn compute_contours<F: Fn(&Vec<f64>) -> Vec<f64>>(
+pub fn compute_contours<C: Fn(&Vec<f64>) -> Vec<f64>, F: Fn(&usize, &f64) -> String>(
     data: &[f64],
     width: usize,
     height: usize,
     thresholds: &[f64],
-    coordinate_transform: Option<F>,
+    coordinate_transform: Option<C>,
+    label_format: Option<F>
 ) -> Result<Vec<Feature>, ContourError> {
     let contour_builder = ContourBuilder::new(width as u32, height as u32, true);
 
@@ -20,7 +21,8 @@ pub fn compute_contours<F: Fn(&Vec<f64>) -> Vec<f64>>(
         .contours(&data, &thresholds)
         .map_err(|_| ContourError::ContourFailure)?
         .iter()
-        .map(|c| {
+        .enumerate()
+        .map(|(i, c)| {
             let mut f = c.to_geojson();
 
             if coordinate_transform.is_none() {
@@ -53,6 +55,11 @@ pub fn compute_contours<F: Fn(&Vec<f64>) -> Vec<f64>>(
                 .collect();
             let new_polygon = Value::MultiPolygon(new_coordinates);
             f.geometry = Some(new_polygon.into());
+
+            if let Some(formatter) = label_format.as_ref() {
+                let label = formatter(&i, &c.threshold());
+                f.set_property("label", label);
+            }
 
             f
         })

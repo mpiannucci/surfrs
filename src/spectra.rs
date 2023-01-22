@@ -449,6 +449,7 @@ impl Spectra {
                     .normalize(self.ith(point[1]).to_degrees());
                 vec![x, y]
             }),
+            None::<Box<dyn Fn(&usize, &f64) -> String>>,
         )?;
 
         Ok(GeoJson::from(FeatureCollection {

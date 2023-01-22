@@ -51,7 +51,12 @@ fn extract_global_wave_data_record() {
     let messages = read_messages(&buf).collect::<Vec<_>>();
 
     let wave_message = messages.iter().find(|m| m.variable_abbrev().unwrap_or("".into()) == "HTSGW").unwrap();
-    let wave_features = model.contour_data(wave_message, Some(0.0), Some(10.0), Some(20)).unwrap();
+    let wave_features = model.contour_data(
+        wave_message, 
+        Some(0.0), 
+        Some(12.0), 
+        Some(24))
+        .unwrap();
     let collection =  FeatureCollection {
         bbox: None,
         features: wave_features,

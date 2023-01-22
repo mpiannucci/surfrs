@@ -9,7 +9,7 @@ use crate::{
     tools::{
         contour::compute_contours, date::closest_gfs_model_datetime, linspace::linspace,
         vector::min_max_fill,
-    },
+    }
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -114,7 +114,7 @@ pub trait NOAAModel {
                         Either::Right(std::iter::once(*v))
                     }
                 })
-                .collect(); 
+                .collect();
             end.1 = (end.1 + lng_step).ceil();
             lng_size += 1;
             data_count = lat_size * lng_size;
@@ -140,6 +140,17 @@ pub trait NOAAModel {
                 let x = start.1 + (end.1 - start.1) * (point[0] / (lng_size as f64));
                 let y = start.0 + (end.0 - start.0) * (point[1] / (lat_size as f64));
                 vec![x, y]
+            }),
+            Some(|index: &usize, value: &f64| {
+                if index % 2 > 0 {
+                    format!(
+                        "{:.0}{}",
+                        value.round(),
+                        message.unit().map(|u| format!(" {u}")).unwrap_or("".into())
+                    )
+                } else {
+                    "".to_string()
+                }
             }),
         )
         .map_err(|_| "Failed to contour data".into())
