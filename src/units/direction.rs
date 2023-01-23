@@ -4,9 +4,8 @@ use std::str::FromStr;
 use serde::Deserialize;
 use serde::Serialize;
 
-use super::Measurement;
 use super::CardinalDirection;
-use super::Units;
+use super::Unit;
 use super::DataParseError;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -86,7 +85,7 @@ impl fmt::Display for Direction {
             f,
             "{}{} {}",
             self.degrees,
-            Units::Metric.label(&Measurement::Direction, true),
+            Unit::Degrees.abbreviation(),
             self.direction
         )
     }
@@ -114,8 +113,8 @@ impl FromStr for Direction {
     }
 }
 
-impl From<Direction> for Measurement {
-    fn from(_: Direction) -> Measurement {
-        Measurement::Direction
-    }
-}
+// impl From<Direction> for Measurement {
+//     fn from(_: Direction) -> Measurement {
+//         Measurement::Direction
+//     }
+// }

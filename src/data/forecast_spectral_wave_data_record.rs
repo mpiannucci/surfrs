@@ -11,7 +11,7 @@ use crate::dimensional_data::DimensionalData;
 use crate::location::Location;
 use crate::spectra::Spectra;
 use crate::swell::{SwellProvider, SwellSummary};
-use crate::units::{Direction, Measurement, UnitConvertible, Units, direction};
+use crate::units::{direction, Direction, Unit, UnitConvertible, UnitSystem};
 
 use super::parseable_data_record::DataRecordParsingError;
 
@@ -198,7 +198,7 @@ pub struct ForecastSpectralWaveDataRecord {
 // }
 
 impl UnitConvertible<ForecastSpectralWaveDataRecord> for ForecastSpectralWaveDataRecord {
-    fn to_units(&mut self, new_units: &Units) {
+    fn to_units(&mut self, new_units: &UnitSystem) {
         self.depth.to_units(new_units);
         self.wind_speed.to_units(new_units);
         self.current_speed.to_units(new_units);
@@ -208,9 +208,9 @@ impl UnitConvertible<ForecastSpectralWaveDataRecord> for ForecastSpectralWaveDat
 impl SwellProvider for ForecastSpectralWaveDataRecord {
     fn swell_data(&self) -> Result<SwellSummary, crate::swell::SwellProviderError> {
         self.spectra.swell_data(
-            self.depth.value, 
-            self.wind_speed.value, 
-            self.wind_direction.value.as_ref().map(|d| d.radian()), 
+            self.depth.value,
+            self.wind_speed.value,
+            self.wind_direction.value.as_ref().map(|d| d.radian()),
             None,
         )
     }
@@ -263,7 +263,9 @@ impl<'a> ForecastSpectralWaveRecordIterator<'a> {
             DataRecordParsingError::ParseFailure(format!("Failed to parse minute: {}", e))
         })?;
 
-        let date = Utc.with_ymd_and_hms(year, month, day, hour, minute, 0).unwrap();
+        let date = Utc
+            .with_ymd_and_hms(year, month, day, hour, minute, 0)
+            .unwrap();
 
         let line = self.lines.next().ok_or(DataRecordParsingError::EOF)?;
 
@@ -399,7 +401,7 @@ impl<'a> ForecastSpectralWaveRecordIterator<'a> {
             self.metadata.frequency.clone(),
             self.metadata.direction.iter().map(|d| d.radian()).collect(),
             raw_energy,
-            direction::DirectionConvention::Met
+            direction::DirectionConvention::Met,
         );
 
         Ok(ForecastSpectralWaveDataRecord {
@@ -408,32 +410,27 @@ impl<'a> ForecastSpectralWaveRecordIterator<'a> {
             depth: DimensionalData {
                 value: Some(depth),
                 variable_name: "depth".into(),
-                measurement: Measurement::Length,
-                unit: Units::Metric,
+                unit: Unit::Meters,
             },
             wind_speed: DimensionalData {
                 value: Some(wind_speed),
                 variable_name: "wind speed".into(),
-                measurement: Measurement::Speed,
-                unit: Units::Metric,
+                unit: Unit::MetersPerSecond,
             },
             wind_direction: DimensionalData {
                 value: Some(Direction::from_degrees(wind_direction.round() as i32)),
                 variable_name: "wind direction".into(),
-                measurement: Measurement::Direction,
-                unit: Units::Metric,
+                unit: Unit::Degrees,
             },
             current_speed: DimensionalData {
                 value: Some(current_speed),
                 variable_name: "current speed".into(),
-                measurement: Measurement::Speed,
-                unit: Units::Metric,
+                unit: Unit::MetersPerSecond,
             },
             current_direction: DimensionalData {
                 value: Some(Direction::from_degrees(current_direction.round() as i32)),
                 variable_name: "current direction".into(),
-                measurement: Measurement::Direction,
-                unit: Units::Metric,
+                unit: Unit::Degrees,
             },
             spectra,
         })

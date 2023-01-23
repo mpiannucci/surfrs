@@ -68,7 +68,7 @@ impl ParseableDataRecord for SpectralWaveDataRecord {
 }
 
 impl UnitConvertible<SpectralWaveDataRecord> for SpectralWaveDataRecord {
-    fn to_units(&mut self, _: &Units) {
+    fn to_units(&mut self, _: &UnitSystem) {
         // TODO: Maybe some conversion
     }
 }
@@ -161,7 +161,7 @@ impl<'a> SpectralWaveDataRecordCollection<'a> {
                                 record.iter().filter(|data| !data.is_empty()).collect();
                             let mut met_data =
                                 SpectralWaveDataRecord::from_data_row(None, &filtered_record)?;
-                            met_data.to_units(&Units::Metric);
+                            met_data.to_units(&UnitSystem::Metric);
                             Ok(met_data)
                         }
                         Err(e) => Err(DataRecordParsingError::ParseFailure(e.to_string())),

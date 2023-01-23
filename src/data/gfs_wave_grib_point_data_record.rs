@@ -12,7 +12,7 @@ use crate::{
     location::Location,
     model::{GFSWaveModel, NOAAModel},
     swell::Swell,
-    units::{Direction, Units, Measurement},
+    units::{Direction, Unit, UnitSystem},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -62,7 +62,7 @@ impl GFSWaveGribPointDataRecord {
         });
 
         let wave_summary = Swell::new(
-            &Units::Metric, 
+            &UnitSystem::Metric, 
             data["HTSGW"], 
             data["PERPW"], 
             Direction::from_degrees(data["DIRPW"] as i32), 
@@ -72,15 +72,13 @@ impl GFSWaveGribPointDataRecord {
         let wind_speed = DimensionalData {
             value: Some(data["WIND"]),
             variable_name: "wind speed".into(),
-            measurement: Measurement::Speed,
-            unit: Units::Metric,
+            unit: Unit::MetersPerSecond,
         };
 
         let wind_direction = DimensionalData {
             value: Some(Direction::from_degrees(data["WDIR"] as i32)),
             variable_name: "wind directions".into(),
-            measurement: Measurement::Direction,
-            unit: Units::Metric,
+            unit: Unit::Degrees,
         };
 
         let mut swell_components = vec![];
@@ -90,7 +88,7 @@ impl GFSWaveGribPointDataRecord {
             let dir_key = format!("SWDIR_{i}");
             if data.contains_key(&ht_key) && data.contains_key(&per_key) && data.contains_key(&dir_key) {
                 let component = Swell::new(
-                    &Units::Metric,
+                    &UnitSystem::Metric,
                     data[&ht_key],
                     data[&per_key], 
                     Direction::from_degrees(data[&dir_key] as i32),
@@ -103,7 +101,7 @@ impl GFSWaveGribPointDataRecord {
 
         if data.contains_key("WVHGT") && data.contains_key("WVPER") && data.contains_key("WVDIR") {
             let component = Swell::new(
-                &Units::Metric,
+                &UnitSystem::Metric,
                 data["WVHGT"],
                 data["WVPER"], 
                 Direction::from_degrees(data["WVDIR"] as i32),

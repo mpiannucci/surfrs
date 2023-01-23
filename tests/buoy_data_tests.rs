@@ -14,7 +14,7 @@ use surfrs::data::spectral_wave_data_record::{
 use surfrs::data::wave_data_record::WaveDataRecordCollection;
 use surfrs::swell::SwellProvider;
 use surfrs::tools::vector::bin;
-use surfrs::units::{UnitConvertible, Units};
+use surfrs::units::{UnitConvertible, UnitSystem};
 
 fn read_mock_data(name: &str) -> String {
     fs::read_to_string(format!("mock/{}", name)).unwrap()
@@ -137,7 +137,7 @@ fn read_wave_spectra_data() {
         .enumerate()
         .for_each(|(i, component)| {
             let is_false_positive = false_components.contains(&i);
-            component.to_units(&Units::English);
+            component.to_units(&UnitSystem::English);
             println!(
                 "BUOY -- {} {} {}",
                 &component,
@@ -206,7 +206,7 @@ fn read_spectral_forecast_station_data() {
     // let out = swell_components.join(", ");
 
     for mut component in swell_data.components {
-        component.to_units(&Units::English);
+        component.to_units(&UnitSystem::English);
         println!(
             "FORECAST -- {} {}",
             component.clone(),

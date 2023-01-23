@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::dimensional_data::DimensionalData;
-use crate::units::{Direction, Measurement, UnitConvertible, Units};
+use crate::units::{Direction, UnitConvertible, Unit, UnitSystem};
 use std::collections::HashMap;
 use std::fmt::{self, Debug, Display};
 
@@ -15,7 +15,7 @@ pub struct Swell {
 
 impl Swell {
     pub fn new(
-        units: &Units,
+        units: &UnitSystem,
         wave_height: f64,
         period: f64,
         direction: Direction,
@@ -25,33 +25,33 @@ impl Swell {
             wave_height: DimensionalData {
                 value: Some(wave_height),
                 variable_name: "wave height".into(),
-                measurement: Measurement::Length,
-                unit: units.clone(),
+                unit: match units {
+                    UnitSystem::Metric => Unit::Meters,
+                    UnitSystem::English => Unit::Feet,
+                    _ => Unit::Unknown,
+                },
             },
             period: DimensionalData {
                 value: Some(period),
                 variable_name: "period".into(),
-                measurement: Measurement::Time,
-                unit: units.clone(),
+                unit: Unit::Seconds,
             },
             direction: DimensionalData {
                 value: Some(direction),
                 variable_name: "direction".into(),
-                measurement: Measurement::Direction,
-                unit: units.clone(),
+                unit: Unit::Degrees,
             },
             energy: energy.map(|v| DimensionalData {
                 value: Some(v),
                 variable_name: "energy".into(),
-                measurement: Measurement::WaveEnergy,
-                unit: units.clone(),
+                unit: Unit::MetersSquaredPerHertz,
             }),
         }
     }
 }
 
 impl UnitConvertible<Swell> for Swell {
-    fn to_units(&mut self, new_units: &Units) {
+    fn to_units(&mut self, new_units: &UnitSystem) {
         self.wave_height.to_units(new_units);
     }
 }

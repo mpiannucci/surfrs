@@ -54,93 +54,79 @@ impl ParseableDataRecord for MeteorologicalDataRecord {
             wind_direction: DimensionalData::from_raw_data(
                 row[5],
                 "wind direction".into(),
-                Measurement::Direction,
-                Units::Metric,
+                Unit::Degrees
             ),
             wind_speed: DimensionalData::from_raw_data(
                 row[6],
                 "wind speed".into(),
-                Measurement::Speed,
-                Units::Metric,
+                Unit::MetersPerSecond,
             ),
             wind_gust_speed: DimensionalData::from_raw_data(
                 row[7],
                 "wind gust speed".into(),
-                Measurement::Speed,
-                Units::Metric,
+                Unit::MetersPerSecond,
             ),
             wave_height: DimensionalData::from_raw_data(
                 row[8],
                 "wave height".into(),
-                Measurement::Length,
-                Units::Metric,
+                Unit::Meters,
             ),
             dominant_wave_period: DimensionalData::from_raw_data(
                 row[9],
                 "dominant wave period".into(),
-                Measurement::Time,
-                Units::Metric,
+                Unit::Seconds,
             ),
             average_wave_period: DimensionalData::from_raw_data(
                 row[10],
                 "average wave period".into(),
-                Measurement::Time,
-                Units::Metric,
+                Unit::Seconds,
             ),
             mean_wave_direction: DimensionalData::from_raw_data(
                 row[11],
                 "mean wave direction".into(),
-                Measurement::Direction,
-                Units::Metric,
+                Unit::Degrees,
             ),
             air_pressure: DimensionalData::from_raw_data(
                 row[12],
                 "air pressure".into(),
-                Measurement::Pressure,
-                Units::Metric,
+                Unit::HectaPascal,
             ),
             air_temperature: DimensionalData::from_raw_data(
                 row[13],
                 "air temperature".into(),
-                Measurement::Temperature,
-                Units::Metric,
+                Unit::Celsius,
             ),
             water_temperature: DimensionalData::from_raw_data(
                 row[14],
                 "water temperature".into(),
-                Measurement::Temperature,
-                Units::Metric,
+                Unit::Celsius,
             ),
             dewpoint_temperature: DimensionalData::from_raw_data(
                 row[15],
                 "dewpoint temperature".into(),
-                Measurement::Temperature,
-                Units::Metric,
+                Unit::Celsius,
             ),
             visibility: DimensionalData::from_raw_data(
                 row[16],
                 "".into(),
-                Measurement::Visibility,
-                Units::Metric,
+                Unit::NauticalMiles,
             ),
             air_pressure_tendency: DimensionalData::from_raw_data(
                 row[17],
                 "air pressure tendency".into(),
-                Measurement::Pressure,
-                Units::Metric,
+                Unit::HectaPascal
             ),
             tide: DimensionalData::from_raw_data(
                 row[18],
                 "tide".into(),
-                Measurement::Length,
-                Units::English,
+                Unit::Feet,
             ),
         })
     }
 }
 
 impl UnitConvertible<MeteorologicalDataRecord> for MeteorologicalDataRecord {
-    fn to_units(&mut self, new_units: &Units) {
+    fn to_units(&mut self, new_units: &UnitSystem) {
         self.wind_direction.to_units(new_units);
         self.wind_speed.to_units(new_units);
         self.wind_gust_speed.to_units(new_units);
@@ -223,7 +209,7 @@ impl<'a> MeteorologicalDataRecordCollection<'a> {
                             record.iter().filter(|data| !data.is_empty()).collect();
                         let mut met_data =
                             MeteorologicalDataRecord::from_data_row(None, &filtered_record)?;
-                        met_data.to_units(&Units::Metric);
+                        met_data.to_units(&UnitSystem::Metric);
                         Ok(met_data)
                     }
                     Err(e) => Err(DataRecordParsingError::ParseFailure(e.to_string())),

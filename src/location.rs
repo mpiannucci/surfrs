@@ -1,4 +1,4 @@
-use crate::units::Units;
+use crate::units::UnitSystem;
 use serde::{Deserialize, Serialize};
 use std::{f64};
 use std::string::String;
@@ -69,7 +69,7 @@ impl Location {
         }
     }
 
-    pub fn distance(&self, other: &Location, unit: &Units) -> f64 {
+    pub fn distance(&self, other: &Location, unit: &UnitSystem) -> f64 {
         let source_lat = self.absolute_latitude().to_radians();
         let source_lon = self.absolute_longitude().to_radians();
         let dest_lat = other.absolute_latitude().to_radians();

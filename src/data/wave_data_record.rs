@@ -47,64 +47,55 @@ impl ParseableDataRecord for WaveDataRecord {
             wave_height: DimensionalData::from_raw_data(
                 row[5],
                 "wave height".into(),
-                Measurement::Length,
-                Units::Metric,
+                Unit::Meters,
             ),
             swell_wave_height: DimensionalData::from_raw_data(
                 row[6],
                 "swell wave height".into(),
-                Measurement::Length,
-                Units::Metric,
+                Unit::Meters
             ),
             swell_wave_period: DimensionalData::from_raw_data(
                 row[7],
                 "swell period".into(),
-                Measurement::Time,
-                Units::Metric,
+                Unit::Seconds
             ),
             wind_wave_height: DimensionalData::from_raw_data(
                 row[8],
                 "wind wave height".into(),
-                Measurement::Length,
-                Units::Metric,
+                Unit::Meters,
             ),
             wind_wave_period: DimensionalData::from_raw_data(
                 row[9],
                 "wind period".into(),
-                Measurement::Time,
-                Units::Metric,
+                Unit::Seconds,
             ),
             swell_wave_direction: DimensionalData::from_raw_data(
                 row[10],
-                "swell wave direction".into(),
-                Measurement::Direction,
-                Units::Metric,
+                "swell wave direction".into(), 
+                Unit::Degrees,
             ),
             wind_wave_direction: DimensionalData::from_raw_data(
                 row[11],
                 "wind wave direction".into(),
-                Measurement::Direction,
-                Units::Metric,
+                Unit::Degrees,
             ),
             steepness: Steepness::from_str(row[12]).unwrap_or(Steepness::NA),
             average_wave_period: DimensionalData::from_raw_data(
                 row[10],
                 "average wave period".into(),
-                Measurement::Time,
-                Units::Metric,
+                Unit::Seconds,
             ),
             mean_wave_direction: DimensionalData::from_raw_data(
                 row[11],
                 "mean wave direction".into(),
-                Measurement::Direction,
-                Units::Metric,
+                Unit::Degrees,
             ),
         })
     }
 }
 
 impl UnitConvertible<WaveDataRecord> for WaveDataRecord {
-    fn to_units(&mut self, new_units: &Units) {
+    fn to_units(&mut self, new_units: &UnitSystem) {
         self.wave_height.to_units(new_units);
         self.average_wave_period.to_units(new_units);
         self.mean_wave_direction.to_units(new_units);
@@ -169,7 +160,7 @@ impl<'a> WaveDataRecordCollection<'a> {
                     let filtered_record: Vec<&str> =
                         record.iter().filter(|data| !data.is_empty()).collect();
                     let mut wave_data = WaveDataRecord::from_data_row(None, &filtered_record)?;
-                    wave_data.to_units(&Units::Metric);
+                    wave_data.to_units(&UnitSystem::Metric);
                     return Ok(wave_data);
                 }
                 Err(DataRecordParsingError::InvalidData)

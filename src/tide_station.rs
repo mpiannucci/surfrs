@@ -4,7 +4,7 @@ use chrono::Utc;
 use geojson::{Feature, Geometry, Value, JsonObject, JsonValue};
 use serde::{Serialize, Deserialize};
 
-use crate::{station::Station, location::Location, units::Units};
+use crate::{station::Station, location::Location, units::UnitSystem};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DataInterval {
@@ -61,7 +61,7 @@ pub struct TideStation {
 }
 
 impl TideStation {
-    pub fn tidal_data_url(&self, start_date: &chrono::DateTime<Utc>, end_date: &chrono::DateTime<Utc>, datum: &TideDatum, interval: &DataInterval, units: &Units) -> String {
+    pub fn tidal_data_url(&self, start_date: &chrono::DateTime<Utc>, end_date: &chrono::DateTime<Utc>, datum: &TideDatum, interval: &DataInterval, units: &UnitSystem) -> String {
         format!("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date={0}%20{1}&end_date={2}%20{3}&station={4}&product=predictions&datum={5}&interval={6}&units={7}&time_zone=gmt&application=web_services&format=json", 
             start_date.format("%Y%m%d"), 
             start_date.format("%H:%M"), 
@@ -189,6 +189,6 @@ mod tests {
 
         let start_date = Utc::now();
         let end_date = start_date.checked_add_days(Days::new(7)).unwrap();
-        let _ = station.tidal_data_url(&start_date, &end_date, &TideDatum::MLW, &DataInterval::Default, &Units::English);
+        let _ = station.tidal_data_url(&start_date, &end_date, &TideDatum::MLW, &DataInterval::Default, &UnitSystem::English);
     }
 }

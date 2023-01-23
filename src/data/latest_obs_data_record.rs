@@ -9,7 +9,7 @@ use crate::{
     buoy_station::{BuoyStation},
     dimensional_data::DimensionalData,
     swell::{Swell, SwellProvider, SwellSummary},
-    units::{Direction, Measurement, UnitConvertible, Units},
+    units::{Direction, UnitConvertible, Unit, UnitSystem},
 };
 
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
@@ -71,93 +71,79 @@ impl ParseableDataRecord for LatestObsDataRecord {
             wind_direction: DimensionalData::from_raw_data(
                 row[8],
                 "wind direction".into(),
-                Measurement::Direction,
-                Units::Metric,
+                Unit::Degrees,
             ),
             wind_speed: DimensionalData::from_raw_data(
                 row[9],
                 "wind speed".into(),
-                Measurement::Speed,
-                Units::Metric,
+                Unit::MetersPerSecond,
             ),
             wind_gust_speed: DimensionalData::from_raw_data(
                 row[10],
                 "wind gust speed".into(),
-                Measurement::Speed,
-                Units::Metric,
+                Unit::MetersPerSecond,
             ),
             wave_height: DimensionalData::from_raw_data(
                 row[11],
                 "wave height".into(),
-                Measurement::Length,
-                Units::Metric,
+                Unit::Meters,
             ),
             dominant_wave_period: DimensionalData::from_raw_data(
                 row[12],
                 "dominant wave period".into(),
-                Measurement::Time,
-                Units::Metric,
+                Unit::Seconds,
             ),
             average_wave_period: DimensionalData::from_raw_data(
                 row[13],
                 "average wave period".into(),
-                Measurement::Time,
-                Units::Metric,
+                Unit::Seconds,
             ),
             mean_wave_direction: DimensionalData::from_raw_data(
                 row[14],
                 "mean wave direction".into(),
-                Measurement::Direction,
-                Units::Metric,
+                Unit::Degrees,
             ),
             air_pressure: DimensionalData::from_raw_data(
                 row[15],
                 "air pressure".into(),
-                Measurement::Pressure,
-                Units::Metric,
+                Unit::HectaPascal,
             ),
             air_pressure_tendency: DimensionalData::from_raw_data(
                 row[16],
                 "air pressure tendency".into(),
-                Measurement::Pressure,
-                Units::Metric,
+                Unit::HectaPascal,
             ),
             air_temperature: DimensionalData::from_raw_data(
                 row[17],
                 "air temperature".into(),
-                Measurement::Temperature,
-                Units::Metric,
+                Unit::Celsius,
             ),
             water_temperature: DimensionalData::from_raw_data(
                 row[18],
                 "water temperature".into(),
-                Measurement::Temperature,
-                Units::Metric,
+                Unit::Celsius,
             ),
             dewpoint_temperature: DimensionalData::from_raw_data(
                 row[19],
                 "dewpoint temperature".into(),
-                Measurement::Temperature,
-                Units::Metric,
+                Unit::Celsius,
             ),
             visibility: DimensionalData::from_raw_data(
                 row[20],
                 "".into(),
-                Measurement::Visibility,
-                Units::Metric,
+                Unit::NauticalMiles,
             ),
             tide: DimensionalData::from_raw_data(
                 row[21],
                 "tide".into(),
-                Measurement::Length,
-                Units::English,
+                Unit::Feet,
             ),
         })
     }
 }
 
 impl UnitConvertible<LatestObsDataRecord> for LatestObsDataRecord {
-    fn to_units(&mut self, new_units: &Units) {
+    fn to_units(&mut self, new_units: &UnitSystem) {
         self.wind_direction.to_units(new_units);
         self.wind_speed.to_units(new_units);
         self.wind_gust_speed.to_units(new_units);
@@ -217,7 +203,7 @@ impl<'a> LatestObsDataRecordCollection<'a> {
                                 record.iter().filter(|data| !data.is_empty()).collect();
                             let mut met_data =
                                 LatestObsDataRecord::from_data_row(None, &filtered_record)?;
-                            met_data.to_units(&Units::Metric);
+                            met_data.to_units(&UnitSystem::Metric);
                             Ok(met_data)
                         }
                         Err(e) => Err(DataRecordParsingError::ParseFailure(e.to_string())),

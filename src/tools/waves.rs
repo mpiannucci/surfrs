@@ -1,6 +1,6 @@
 use std::{f64::consts::PI, ops::Sub, vec};
 
-use crate::{swell::Swell, units::{Direction, direction::DirectionConvention}, units::Units};
+use crate::{swell::Swell, units::{Direction, direction::DirectionConvention, UnitSystem}};
 
 const GRAVITY: f64 = 9.81;
 
@@ -401,7 +401,7 @@ pub fn pt_mean(
 
     // Compute pars
     let mut components: Vec<Swell> = Vec::new();
-    let mut summary: Swell = Swell::new(&Units::Metric, 0.0, 0.0, Direction::from_degrees(0), None);
+    let mut summary: Swell = Swell::new(&UnitSystem::Metric, 0.0, 0.0, Direction::from_degrees(0), None);
 
     for ip in 0..num_partitions + 1 {
         let mo = sume[ip] * dth[0] * 1.0 / TPI;
@@ -441,7 +441,7 @@ pub fn pt_mean(
         // let wind_sea_fraction = sumew[ip] / sume[ip];
 
         let component = Swell::new(
-            &Units::Metric,
+            &UnitSystem::Metric,
             hs,
             peak_period,
             Direction::from_degrees(mean_wave_direction as i32),

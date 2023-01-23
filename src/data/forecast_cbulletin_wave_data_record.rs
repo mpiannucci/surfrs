@@ -8,7 +8,7 @@ use serde::{Serialize, Deserialize};
 use crate::dimensional_data::DimensionalData;
 use crate::location::Location;
 use crate::swell::{Swell, SwellProvider, SwellSummary};
-use crate::units::{Direction, Measurement, UnitConvertible, Units};
+use crate::units::{Direction, UnitConvertible, Unit, UnitSystem};
 
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
 
@@ -160,8 +160,7 @@ impl ParseableDataRecord for ForecastCBulletinWaveRecord {
         let significant_wave_height = DimensionalData::from_raw_data(
             row[1],
             "significant wave height".into(),
-            Measurement::Length,
-            Units::English,
+            Unit::Feet,
         );
 
         let mut swell_components = Vec::new();
@@ -178,7 +177,7 @@ impl ParseableDataRecord for ForecastCBulletinWaveRecord {
             })?;
 
             swell_components.push(Swell::new(
-                &Units::English,
+                &UnitSystem::English,
                 wave_height,
                 period,
                 Direction::from_degrees(degrees),
@@ -195,7 +194,7 @@ impl ParseableDataRecord for ForecastCBulletinWaveRecord {
 }
 
 impl UnitConvertible<ForecastCBulletinWaveRecord> for ForecastCBulletinWaveRecord {
-    fn to_units(&mut self, new_units: &Units) {
+    fn to_units(&mut self, new_units: &UnitSystem) {
         self.significant_wave_height.to_units(new_units);
         for swell in &mut self.swell_components {
             swell.to_units(new_units);
@@ -285,7 +284,7 @@ impl<'a> ForecastCBulletinWaveRecordCollection<'a> {
                                 Some(&metadata),
                                 &filtered_record,
                             )?;
-                            wave_data.to_units(&Units::Metric);
+                            wave_data.to_units(&UnitSystem::Metric);
                             Ok(wave_data)
                         }
                         Err(e) => Err(DataRecordParsingError::ParseFailure(format!(
