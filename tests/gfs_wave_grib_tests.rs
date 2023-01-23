@@ -1,8 +1,15 @@
-use std::{path::Path, fs::{File, self}, io::Read};
+use std::{
+    fs::{self, File},
+    io::Read,
+    path::Path,
+};
 
 use geojson::FeatureCollection;
-use gribberish::message::{read_messages};
-use surfrs::{model::GFSWaveModel, model::NOAAModel, location::Location, data::gfs_wave_grib_point_data_record::GFSWaveGribPointDataRecord};
+use gribberish::message::read_messages;
+use surfrs::{
+    data::gfs_wave_grib_point_data_record::GFSWaveGribPointDataRecord, location::Location,
+    model::GFSWaveModel, model::NOAAModel,
+};
 
 #[test]
 fn extract_atlantic_wave_data_record() {
@@ -12,9 +19,11 @@ fn extract_atlantic_wave_data_record() {
 
     let grib_path = Path::new(&grib_path);
     let mut grib_file = File::open(grib_path).expect("file not found");
-    
+
     let mut buf: Vec<u8> = Vec::new();
-    grib_file.read_to_end(&mut buf).expect("Failed to read data from the grib file");
+    grib_file
+        .read_to_end(&mut buf)
+        .expect("Failed to read data from the grib file");
 
     let messages = read_messages(&buf).collect::<Vec<_>>();
     let wave_data = GFSWaveGribPointDataRecord::from_messages(&model, &messages, &location);
@@ -25,9 +34,14 @@ fn extract_atlantic_wave_data_record() {
     println!("{:?}", wave_data.swell_components[2].to_string());
     println!("{:?}", wave_data.swell_components[3].to_string());
 
-    let wave_message = messages.iter().find(|m| m.variable_abbrev().unwrap_or("".into()) == "HTSGW").unwrap();
-    let wave_features = model.contour_data(wave_message, Some(0.0), Some(5.0), Some(20)).unwrap();
-    let collection =  FeatureCollection {
+    let wave_message = messages
+        .iter()
+        .find(|m| m.variable_abbrev().unwrap_or("".into()) == "HTSGW")
+        .unwrap();
+    let wave_features = model
+        .contour_data(wave_message, Some(0.0), Some(12.0), Some(24), Some(surfrs::units::UnitSystem::English))
+        .unwrap();
+    let collection = FeatureCollection {
         bbox: None,
         features: wave_features,
         foreign_members: None,
@@ -44,20 +58,22 @@ fn extract_global_wave_data_record() {
 
     let grib_path = Path::new(&grib_path);
     let mut grib_file = File::open(grib_path).expect("file not found");
-    
+
     let mut buf: Vec<u8> = Vec::new();
-    grib_file.read_to_end(&mut buf).expect("Failed to read data from the grib file");
+    grib_file
+        .read_to_end(&mut buf)
+        .expect("Failed to read data from the grib file");
 
     let messages = read_messages(&buf).collect::<Vec<_>>();
 
-    let wave_message = messages.iter().find(|m| m.variable_abbrev().unwrap_or("".into()) == "HTSGW").unwrap();
-    let wave_features = model.contour_data(
-        wave_message, 
-        Some(0.0), 
-        Some(12.0), 
-        Some(24))
+    let wave_message = messages
+        .iter()
+        .find(|m| m.variable_abbrev().unwrap_or("".into()) == "HTSGW")
         .unwrap();
-    let collection =  FeatureCollection {
+    let wave_features = model
+        .contour_data(wave_message, Some(0.0), Some(12.0), Some(24), None)
+        .unwrap();
+    let collection = FeatureCollection {
         bbox: None,
         features: wave_features,
         foreign_members: None,

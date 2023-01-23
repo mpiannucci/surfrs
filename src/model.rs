@@ -7,7 +7,7 @@ use crate::{
     location::{normalize_latitude, normalize_longitude, Location},
     tools::{
         contour::{compute_latlng_gridded_contours}, date::closest_gfs_model_datetime,
-    }
+    }, units::{UnitSystem, Unit}
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -89,13 +89,33 @@ pub trait NOAAModel {
         threshold_min: Option<f64>,
         threshold_max: Option<f64>,
         threshold_count: Option<usize>,
+        units: Option<UnitSystem>,
     ) -> Result<Vec<Feature>, String> {
         // This only works for regular grids.
         let (lat_count, lng_count) = message.grid_dimensions()?;
         let ((lat_start, lng_start), (lat_end, lng_end)) = message.grid_bounds()?;
 
+        let mut unit_abbrev = message.unit()?;
+        let data = if let Some(unit_system) = units.as_ref() {
+            let unit = Unit::from(unit_abbrev.as_str());
+            let target = unit.convert_system(unit_system);
+            unit_abbrev = target.abbreviation().into();
+
+            let data = message.data()?;
+            if unit != target {
+                data
+                    .into_iter()
+                    .map(|v| unit.convert(v, &target))
+                    .collect()
+            } else {
+                data
+            }
+        } else {
+            message.data()?
+        };
+
         compute_latlng_gridded_contours(
-            message.data()?, 
+            data, 
             lng_count, 
             lat_count, 
             lng_start, 
@@ -110,7 +130,7 @@ pub trait NOAAModel {
                     format!(
                         "{:.0}{}",
                         value.round(),
-                        message.unit().map(|u| format!(" {u}")).unwrap_or("".into())
+                        unit_abbrev
                     )
                 } else {
                     "".to_string()
