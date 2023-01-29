@@ -234,7 +234,7 @@ impl NOAAModel for GFSWaveModel {
         let hour = model_date.hour();
 
         format!(
-            "{base}/gfs.{year}{month:02}{day:02}/{hour:02}/wave/gridded/gfswave.t{hour:02}z.{id}.f{timestep}.grib2"
+            "{base}/gfs.{year}{month:02}{day:02}/{hour:02}/wave/gridded/gfswave.t{hour:02}z.{id}.f{timestep:03}.grib2"
         )
     }
 }
