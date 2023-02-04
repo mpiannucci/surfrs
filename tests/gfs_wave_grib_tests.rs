@@ -80,5 +80,5 @@ fn extract_global_wave_data_record() {
     };
 
     let contour_data = serde_json::to_string(&collection).unwrap();
-    _ = fs::write("global_wvsgw.json", contour_data);
+    // _ = fs::write("global_wvsgw.json", contour_data);
 }

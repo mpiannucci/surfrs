@@ -109,8 +109,8 @@ fn read_wave_spectra_data() {
 
     let record = records.skip(6).next().unwrap();
 
-    println!("+++++++++++++++++++++++++++++++++++++++++++++++++");
-    println!("BUOY -- {}", record.date);
+    // println!("+++++++++++++++++++++++++++++++++++++++++++++++++");
+    // println!("BUOY -- {}", record.date);
     // println!("{:?}", record.spectra.frequency);
     // println!("{:?}", record.spectra.oned());
 
@@ -138,26 +138,26 @@ fn read_wave_spectra_data() {
         .for_each(|(i, component)| {
             let is_false_positive = false_components.contains(&i);
             component.to_units(&UnitSystem::English);
-            println!(
-                "BUOY -- {} {} {}",
-                &component,
-                component.energy.clone().unwrap(),
-                !is_false_positive
-            );
+            // println!(
+            //     "BUOY -- {} {} {}",
+            //     &component,
+            //     component.energy.clone().unwrap(),
+            //     !is_false_positive
+            // );
         });
 
     println!("buoy dirs: {:?}", &record.spectra.direction_deg());
     let cart_e = record.spectra.project_cartesian(50, Some(25.0), None);
     let (min_e, max_e) = record.spectra.energy_range();
     let binned_cart_e = bin(&cart_e, &min_e, &max_e, &255);
-    println!("buoy cartesian: {:?}", binned_cart_e);
+    // println!("buoy cartesian: {:?}", binned_cart_e);
 
-    println!("buoy mwd:: {:?}", &record.spectra.mean_wave_direction_f());
+    // println!("buoy mwd:: {:?}", &record.spectra.mean_wave_direction_f());
 
-    let _ = fs::write(
-        "contours2.json",
-        &record.spectra.contoured().unwrap().to_string(),
-    );
+    // let _ = fs::write(
+    //     "contours2.json",
+    //     &record.spectra.contoured().unwrap().to_string(),
+    // );
 }
 
 #[test]
@@ -185,8 +185,8 @@ fn read_spectral_forecast_station_data() {
 
     let spectral_records = spectral_records_iter.unwrap().1;
     let record = spectral_records.skip(6).next().unwrap();
-    println!("++++++++");
-    println!("FORECAST -- {}", record.date);
+    // println!("++++++++");
+    // println!("FORECAST -- {}", record.date);
     // println!("{:?}", record.spectra.frequency);
     // println!("{:?}", record.spectra.oned());
     // println!("forecast watershed: {:?}", watershed(&record.spectra.energy, record.spectra.frequency.len(), record.spectra.direction.len(), 100).unwrap().0);
@@ -207,28 +207,28 @@ fn read_spectral_forecast_station_data() {
 
     for mut component in swell_data.components {
         component.to_units(&UnitSystem::English);
-        println!(
-            "FORECAST -- {} {}",
-            component.clone(),
-            component.energy.unwrap()
-        );
+        // println!(
+        //     "FORECAST -- {} {}",
+        //     component.clone(),
+        //     component.energy.unwrap()
+        // );
     }
 
-    println!("forecast dirs: {:?}", record.spectra.direction_deg());
-    println!(
-        "forecast cartesian: {:?}",
-        record.spectra.project_cartesian(50, Some(25.0), None)
-    );
+    // println!("forecast dirs: {:?}", record.spectra.direction_deg());
+    // println!(
+    //     "forecast cartesian: {:?}",
+    //     record.spectra.project_cartesian(50, Some(25.0), None)
+    // );
 
-    println!(
-        "forecast mwd:: {:?}",
-        &record.spectra.mean_wave_direction_f()
-    );
+    // println!(
+    //     "forecast mwd:: {:?}",
+    //     &record.spectra.mean_wave_direction_f()
+    // );
 
-    let _ = fs::write(
-        "contours.json",
-        &record.spectra.contoured().unwrap().to_string(),
-    );
+    // let _ = fs::write(
+    //     "contours.json",
+    //     &record.spectra.contoured().unwrap().to_string(),
+    // );
 }
 
 #[test]
@@ -269,5 +269,5 @@ fn read_waimea_spectra_data() {
 
     let record = records.skip(3).next().unwrap();
     let swell_data = record.swell_data().unwrap(); 
-    println!("{}", swell_data.summary);
 }
+
