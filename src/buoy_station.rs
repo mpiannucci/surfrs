@@ -1,6 +1,9 @@
-use crate::{location::Location, station::Station, tools::date::closest_gfs_model_datetime, model::ModelDataSource};
+use crate::{
+    location::Location, model::ModelDataSource, station::Station,
+    tools::{date::closest_gfs_model_datetime, dap::{DapConstraint, format_dods_url}},
+};
 use chrono::{DateTime, Datelike, Timelike, Utc};
-use geojson::{Feature, FeatureCollection, Geometry, JsonObject, JsonValue, Value};
+use geojson::{Feature, FeatureCollection, JsonObject, Geometry, JsonValue, Value};
 use quick_xml::de::from_reader;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize};
 use std::{
@@ -151,30 +154,80 @@ impl BuoyStation {
         )
     }
 
-    pub fn gfswave_bulletin_data_url(&self, source: &ModelDataSource, date: &DateTime<Utc>) -> String {
+    pub fn stdmet_dap_url_root(&self) -> String {
+        format!(
+            "https://www.ndbc.noaa.gov/thredds/dodsC/data/stdmet/{station_id}/{station_id}h9999.nc",
+            station_id = self.station_id,
+        )
+    }
+
+    pub fn stdmet_das_url(&self) -> String {
+        let root = self.stdmet_dap_url_root();
+        format!("{root}.das")
+    }
+
+    pub fn stdmet_dds_url(&self) -> String {
+        let root = self.stdmet_dap_url_root();
+        format!("{root}.dds")
+    }
+
+    pub fn stdmet_dods_url(&self, constraints: &[DapConstraint]) -> String {
+        format_dods_url(&self.stdmet_dap_url_root(), constraints)
+    }
+
+    pub fn swden_dap_url_root(&self) -> String {
+        format!(
+            "https://www.ndbc.noaa.gov/thredds/dodsC/data/swden/{station_id}/{station_id}h9999.nc",
+            station_id = self.station_id,
+        )
+    }
+
+    pub fn swden_das_url(&self) -> String {
+        let root = self.swden_dap_url_root();
+        format!("{root}.das")
+    }
+
+    pub fn swden_dds_url(&self) -> String {
+        let root = self.swden_dap_url_root();
+        format!("{root}.dds")
+    }
+
+    pub fn swden_dods_url(&self, constraints: &[DapConstraint]) -> String {
+        format_dods_url(&self.swden_dap_url_root(), constraints)
+    }
+
+    pub fn gfswave_bulletin_data_url(
+        &self,
+        source: &ModelDataSource,
+        date: &DateTime<Utc>,
+    ) -> String {
         let model_date = closest_gfs_model_datetime(date);
         format!(
-            "{}/gfs.{}{:02}{:02}/{:02}/wave/station/bulls.t{:02}z/gfswave.{}.cbull", 
+            "{}/gfs.{}{:02}{:02}/{:02}/wave/station/bulls.t{:02}z/gfswave.{}.cbull",
             self.source_path(source),
-            model_date.year(), 
-            model_date.month(), 
-            model_date.day(), 
-            model_date.hour(), 
-            model_date.hour(), 
+            model_date.year(),
+            model_date.month(),
+            model_date.day(),
+            model_date.hour(),
+            model_date.hour(),
             self.station_id
         )
     }
 
-    pub fn gfswave_spectral_data_url(&self, source: &ModelDataSource, date: &DateTime<Utc>) -> String {
+    pub fn gfswave_spectral_data_url(
+        &self,
+        source: &ModelDataSource,
+        date: &DateTime<Utc>,
+    ) -> String {
         let model_date = closest_gfs_model_datetime(date);
         format!(
-            "{}/gfs.{}{:02}{:02}/{:02}/wave/station/bulls.t{:02}z/gfswave.{}.spec", 
+            "{}/gfs.{}{:02}{:02}/{:02}/wave/station/bulls.t{:02}z/gfswave.{}.spec",
             self.source_path(source),
-            model_date.year(), 
-            model_date.month(), 
-            model_date.day(), 
-            model_date.hour(), 
-            model_date.hour(), 
+            model_date.year(),
+            model_date.month(),
+            model_date.day(),
+            model_date.hour(),
+            model_date.hour(),
             self.station_id
         )
     }
@@ -182,22 +235,21 @@ impl BuoyStation {
     pub fn gfswave_lsl_url(&self, source: &ModelDataSource, date: &DateTime<Utc>) -> String {
         let model_date = closest_gfs_model_datetime(date);
         format!(
-            "{}/gfs.{}{:02}{:02}/{:02}/wave/station/ls-l", 
+            "{}/gfs.{}{:02}{:02}/{:02}/wave/station/ls-l",
             self.source_path(source),
-            model_date.year(), 
-            model_date.month(), 
-            model_date.day(), 
+            model_date.year(),
+            model_date.month(),
+            model_date.day(),
             model_date.hour()
         )
     }
 
     fn source_path(&self, source: &ModelDataSource) -> &'static str {
         match source {
-            ModelDataSource::NODDAWS => "https://noaa-gfs-bdp-pds.s3.amazonaws.com", 
+            ModelDataSource::NODDAWS => "https://noaa-gfs-bdp-pds.s3.amazonaws.com",
             ModelDataSource::NOMADS => "https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod",
             ModelDataSource::NODDGCP => "https://storage.googleapis.com/global-forecast-system",
         }
-        
     }
 }
 

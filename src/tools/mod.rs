@@ -1,5 +1,6 @@
 pub mod analysis;
 pub mod contour;
+pub mod dap;
 pub mod date;
 pub mod linspace;
 pub mod math;

@@ -21,6 +21,7 @@ contour = { version = "0.7.0", features = ["geojson"] }
 kdtree = "0.5.1"
 image = "0.24.5"
 gribberish = { git = "https://github.com/mpiannucci/gribberish" }
+readap = { git = "https://github.com/mpiannucci/readap" }
 
 [dev-dependencies]
 reqwest = { version = "0.11", features = ["json"] }
