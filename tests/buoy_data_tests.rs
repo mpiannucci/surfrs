@@ -1,5 +1,7 @@
 extern crate surfrs;
 
+use chrono::{DateTime, NaiveDateTime, Utc};
+use readap::DodsDataset;
 use std::f64::consts::PI;
 use std::fs;
 use surfrs::data::forecast_cbulletin_wave_data_record::{
@@ -104,7 +106,7 @@ fn read_wave_spectra_data() {
         second_polar_coefficient_collection.records(),
     )
     .map(|(e, mwd, pwd, r1, r2)| {
-        DirectionalSpectralWaveDataRecord::from_data(&directions, e, mwd, pwd, r1, r2)
+        DirectionalSpectralWaveDataRecord::from_data_records(&directions, e, mwd, pwd, r1, r2)
     });
 
     let record = records.skip(6).next().unwrap();
@@ -264,10 +266,97 @@ fn read_waimea_spectra_data() {
         second_polar_coefficient_collection.records(),
     )
     .map(|(e, mwd, pwd, r1, r2)| {
-        DirectionalSpectralWaveDataRecord::from_data(&directions, e, mwd, pwd, r1, r2)
+        DirectionalSpectralWaveDataRecord::from_data_records(&directions, e, mwd, pwd, r1, r2)
     });
 
     let record = records.skip(3).next().unwrap();
-    let swell_data = record.swell_data().unwrap(); 
+    let swell_data = record.swell_data().unwrap();
 }
 
+#[test]
+fn read_dap_swden_data() {
+    let raw_data = fs::read("mock/44097w9999.swden.nc.dods").unwrap();
+    let dataset = DodsDataset::from_bytes(&raw_data).unwrap();
+
+    let coords = dataset.variable_coords("spectral_wave_density").unwrap();
+
+    let energy: Vec<f32> = dataset
+        .variable_data("spectral_wave_density")
+        .unwrap()
+        .try_into()
+        .unwrap();
+    let mwd: Vec<i32> = dataset
+        .variable_data("mean_wave_dir")
+        .unwrap()
+        .try_into()
+        .unwrap();
+    let pwd: Vec<i32> = dataset
+        .variable_data("principal_wave_dir")
+        .unwrap()
+        .try_into()
+        .unwrap();
+    let wave_spectrum_r1: Vec<f32> = dataset
+        .variable_data("wave_spectrum_r1")
+        .unwrap()
+        .try_into()
+        .unwrap();
+    let wave_spectrum_r2: Vec<f32> = dataset
+        .variable_data("wave_spectrum_r2")
+        .unwrap()
+        .try_into()
+        .unwrap();
+
+    assert_eq!(energy.len(), mwd.len());
+    assert_eq!(energy.len(), pwd.len());
+    assert_eq!(energy.len(), wave_spectrum_r1.len());
+    assert_eq!(energy.len(), wave_spectrum_r2.len());
+
+    let dir_count = 36usize;
+    let dir_step = (2.0 * PI) / dir_count as f64;
+    let direction = (0..dir_count)
+        .map(|i| dir_step * (i as f64))
+        .collect::<Vec<f64>>();
+
+    let freq_count = 64usize;
+
+    let dates: Vec<i32> = coords[0].1.clone().try_into().unwrap();
+    let dates = dates
+        .iter()
+        .map(|t| {
+            DateTime::from_utc(
+                NaiveDateTime::from_timestamp_opt(*t as i64, 0).unwrap(),
+                Utc,
+            )
+        })
+        .collect::<Vec<DateTime<Utc>>>();
+
+    let frequency: Vec<f32> = coords[1].1.clone().try_into().unwrap();
+    let frequency: Vec<f64> = frequency.iter().map(|f| *f as f64).collect();
+
+    let mut records: Vec<DirectionalSpectralWaveDataRecord> = Vec::new();
+    for i in (0..energy.len()).step_by(freq_count) {
+        let date_index = i / freq_count;
+        let date = dates[date_index];
+
+        let start = i;
+        let end = start + freq_count;
+        let energy_spectra = &energy[start..end];
+        let mean_wave_direction = &mwd[start..end];
+        let primary_wave_direction = &pwd[start..end];
+        let first_polar_coefficient = &wave_spectrum_r1[start..end];
+        let second_polar_coefficient = &wave_spectrum_r2[start..end];
+
+        let record = DirectionalSpectralWaveDataRecord::from_dods_data(
+            &date,
+            &direction,
+            &frequency,
+            energy_spectra,
+            mean_wave_direction,
+            primary_wave_direction,
+            first_polar_coefficient,
+            second_polar_coefficient,
+        );
+
+        records.push(record);
+    };
+}

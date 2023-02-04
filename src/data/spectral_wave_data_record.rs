@@ -80,7 +80,7 @@ pub struct DirectionalSpectralWaveDataRecord {
 }
 
 impl DirectionalSpectralWaveDataRecord {
-    pub fn from_data(
+    pub fn from_data_records(
         directions: &[f64],
         energy_spectra: SpectralWaveDataRecord,
         mean_wave_direction: SpectralWaveDataRecord,
@@ -113,6 +113,45 @@ impl DirectionalSpectralWaveDataRecord {
 
         DirectionalSpectralWaveDataRecord {
             date: energy_spectra.date.clone(),
+            spectra,
+        }
+    }
+
+    pub fn from_dods_data(
+        date: &DateTime<Utc>,
+        direction: &[f64],
+        frequency: &[f64],
+        energy_spectra: &[f32],
+        mean_wave_direction: &[i32],
+        primary_wave_direction: &[i32],
+        first_polar_coefficient: &[f32],
+        second_polar_coefficient: &[f32],
+    ) -> Self {
+        let mut directional_spectra = vec![0.0; frequency.len() * direction.len()];
+
+        for (ik, _) in frequency.iter().enumerate() {
+            for (ith, angle) in direction.iter().enumerate() {
+                let i = ik + (ith * frequency.len());
+
+                let first = first_polar_coefficient[ik] as f64
+                    * (angle - (mean_wave_direction[ik] as f64).to_radians()).cos();
+                let second = second_polar_coefficient[ik] as f64
+                    * (2.0 * (angle - (primary_wave_direction[ik] as f64).to_radians())).cos();
+
+                let v = energy_spectra[ik] as f64 * (1.0 / PI) * (0.5 + first + second);
+                directional_spectra[i] = if v >= 0.0 { v } else { 0.0 };
+            }
+        }
+
+        let spectra = Spectra::new(
+            frequency.to_vec(),
+            direction.to_vec(),
+            directional_spectra,
+            direction::DirectionConvention::From,
+        );
+
+        DirectionalSpectralWaveDataRecord {
+            date: date.clone(),
             spectra,
         }
     }
