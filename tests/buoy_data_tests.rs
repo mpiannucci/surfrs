@@ -280,27 +280,27 @@ fn read_dap_swden_data() {
 
     let coords = dataset.variable_coords("spectral_wave_density").unwrap();
 
-    let energy: Vec<f32> = dataset
+    let energy: Vec<f64> = dataset
         .variable_data("spectral_wave_density")
         .unwrap()
         .try_into()
         .unwrap();
-    let mwd: Vec<i32> = dataset
+    let mwd: Vec<f64> = dataset
         .variable_data("mean_wave_dir")
         .unwrap()
         .try_into()
         .unwrap();
-    let pwd: Vec<i32> = dataset
+    let pwd: Vec<f64> = dataset
         .variable_data("principal_wave_dir")
         .unwrap()
         .try_into()
         .unwrap();
-    let wave_spectrum_r1: Vec<f32> = dataset
+    let wave_spectrum_r1: Vec<f64> = dataset
         .variable_data("wave_spectrum_r1")
         .unwrap()
         .try_into()
         .unwrap();
-    let wave_spectrum_r2: Vec<f32> = dataset
+    let wave_spectrum_r2: Vec<f64> = dataset
         .variable_data("wave_spectrum_r2")
         .unwrap()
         .try_into()
@@ -319,18 +319,18 @@ fn read_dap_swden_data() {
 
     let freq_count = 64usize;
 
-    let dates: Vec<i32> = coords[0].1.clone().try_into().unwrap();
+    let dates: Vec<i64> = coords[0].1.clone().try_into().unwrap();
     let dates = dates
         .iter()
         .map(|t| {
             DateTime::from_utc(
-                NaiveDateTime::from_timestamp_opt(*t as i64, 0).unwrap(),
+                NaiveDateTime::from_timestamp_opt(*t, 0).unwrap(),
                 Utc,
             )
         })
         .collect::<Vec<DateTime<Utc>>>();
 
-    let frequency: Vec<f32> = coords[1].1.clone().try_into().unwrap();
+    let frequency: Vec<f64> = coords[1].1.clone().try_into().unwrap();
     let frequency: Vec<f64> = frequency.iter().map(|f| *f as f64).collect();
 
     let mut records: Vec<DirectionalSpectralWaveDataRecord> = Vec::new();
@@ -346,7 +346,7 @@ fn read_dap_swden_data() {
         let first_polar_coefficient = &wave_spectrum_r1[start..end];
         let second_polar_coefficient = &wave_spectrum_r2[start..end];
 
-        let record = DirectionalSpectralWaveDataRecord::from_dods_data(
+        let record = DirectionalSpectralWaveDataRecord::new(
             &date,
             &direction,
             &frequency,
