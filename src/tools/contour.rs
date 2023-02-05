@@ -22,6 +22,8 @@ pub fn compute_contours<C: Fn(&Vec<f64>) -> Vec<f64>, F: Fn(&usize, &f64) -> Str
 ) -> Result<Vec<Feature>, ContourError> {
     let contour_builder = ContourBuilder::new(width as u32, height as u32, true);
 
+    let threshold_range = thresholds.last().unwrap() - thresholds.first().unwrap();
+
     let features = contour_builder
         .contours(&data, &thresholds)
         .map_err(|_| ContourError::ContourFailure)?
@@ -60,6 +62,8 @@ pub fn compute_contours<C: Fn(&Vec<f64>) -> Vec<f64>, F: Fn(&usize, &f64) -> Str
                 .collect();
             let new_polygon = Value::MultiPolygon(new_coordinates);
             f.geometry = Some(new_polygon.into());
+
+            f.set_property("normalized", (&c.threshold() - thresholds.first().unwrap()) / threshold_range);
 
             if let Some(formatter) = label_format.as_ref() {
                 let label = formatter(&i, &c.threshold());
