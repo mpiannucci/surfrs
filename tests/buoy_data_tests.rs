@@ -2,18 +2,19 @@ extern crate surfrs;
 
 use std::f64::consts::PI;
 use std::fs;
+use std::time::Instant;
 use surfrs::data::forecast_cbulletin_wave_data_record::{
     ForecastCBulletinWaveRecord, ForecastCBulletinWaveRecordCollection,
 };
 use surfrs::data::forecast_spectral_wave_data_record::ForecastSpectralWaveDataRecordCollection;
 use surfrs::data::latest_obs_data_record::LatestObsDataRecordCollection;
-use surfrs::data::meteorological_data_record::MeteorologicalDataRecordCollection;
+use surfrs::data::meteorological_data_record::{MeteorologicalDataRecordCollection, StdmetDataRecordCollection};
 use surfrs::data::spectral_wave_data_record::{
     DirectionalSpectralWaveDataRecord, SpectralWaveDataRecordCollection,
 };
 use surfrs::data::swden_wave_data_record::SwdenWaveDataRecordCollection;
 use surfrs::data::wave_data_record::WaveDataRecordCollection;
-use surfrs::swell::{SwellProvider, Swell};
+use surfrs::swell::{Swell, SwellProvider};
 use surfrs::tools::vector::bin;
 use surfrs::units::{UnitConvertible, UnitSystem};
 
@@ -284,20 +285,35 @@ fn read_dap_swden_data() {
         .map(|i| dir_step * (i as f64))
         .collect::<Vec<f64>>();
 
-    let swells = record_collection.records().map(|s| {
-        DirectionalSpectralWaveDataRecord::new(
-            &s.date,
-            &direction,
-            &s.frequency,
-            &s.energy_spectra,
-            &s.mean_wave_direction,
-            &s.primary_wave_direction,
-            &s.first_polar_coefficient,
-            &s.second_polar_coefficient,
-        )
-    })
-    .map(|d| d.swell_data().unwrap().summary)
-    .collect::<Vec<Swell>>();
+    let swells = record_collection
+        .records()
+        .map(|s| {
+            DirectionalSpectralWaveDataRecord::new(
+                &s.date,
+                &direction,
+                &s.frequency,
+                &s.energy_spectra,
+                &s.mean_wave_direction,
+                &s.primary_wave_direction,
+                &s.first_polar_coefficient,
+                &s.second_polar_coefficient,
+            )
+        })
+        .map(|d| d.swell_data().unwrap().summary)
+        .collect::<Vec<Swell>>();
 
     assert_eq!(swells.len(), 11);
+}
+
+#[test]
+fn read_dap_stdmet_data() {
+    let raw_data = fs::read("mock/44008h9999.stdmet.nc.dods").unwrap();
+
+    let record_collection = StdmetDataRecordCollection::from_data(&raw_data);
+
+    let data = record_collection
+        .records()
+        .collect::<Vec<_>>();
+
+    assert_eq!(data.len(), 11);
 }
