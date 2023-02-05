@@ -1210,7 +1210,7 @@ dependencies = [
 [[package]]
 name = "readap"
 version = "0.1.0"
-source = "git+https://github.com/mpiannucci/readap#2fdb680517ddf71356c923629241cc34f60633cb"
+source = "git+https://github.com/mpiannucci/readap#7089adbd79f66741332d266f02ed37fa5565b992"
 dependencies = [
  "nom",
 ]
@@ -1377,9 +1377,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.91"
+version = "1.0.92"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "877c235533714907a8c2464236f5c4b2a17262ef1bd71f38f35ea592c8da6883"
+checksum = "7434af0dc1cbd59268aa98b4c22c131c0584d2232f6fb166efb993e2832e896a"
 dependencies = [
  "itoa 1.0.5",
  "ryu",
