@@ -1210,7 +1210,7 @@ dependencies = [
 [[package]]
 name = "readap"
 version = "0.1.0"
-source = "git+https://github.com/mpiannucci/readap#62b8ae1f972f744681182c299beab2b4269af384"
+source = "git+https://github.com/mpiannucci/readap#2fdb680517ddf71356c923629241cc34f60633cb"
 dependencies = [
  "nom",
 ]
