@@ -47,7 +47,7 @@ impl Unit {
             Unit::InchesMercury => "in Hg",
             Unit::Knots => "kt",
             Unit::Kelvin => "K",
-            Unit::MetersSquaredPerHertz => "m^2/Hz",
+            Unit::MetersSquaredPerHertz => "m²/Hz",
             Unit::NauticalMiles => "nmi",
             Unit::Degrees => "°",
             Unit::Seconds => "s",
