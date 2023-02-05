@@ -156,7 +156,7 @@ impl BuoyStation {
 
     pub fn stdmet_dap_url_root(&self) -> String {
         format!(
-            "https://www.ndbc.noaa.gov/thredds/dodsC/data/stdmet/{station_id}/{station_id}h9999.nc",
+            "https://dods.ndbc.noaa.gov/thredds/dodsC/data/stdmet/{station_id}/{station_id}h9999.nc",
             station_id = self.station_id,
         )
     }
@@ -177,7 +177,7 @@ impl BuoyStation {
 
     pub fn swden_dap_url_root(&self) -> String {
         format!(
-            "https://www.ndbc.noaa.gov/thredds/dodsC/data/swden/{station_id}/{station_id}h9999.nc",
+            "https://dods.ndbc.noaa.gov/thredds/dodsC/data/swden/{station_id}/{station_id}w9999.nc",
             station_id = self.station_id,
         )
     }
