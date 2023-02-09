@@ -9,13 +9,12 @@ use surfrs::data::forecast_cbulletin_wave_data_record::{
 use surfrs::data::forecast_spectral_wave_data_record::ForecastSpectralWaveDataRecordCollection;
 use surfrs::data::latest_obs_data_record::LatestObsDataRecordCollection;
 use surfrs::data::meteorological_data_record::{MeteorologicalDataRecordCollection, StdmetDataRecordCollection};
-use surfrs::data::spectral_wave_data_record::{
-    DirectionalSpectralWaveDataRecord, SpectralWaveDataRecordCollection,
-};
+use surfrs::data::spectral_wave_data_record::{SpectralWaveDataRecordCollection};
+use surfrs::data::directional_spectral_wave_data_record::DirectionalSpectralWaveDataRecord;
 use surfrs::data::swden_wave_data_record::SwdenWaveDataRecordCollection;
 use surfrs::data::wave_data_record::WaveDataRecordCollection;
 use surfrs::swell::{Swell, SwellProvider};
-use surfrs::tools::vector::bin;
+use surfrs::tools::vector::{bin, min_max};
 use surfrs::units::{UnitConvertible, UnitSystem};
 
 fn read_mock_data(name: &str) -> String {
@@ -275,7 +274,7 @@ fn read_waimea_spectra_data() {
 
 #[test]
 fn read_dap_swden_data() {
-    let raw_data = fs::read("mock/44097w9999.swden.nc.dods").unwrap();
+    let raw_data = fs::read("mock/44097w9999.swden.error.nc.dods").unwrap();
 
     let record_collection = SwdenWaveDataRecordCollection::from_data(&raw_data);
 
@@ -302,7 +301,28 @@ fn read_dap_swden_data() {
         .map(|d| d.swell_data().unwrap().summary)
         .collect::<Vec<Swell>>();
 
-    assert_eq!(swells.len(), 11);
+    assert_eq!(swells.len(), 21);
+
+    // let messed_up = record_collection
+    //     .records()
+    //     .skip(10)
+    //     .map(|s| {
+    //         let energy = min_max(&s.energy_spectra);
+    //         println!("{energy:?}");
+
+    //         DirectionalSpectralWaveDataRecord::new(
+    //             &s.date,
+    //             &direction,
+    //             &s.frequency,
+    //             &s.energy_spectra,
+    //             &s.mean_wave_direction,
+    //             &s.primary_wave_direction,
+    //             &s.first_polar_coefficient,
+    //             &s.second_polar_coefficient,
+    //         )
+    //     })
+    //     .next()
+    //     .unwrap();
 }
 
 #[test]

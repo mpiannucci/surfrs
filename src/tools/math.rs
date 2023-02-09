@@ -7,6 +7,10 @@ pub fn scalar_from_uv(u: f64, v: f64) -> (f64, i32) {
     (speed, angle)
 }
 
+pub fn f_eq(v: f64, val: f64) -> bool {
+    (v - val).abs() < 0.00001
+}
+
 #[cfg(test)]
 mod tests {
     use crate::tools::math::scalar_from_uv;
