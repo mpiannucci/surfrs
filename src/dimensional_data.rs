@@ -111,6 +111,17 @@ impl <T> Serialize for DimensionalData<T> where T: Display + Serialize {
     }
 }
 
+pub struct DimensionalDataCollection<T>(Vec<DimensionalData<T>>);
+
+impl <T> Into<Vec<Option<T>>> for DimensionalDataCollection<T> where T: Clone {
+    fn into(self) -> Vec<Option<T>> {
+        self.0
+            .into_iter()
+            .map(|d| d.value)
+            .collect()
+    }
+}
+
 pub enum DimensionalDataParseError {
     InvalidString,
 }
