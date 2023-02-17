@@ -75,5 +75,9 @@ mod tests {
     fn test_format_dap_constraint() {
         let constraint = DapConstraint::new("wind".to_string(), vec![(0, 1, 2), (0, 2, 6)]);
         assert_eq!(constraint.to_string(), "wind[0:1:2][0:2:6]");
+
+        let constraint = DapConstraint::new("time".to_string(), vec![]);
+        assert_eq!(constraint.to_string(), "time")
     }
 }
+
