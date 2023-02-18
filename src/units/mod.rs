@@ -129,8 +129,8 @@ impl Unit {
             },
             Unit::MetersPerSecond => {
                 match target {
-                    Unit::MilesPerHour => 2.237, 
-                    Unit::Knots => 1.944,
+                    Unit::MilesPerHour => value * 2.237, 
+                    Unit::Knots => value * 1.944,
                     _ => value
                 }
             },
