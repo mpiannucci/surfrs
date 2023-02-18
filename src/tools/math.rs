@@ -11,9 +11,17 @@ pub fn f_eq(v: f64, val: f64) -> bool {
     (v - val).abs() < 0.00001
 }
 
+pub fn is_some_missing(v: f64, missing: f64) -> Option<f64> {
+    if f_eq(v, missing) {
+        None
+    } else {
+        Some(v)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::tools::math::scalar_from_uv;
+    use super::{scalar_from_uv, is_some_missing};
 
 	#[test]
 	fn test_scaler_from_uv() {
@@ -27,4 +35,14 @@ mod tests {
         assert!((speed - speed_control).abs() < 0.0001); 
         assert_eq!(direction, direction_control); 
 	}
+
+    #[test]
+    fn test_missing_value() {
+        const MISSING: f64 = 999.0;
+        let v1 = 30.0;
+        let v2 = 999.0;
+
+        assert!(is_some_missing(v1, MISSING).is_some());
+        assert!(is_some_missing(v2, MISSING).is_none());
+    }
 }

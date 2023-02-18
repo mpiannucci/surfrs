@@ -11,6 +11,7 @@ use serde::Serialize;
 use crate::dimensional_data::DimensionalData;
 use crate::swell::SwellSummary;
 use crate::swell::{Swell, SwellProvider};
+use crate::tools::math::is_some_missing;
 use crate::units::*;
 
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
@@ -279,6 +280,8 @@ impl<'a> StdmetDataRecordCollection<'a> {
         let visibility = self.dataset.variable_data_iter("visibility").unwrap();
         let water_level = self.dataset.variable_data_iter("water_level").unwrap();
 
+        const MISSING: f64 = 999.0;
+
         izip!(
             dates,
             wind_dir,
@@ -297,42 +300,48 @@ impl<'a> StdmetDataRecordCollection<'a> {
         ).map(|(d, wdir, wspd, gust, wheight, dom, avg, mwd, press, temp, sst, dewpt, vis, wl)| MeteorologicalDataRecord {
             date: d,
             wind_direction: DimensionalData {
-                value: Some(Direction::from_degrees(wdir.try_into().unwrap())),
+                value: match is_some_missing(wdir.try_into().unwrap(), MISSING) {
+                    Some(v) => Some(Direction::from_degrees(v as i32)), 
+                    None => None,
+                },
                 variable_name: "wind direction".into(),
                 unit: Unit::Degrees,
             },
             wind_speed: DimensionalData {
-                value: Some(wspd.try_into().unwrap()),
+                value: is_some_missing(wspd.try_into().unwrap(), MISSING),
                 variable_name: "wind speed".into(),
                 unit: Unit::MetersPerSecond,
             },
             wind_gust_speed: DimensionalData {
-                value: Some(gust.try_into().unwrap()),
+                value: is_some_missing(gust.try_into().unwrap(), MISSING),
                 variable_name: "wind gust".into(),
                 unit: Unit::MetersPerSecond,
             },
             wave_height: DimensionalData {
-                value: Some(wheight.try_into().unwrap()),
+                value: is_some_missing(wheight.try_into().unwrap(), MISSING),
                 variable_name: "wave height".into(),
                 unit: Unit::Meters,
             },
             dominant_wave_period: DimensionalData {
-                value: Some(dom.try_into().unwrap()),
+                value: is_some_missing(dom.try_into().unwrap(), MISSING),
                 variable_name: "dominant wave period".into(),
                 unit: Unit::Seconds,
             },
             average_wave_period: DimensionalData {
-                value: Some(avg.try_into().unwrap()),
+                value: is_some_missing(avg.try_into().unwrap(), MISSING),
                 variable_name: "mean wave period".into(),
                 unit: Unit::Seconds,
             },
             mean_wave_direction: DimensionalData {
-                value: Some(Direction::from_degrees(mwd.try_into().unwrap())),
+                value: match is_some_missing(mwd.try_into().unwrap(), MISSING) {
+                    Some(v) => Some(Direction::from_degrees(v as i32)), 
+                    None => None,
+                },
                 variable_name: "mean wave direction".into(),
                 unit: Unit::Degrees,
             },
             air_pressure: DimensionalData {
-                value: Some(press.try_into().unwrap()),
+                value: is_some_missing(press.try_into().unwrap(), MISSING),
                 variable_name: "air pressure".into(),
                 unit: Unit::HectaPascal,
             },
@@ -342,27 +351,27 @@ impl<'a> StdmetDataRecordCollection<'a> {
                 unit: Unit::HectaPascal,
             },
             air_temperature: DimensionalData {
-                value: Some(temp.try_into().unwrap()),
+                value: is_some_missing(temp.try_into().unwrap(), MISSING),
                 variable_name: "air temperature".into(),
                 unit: Unit::Celsius,
             },
             water_temperature: DimensionalData {
-                value: Some(sst.try_into().unwrap()),
+                value: is_some_missing(sst.try_into().unwrap(), MISSING),
                 variable_name: "water temperature".into(),
                 unit: Unit::Celsius,
             },
             dewpoint_temperature: DimensionalData {
-                value: Some(dewpt.try_into().unwrap()),
+                value: is_some_missing(dewpt.try_into().unwrap(), MISSING),
                 variable_name: "dewpoint temperature".into(),
                 unit: Unit::Celsius,
             },
             visibility: DimensionalData {
-                value: Some(vis.try_into().unwrap()),
+                value: is_some_missing(vis.try_into().unwrap(), MISSING),
                 variable_name: "visibility".into(),
                 unit: Unit::NauticalMiles,
             },
             tide: DimensionalData {
-                value: Some(wl.try_into().unwrap()),
+                value: is_some_missing(wl.try_into().unwrap(), MISSING),
                 variable_name: "water level".into(),
                 unit: Unit::Feet,
             },
