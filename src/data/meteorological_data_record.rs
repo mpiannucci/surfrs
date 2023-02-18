@@ -282,6 +282,7 @@ impl<'a> StdmetDataRecordCollection<'a> {
 
         const MISSING: f64 = 999.0;
         const MISSING_SMALL: f64 = 99.0;
+        const MISSING_LARGE: f64 = 9999.0;
 
         izip!(
             dates,
@@ -309,22 +310,22 @@ impl<'a> StdmetDataRecordCollection<'a> {
                 unit: Unit::Degrees,
             },
             wind_speed: DimensionalData {
-                value: is_some_missing(wspd.try_into().unwrap(), MISSING),
+                value: is_some_missing(wspd.try_into().unwrap(), MISSING_SMALL),
                 variable_name: "wind speed".into(),
                 unit: Unit::MetersPerSecond,
             },
             wind_gust_speed: DimensionalData {
-                value: is_some_missing(gust.try_into().unwrap(), MISSING),
+                value: is_some_missing(gust.try_into().unwrap(), MISSING_SMALL),
                 variable_name: "wind gust".into(),
                 unit: Unit::MetersPerSecond,
             },
             wave_height: DimensionalData {
-                value: is_some_missing(wheight.try_into().unwrap(), MISSING),
+                value: is_some_missing(wheight.try_into().unwrap(), MISSING_SMALL),
                 variable_name: "wave height".into(),
                 unit: Unit::Meters,
             },
             dominant_wave_period: DimensionalData {
-                value: is_some_missing(dom.try_into().unwrap(), MISSING),
+                value: is_some_missing(dom.try_into().unwrap(), MISSING_SMALL),
                 variable_name: "dominant wave period".into(),
                 unit: Unit::Seconds,
             },
@@ -342,7 +343,7 @@ impl<'a> StdmetDataRecordCollection<'a> {
                 unit: Unit::Degrees,
             },
             air_pressure: DimensionalData {
-                value: is_some_missing(press.try_into().unwrap(), MISSING),
+                value: is_some_missing(press.try_into().unwrap(), MISSING_LARGE),
                 variable_name: "air pressure".into(),
                 unit: Unit::HectaPascal,
             },
