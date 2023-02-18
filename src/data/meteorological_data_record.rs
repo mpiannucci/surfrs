@@ -281,6 +281,7 @@ impl<'a> StdmetDataRecordCollection<'a> {
         let water_level = self.dataset.variable_data_iter("water_level").unwrap();
 
         const MISSING: f64 = 999.0;
+        const MISSING_SMALL: f64 = 99.0;
 
         izip!(
             dates,
@@ -328,7 +329,7 @@ impl<'a> StdmetDataRecordCollection<'a> {
                 unit: Unit::Seconds,
             },
             average_wave_period: DimensionalData {
-                value: is_some_missing(avg.try_into().unwrap(), MISSING),
+                value: is_some_missing(avg.try_into().unwrap(), MISSING_SMALL),
                 variable_name: "mean wave period".into(),
                 unit: Unit::Seconds,
             },
@@ -366,12 +367,12 @@ impl<'a> StdmetDataRecordCollection<'a> {
                 unit: Unit::Celsius,
             },
             visibility: DimensionalData {
-                value: is_some_missing(vis.try_into().unwrap(), MISSING),
+                value: is_some_missing(vis.try_into().unwrap(), MISSING_SMALL),
                 variable_name: "visibility".into(),
                 unit: Unit::NauticalMiles,
             },
             tide: DimensionalData {
-                value: is_some_missing(wl.try_into().unwrap(), MISSING),
+                value: is_some_missing(wl.try_into().unwrap(), MISSING_SMALL),
                 variable_name: "water level".into(),
                 unit: Unit::Feet,
             },
