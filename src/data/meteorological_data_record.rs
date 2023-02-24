@@ -267,9 +267,6 @@ impl From<MeteorologicalDataRecord> for HashMap<String, Option<String>> {
             ),
             (m.tide.variable_name.clone(), m.tide.try_string()),
         ])
-        .into_iter()
-        .filter(|v| v.1.is_some())
-        .collect()
     }
 }
 
