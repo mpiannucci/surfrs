@@ -1,6 +1,6 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use crate::units::{Direction, UnitConvertible, Unit, UnitSystem};
+use crate::units::{Direction, Unit, UnitConvertible, UnitSystem};
 use std::fmt::{self, Display};
 use std::option::Option;
 use std::str::FromStr;
@@ -12,7 +12,10 @@ pub struct DimensionalData<T> {
     pub unit: Unit,
 }
 
-impl <T> DimensionalData<T> where T: Display {
+impl<T> DimensionalData<T>
+where
+    T: Display,
+{
     pub fn unit_label(&self) -> &'static str {
         self.unit.abbreviation()
     }
@@ -25,7 +28,10 @@ impl <T> DimensionalData<T> where T: Display {
     }
 }
 
-impl <T> DimensionalData<T> where T: FromStr {
+impl<T> DimensionalData<T>
+where
+    T: FromStr,
+{
     pub fn from_raw_data(raw_data: &str, variable_name: String, unit: Unit) -> DimensionalData<T> {
         let parsed_value = raw_data.parse();
         DimensionalData {
@@ -68,6 +74,16 @@ impl UnitConvertible<DimensionalData<Direction>> for DimensionalData<Direction> 
     }
 }
 
+impl From<DimensionalData<Direction>> for DimensionalData<f64> {
+    fn from(data: DimensionalData<Direction>) -> Self {
+        DimensionalData {
+            value: data.value.map(|v| v.degrees as f64),
+            variable_name: data.variable_name.clone(),
+            unit: data.unit.clone(),
+        }
+    }
+}
+
 impl<T> fmt::Display for DimensionalData<T>
 where
     T: fmt::Display,
@@ -79,7 +95,7 @@ where
         } else {
             label = format!(" {label}");
         }
-        
+
         match self.value {
             Some(ref val) => write!(f, "{:.1}{}", val, label),
             None => write!(f, "N/A"),
@@ -87,38 +103,41 @@ where
     }
 }
 
-impl <T> Serialize for DimensionalData<T> where T: Display + Serialize {
+impl<T> Serialize for DimensionalData<T>
+where
+    T: Display + Serialize,
+{
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer {
-        
-            #[derive(Serialize)]
-            struct Extended<'a, T> {
-                pub value: &'a Option<T>,
-                pub variable_name: &'a String,
-                pub unit: &'a Unit,
-                pub unit_label: &'a str, 
-            }
+        S: serde::Serializer,
+    {
+        #[derive(Serialize)]
+        struct Extended<'a, T> {
+            pub value: &'a Option<T>,
+            pub variable_name: &'a String,
+            pub unit: &'a Unit,
+            pub unit_label: &'a str,
+        }
 
-            let ext = Extended {
-                value: &self.value,
-                variable_name: &self.variable_name,
-                unit: &self.unit,
-                unit_label: self.unit_label(), 
-            };
+        let ext = Extended {
+            value: &self.value,
+            variable_name: &self.variable_name,
+            unit: &self.unit,
+            unit_label: self.unit_label(),
+        };
 
-            ext.serialize(serializer)
+        ext.serialize(serializer)
     }
 }
 
 pub struct DimensionalDataCollection<T>(Vec<DimensionalData<T>>);
 
-impl <T> Into<Vec<Option<T>>> for DimensionalDataCollection<T> where T: Clone {
+impl<T> Into<Vec<Option<T>>> for DimensionalDataCollection<T>
+where
+    T: Clone,
+{
     fn into(self) -> Vec<Option<T>> {
-        self.0
-            .into_iter()
-            .map(|d| d.value)
-            .collect()
+        self.0.into_iter().map(|d| d.value).collect()
     }
 }
 
@@ -132,7 +151,8 @@ mod tests {
 
     #[test]
     fn test_dimensional_data_serialize() {
-        let dd = DimensionalData::<f64>::from_raw_data("4.0", "wave_height".to_string(), Unit::Meters);
+        let dd =
+            DimensionalData::<f64>::from_raw_data("4.0", "wave_height".to_string(), Unit::Meters);
         let dd_s = serde_json::to_string(&dd);
         assert!(dd_s.is_ok());
 

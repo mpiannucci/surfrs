@@ -150,6 +150,70 @@ impl SwellProvider for MeteorologicalDataRecord {
     }
 }
 
+impl From<MeteorologicalDataRecord> for HashMap<String, DimensionalData<f64>> {
+    fn from(m: MeteorologicalDataRecord) -> Self {
+        HashMap::from([
+            (
+                "date".to_string(),
+                DimensionalData {
+                    value: Some(m.date.timestamp() as f64),
+                    variable_name: "epoch".to_string(),
+                    unit: Unit::Seconds,
+                }
+            ), 
+            (
+                m.wind_direction.variable_name.clone(),
+                m.wind_direction.into(),
+            ),
+            (
+                m.wind_speed.variable_name.clone(),
+                m.wind_speed,
+            ),
+            (
+                m.wind_gust_speed.variable_name.clone(),
+                m.wind_gust_speed,
+            ),
+            (
+                m.wave_height.variable_name.clone(),
+                m.wave_height,
+            ),
+            (
+                m.dominant_wave_period.variable_name.clone(),
+                m.dominant_wave_period,
+            ),
+            (
+                m.average_wave_period.variable_name.clone(),
+                m.average_wave_period,
+            ),
+            (
+                m.mean_wave_direction.variable_name.clone(),
+                m.mean_wave_direction.into(),
+            ),
+            (
+                m.air_pressure.variable_name.clone(),
+                m.air_pressure,
+            ),
+            (
+                m.air_temperature.variable_name.clone(),
+                m.air_temperature,
+            ),
+            (
+                m.water_temperature.variable_name.clone(),
+                m.water_temperature,
+            ),
+            (
+                m.dewpoint_temperature.variable_name.clone(),
+                m.dewpoint_temperature,
+            ),
+            (
+                m.visibility.variable_name.clone(),
+                m.visibility,
+            ),
+            (m.tide.variable_name.clone(), m.tide),
+        ])
+    }
+}
+
 impl From<MeteorologicalDataRecord> for HashMap<String, Option<String>> {
     fn from(m: MeteorologicalDataRecord) -> Self {
         HashMap::from([
