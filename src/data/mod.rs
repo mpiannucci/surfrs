@@ -9,3 +9,4 @@ pub mod latest_obs_data_record;
 pub mod parseable_data_record;
 pub mod tidal_data_record;
 pub mod gfs_wave_grib_point_data_record;
+pub mod nws_weather_forecast_data;

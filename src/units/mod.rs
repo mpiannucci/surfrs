@@ -28,6 +28,7 @@ pub enum Unit {
     NauticalMiles,
     Degrees,
     Seconds,
+    Percent,
     Unknown,
 }
 
@@ -51,6 +52,7 @@ impl Unit {
             Unit::NauticalMiles => "nmi",
             Unit::Degrees => "°",
             Unit::Seconds => "s",
+            Unit::Percent => "%",
             Unit::Unknown => "",
         }
     }
@@ -74,6 +76,7 @@ impl Unit {
             Unit::NauticalMiles => "nautical miles",
             Unit::Degrees => "degrees",
             Unit::Seconds => "seconds",
+            Unit::Percent => "percent",
             Unit::Unknown => "unknown",
         }
     }
@@ -83,15 +86,15 @@ impl From<&str> for Unit {
     fn from(value: &str) -> Self {
         match value.trim().to_lowercase().as_str() {
             "mm" | "millimeters" | "millimeter" => Unit::Millimeters,
-            "m" | "meters" | "meter" => Unit::Meters,
+            "m" | "meters" | "meter" | "wmounit:m" => Unit::Meters,
             "m/s" | "mps" | "ms-1" | "meterspersecond" | "meterpersecond" => Unit::MetersPerSecond,
-            "°c" | "degcelsius" | "degreecelsius" | "degreescelsius" => Unit::Celsius,
+            "°c" | "degcelsius" | "degreecelsius" | "degreescelsius" | "wmounit:degc" => Unit::Celsius,
             "pa" | "pascals" | "pascal" => Unit::Pascal,
             "hpa" | "hectapascals" | "hectapascal" => Unit::HectaPascal,
             "in" | "inches" | "inch" => Unit::Inches,
             "ft" | "feet" | "foot" => Unit::Feet,
             "mph" | "m/h" | "mh-1" | "milesperhour" => Unit::MilesPerHour,
-            "°f" | "degfahrenheit" | "degreesfahrenheit" | "degreefahrenheit" => Unit::Fahrenheit,
+            "°f" | "f" | "degfahrenheit" | "degreesfahrenheit" | "degreefahrenheit" => Unit::Fahrenheit,
             "inhg" | "inches mercury" => Unit::InchesMercury,
             "kt" | "kts" | "knots" | "knot" => Unit::Knots,
             "k" | "kelvin" => Unit::Kelvin,
@@ -99,6 +102,7 @@ impl From<&str> for Unit {
             "nmi" | "nauticalmiles" | "nauticalmile" => Unit::NauticalMiles,
             "°" | "deg" | "degs" | "degrees" | "degree" => Unit::Degrees,
             "s" | "second" | "seconds" => Unit::Seconds,
+            "%" | "percent" | "percentage" | "wmounit:percent" => Unit::Percent,
             _ => Unit::Unknown,
         }
     }
