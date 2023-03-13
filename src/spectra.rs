@@ -204,7 +204,7 @@ impl Spectra {
         // println!("c({f1},{d2}) {c}");
         // println!("d({f2},{d2}) {d}");
 
-        let e = bilerp(a, b, c, d, x_diff, y_diff);
+        let e = bilerp(a, b, c, d, freq, f1, f2, dir, d1, d2);
 
         println!("e {e}");
 

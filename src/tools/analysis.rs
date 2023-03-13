@@ -13,13 +13,24 @@ pub fn lerp(a: &f64, b: &f64, diff: &f64) -> f64 {
 /// Where
 ///     a = x0y0
 ///     b = x1y0
-///     c = x0y2
-///     d = x1y2
+///     c = x0y1
+///     d = x1y1
 /// Adapted from https://stackoverflow.com/a/8661834
-pub fn bilerp(a: f64, b: f64, c: f64, d: f64, x_diff: f64, y_diff: f64) -> f64 {
-    let l = (a * y_diff) + (c * (1.0 - y_diff));
-    let r = (b * y_diff) + (d * (1.0 - y_diff));
-    (l * x_diff) + (r * (1.0 - x_diff))
+pub fn bilerp(a: f64, b: f64, c: f64, d: f64, x: f64, x0: f64, x1: f64, y: f64, y0: f64, y1: f64) -> f64 {
+    let x_diff = x1 - x0;
+    let y_diff = y1 - y0;
+    let diff = x_diff * y_diff;
+
+    let x_lower_diff = x - x0;
+    let y_lower_diff = y - y0;
+
+    let x_upper_diff = x1 - x;
+    let y_upper_diff = y1 - y;
+
+    (x_upper_diff * y_upper_diff) / diff * a
+        + (x_lower_diff * y_upper_diff) / diff * b
+        + (x_upper_diff * y_lower_diff) / diff * c
+        + (x_lower_diff * y_lower_diff) / diff * d
 }
 
 /// Converted from MATLAB script at http://billauer.co.il/peakdet.html
@@ -557,6 +568,7 @@ pub fn watershed2(
 #[cfg(test)]
 mod tests {
     use super::lerp;
+    use super::bilerp;
     use super::nearest_neighbors;
     use super::watershed;
     use rand;
@@ -566,6 +578,13 @@ mod tests {
         assert!((lerp(&4.0, &5.0, &0.5) - 4.5) < 0.00001);
         assert!((lerp(&10.0, &15.0, &0.25) - 12.5) < 0.00001);
     }
+
+    #[test]
+    fn test_bilinear_interpolation() {
+        let interp = bilerp(1.0, 2.0, 3.0, 4.0, 1.5, 1.0, 2.0, 1.5, 1.0, 2.0);
+        println!("{interp}");
+        assert!((interp - 2.5).abs() < 0.00001);
+    }   
 
     #[test]
     fn test_nearest_neighbors() {
