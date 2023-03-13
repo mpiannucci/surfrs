@@ -581,6 +581,11 @@ mod tests {
 
     #[test]
     fn test_bilinear_interpolation() {
+        // Test given:
+        // 1 (1.0,1.0)      2 (2.0, 1.0)
+        //     q (1.5, 1.5)    
+        // 3 (1.0, 2.0)     4(2.0, 2.0)
+        //
         let interp = bilerp(1.0, 2.0, 3.0, 4.0, 1.5, 1.0, 2.0, 1.5, 1.0, 2.0);
         println!("{interp}");
         assert!((interp - 2.5).abs() < 0.00001);

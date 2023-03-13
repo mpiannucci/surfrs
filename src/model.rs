@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     location::{normalize_latitude, normalize_longitude, Location},
     tools::{
-        contour::{compute_latlng_gridded_contours}, date::closest_gfs_model_datetime,
+        contour::{compute_latlng_gridded_contours}, date::closest_gfs_model_datetime, analysis::bilerp,
     }, units::{UnitSystem, Unit}
 };
 
@@ -80,6 +80,50 @@ pub trait NOAAModel {
         let data = message.data()?;
         let latlng_index = lng_index + lng_size * lat_index;
         let value = data[latlng_index];
+        Ok(value)
+    }
+
+    fn interp_location_data(&self, location: &Location, message: &Message) -> Result<f64, String> {
+        let bbox = message.location_bbox()?;
+
+        if !location.within_bbox(&bbox) {
+            return Err("location is not within the models bounds".into());
+        }
+
+        // This only works for regular grids.
+        let (lat_size, lng_size) = message.grid_dimensions()?;
+        let (start, end) = message.grid_bounds()?;
+
+        let lng_step = (end.1 - start.1) / lng_size as f64;
+        let lat_step = (end.0 - start.0) / lat_size as f64;
+
+        let lng_lower_index = ((location.relative_longitude() - normalize_longitude(start.1)) / lng_step)
+            .abs()
+            .floor() as usize;
+        let lng_upper_index = ((location.relative_longitude() - normalize_longitude(start.1)) / lng_step)
+            .abs()
+            .ceil() as usize;
+        let lat_lower_index = ((location.relative_latitude() - normalize_latitude(start.0)) / lat_step)
+            .abs()
+            .floor() as usize;
+        let lat_upper_index = ((location.relative_latitude() - normalize_latitude(start.0)) / lat_step)
+            .abs()
+            .ceil() as usize;
+
+        let (lat, lng) = message.latitude_longitude_arrays()?;
+        let data = message.data()?;
+
+        let a = data[lat_lower_index * lng_size + lng_lower_index];
+        let b = data[lat_lower_index * lng_size + lng_upper_index];
+        let c = data[lat_upper_index * lng_size + lng_lower_index];
+        let d = data[lat_upper_index * lng_size + lng_upper_index];
+
+        let x0 = lng[lng_lower_index];
+        let x1 = lng[lng_upper_index];
+        let y0 = lat[lat_lower_index];
+        let y1 = lat[lat_upper_index];
+
+        let value = bilerp(a, b, c, d, location.longitude, x0, x1, location.latitude, y0, y1);
         Ok(value)
     }
 

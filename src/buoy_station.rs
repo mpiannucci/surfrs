@@ -29,18 +29,19 @@ pub enum BuoyType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename = "station")]
 pub struct BuoyStation {
-    #[serde(rename = "id")]
+    #[serde(rename = "@id")]
     pub station_id: String,
 
-    #[serde(rename = "name")]
+    #[serde(rename = "@name")]
     pub raw_name: String,
 
+    #[serde(rename = "@owner")]
     pub owner: String,
 
-    #[serde(rename = "pgm")]
+    #[serde(rename = "@pgm")]
     pub program: String,
 
-    #[serde(rename = "type")]
+    #[serde(rename = "@type")]
     pub buoy_type: BuoyType,
 
     #[serde(rename = "met", deserialize_with = "bool_from_simple_str", default)]
@@ -48,28 +49,28 @@ pub struct BuoyStation {
 
     #[serde(
         default,
-        rename = "currents",
+        rename = "@currents",
         deserialize_with = "bool_from_simple_str"
     )]
     pub has_currents_data: bool,
 
     #[serde(
-        rename = "waterquality",
+        rename = "@waterquality",
         deserialize_with = "bool_from_simple_str",
         default
     )]
     pub has_water_quality_data: bool,
 
-    #[serde(default, rename = "dart", deserialize_with = "bool_from_simple_str")]
+    #[serde(default, rename = "@dart", deserialize_with = "bool_from_simple_str")]
     pub has_tsnuami_data: bool,
 
-    #[serde(rename = "lat", deserialize_with = "f64_from_str")]
+    #[serde(rename = "@lat", deserialize_with = "f64_from_str")]
     pub latitude: f64,
 
-    #[serde(rename = "lon", deserialize_with = "f64_from_str")]
+    #[serde(rename = "@lon", deserialize_with = "f64_from_str")]
     pub longitude: f64,
 
-    #[serde(rename = "elev", deserialize_with = "f64_from_str", default)]
+    #[serde(rename = "@elev", deserialize_with = "f64_from_str", default)]
     pub elevation: f64,
 }
 
@@ -313,7 +314,7 @@ pub struct BuoyStations {
     #[serde(rename = "$value")]
     pub stations: Vec<BuoyStation>,
 
-    #[serde(rename = "count")]
+    #[serde(rename = "@count")]
     pub station_count: usize,
 }
 

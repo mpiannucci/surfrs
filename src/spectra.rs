@@ -185,30 +185,16 @@ impl Spectra {
 
         let f1 = self.frequency[x1];
         let f2 = self.frequency[x2];
-        let x_diff = (freq - f1) / (f2 - f1);
 
         let d1 = self.direction[y1];
         let d2 = self.direction[y2];
-        let y_diff = (dir - d1) / (d2 - d1);
 
         let a = self.energy_at(x1, y1);
         let b = self.energy_at(x2, y1);
         let c = self.energy_at(x1, y2);
         let d = self.energy_at(x2, y2);
 
-        println!("============");
-        // println!("freq {freq}");
-        println!("dir {dir}");
-        // println!("a({f1},{d1}) {a}");
-        // println!("b({f2},{d1}) {b}");
-        // println!("c({f1},{d2}) {c}");
-        // println!("d({f2},{d2}) {d}");
-
-        let e = bilerp(a, b, c, d, freq, f1, f2, dir, d1, d2);
-
-        println!("e {e}");
-
-        e
+        bilerp(a, b, c, d, freq, f1, f2, dir, d1, d2)
     }
 
     /// One dimensional representation of the energy across the given axis
