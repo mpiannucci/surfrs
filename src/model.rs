@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     location::{normalize_latitude, normalize_longitude, Location},
     tools::{
-        contour::{compute_latlng_gridded_contours}, date::closest_gfs_model_datetime, analysis::bilerp,
+        contour::{compute_latlng_gridded_contours}, date::closest_gfs_model_datetime, analysis::{bilerp, lerp},
     }, units::{UnitSystem, Unit}
 };
 
@@ -118,12 +118,29 @@ pub trait NOAAModel {
         let c = data[lat_upper_index * lng_size + lng_lower_index];
         let d = data[lat_upper_index * lng_size + lng_upper_index];
 
-        let x0 = lng[lng_lower_index];
-        let x1 = lng[lng_upper_index];
-        let y0 = lat[lat_lower_index];
-        let y1 = lat[lat_upper_index];
+        let x0 = normalize_longitude(lng[lng_lower_index]);
+        let x1 = normalize_longitude(lng[lng_upper_index]);
+        let y0 = normalize_latitude(lat[lat_lower_index * lng_size]);
+        let y1 = normalize_latitude(lat[lat_upper_index * lng_size]);
 
-        let value = bilerp(a, b, c, d, location.longitude, x0, x1, location.latitude, y0, y1);
+        println!("a: {}, b: {}, c: {}, d: {}", a, b, c, d);
+        println!("x0: {}, x1: {}, y0: {}, y1: {}", x0, x1, y0, y1);
+
+        println!("{lat_lower_index},{lat_upper_index}");
+
+        let value = if lat_lower_index == lat_upper_index && lng_lower_index == lng_upper_index {
+            a
+        } else if lat_lower_index == lat_upper_index {
+            lerp(&a, &b, &location.longitude, &x0, &x1)
+        } else if lng_lower_index == lat_lower_index {
+            lerp(&a, &c, &location.latitude, &y0, &y1)
+        } else {
+            bilerp(&a, &b, &c, &d, &location.longitude, &x0, &x1, &location.latitude, &y0, &y1)
+        };
+
+        println!("value: {value}");
+        println!("==========");
+
         Ok(value)
     }
 

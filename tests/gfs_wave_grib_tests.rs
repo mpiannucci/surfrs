@@ -34,6 +34,18 @@ fn extract_atlantic_wave_data_record() {
     println!("{:?}", wave_data.swell_components[2].to_string());
     println!("{:?}", wave_data.swell_components[3].to_string());
 
+    // 2023-01-21 03:00:00 UTC
+    // "1.0 m @ 8.9 s 186° s"
+    // "0.1 m @ 10.6 s 131° se"
+    // "NaN m @ NaN s 0° n"
+    // "0.3 m @ 2.7 s -192°"
+
+    // 2023-01-21 03:00:00 UTC
+    // "1.0 m @ 8.9 s 190° s"
+    // "0.1 m @ 10.7 s 132° se"
+    // "NaN m @ NaN s 0° n"
+    // "0.4 m  @ 2.8 s 0° n"
+
     let wave_message = messages
         .iter()
         .find(|m| m.variable_abbrev().unwrap_or("".into()) == "HTSGW")
@@ -48,7 +60,7 @@ fn extract_atlantic_wave_data_record() {
     };
 
     let contour_data = serde_json::to_string(&collection).unwrap();
-    _ = fs::write("wvsgw.json", contour_data);
+    _ = fs::write("atlantic_wvsgw.json", contour_data);
 }
 
 #[test]
@@ -80,5 +92,5 @@ fn extract_global_wave_data_record() {
     };
 
     let contour_data = serde_json::to_string(&collection).unwrap();
-    // _ = fs::write("global_wvsgw.json", contour_data);
+    _ = fs::write("global_wvsgw.json", contour_data);
 }

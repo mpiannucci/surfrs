@@ -5,7 +5,8 @@ use image::imageops;
 use crate::tools::{linspace::linspace, vector::argsort};
 
 /// Linearly interpolate between and b by fraction diff
-pub fn lerp(a: &f64, b: &f64, diff: &f64) -> f64 {
+pub fn lerp(a: &f64, b: &f64, x: &f64, x0: &f64, x1: &f64) -> f64 {
+    let diff = (x - x0) / (x1 - x0);
     a * (1.0 - diff) + (b * diff)
 }
 
@@ -16,7 +17,7 @@ pub fn lerp(a: &f64, b: &f64, diff: &f64) -> f64 {
 ///     c = x0y1
 ///     d = x1y1
 /// Adapted from https://stackoverflow.com/a/8661834
-pub fn bilerp(a: f64, b: f64, c: f64, d: f64, x: f64, x0: f64, x1: f64, y: f64, y0: f64, y1: f64) -> f64 {
+pub fn bilerp(a: &f64, b: &f64, c: &f64, d: &f64, x: &f64, x0: &f64, x1: &f64, y: &f64, y0: &f64, y1: &f64) -> f64 {
     let x_diff = x1 - x0;
     let y_diff = y1 - y0;
     let diff = x_diff * y_diff;
@@ -575,8 +576,8 @@ mod tests {
 
     #[test]
     fn test_linear_interpolation() {
-        assert!((lerp(&4.0, &5.0, &0.5) - 4.5) < 0.00001);
-        assert!((lerp(&10.0, &15.0, &0.25) - 12.5) < 0.00001);
+        assert!((lerp(&4.0, &5.0, &1.5, &1.0, &2.0) - 4.5) < 0.00001);
+        assert!((lerp(&10.0, &15.0, &1.0, &0.0, &4.0) - 12.5) < 0.00001);
     }
 
     #[test]
@@ -586,9 +587,17 @@ mod tests {
         //     q (1.5, 1.5)    
         // 3 (1.0, 2.0)     4(2.0, 2.0)
         //
-        let interp = bilerp(1.0, 2.0, 3.0, 4.0, 1.5, 1.0, 2.0, 1.5, 1.0, 2.0);
-        println!("{interp}");
+        let interp = bilerp(&1.0, &2.0, &3.0, &4.0, &1.5, &1.0, &2.0, &1.5, &1.0, &2.0);
         assert!((interp - 2.5).abs() < 0.00001);
+
+        // let interp = bilerp(&8.88, &8.73, &8.73, &8.71, &288.70, &288.666724, &288.833391, &41.35, &41.333306, &41.166639);
+        // println!("{interp}");
+
+        // TODO: Directional test case 
+        // a: 0.89, b: 357.86, c: 359.26, d: 347.61
+        // x0: -71.33327600000001, x1: -71.166609, y0: 41.333306, y1: 41.166639
+        //82,83
+        // value: -192.69783641705862
     }   
 
     #[test]

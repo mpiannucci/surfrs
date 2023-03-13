@@ -106,11 +106,9 @@ impl Spectra {
             return self.frequency[0];
         }
 
-        let frac = (f_index - i_lower) / (i_upper - i_lower);
-
         let v_lower = self.frequency[i_lower as usize];
         let v_upper = self.frequency[i_upper as usize];
-        lerp(&v_lower, &v_upper, &frac)
+        lerp(&v_lower, &v_upper, &f_index, &i_lower, &i_upper)
     }
 
     /// Interpolated direction for a given index
@@ -126,12 +124,10 @@ impl Spectra {
         if i_lower < 0.0 {
             return self.direction[0];
         }
-
-        let frac = (d_index - i_lower) / (i_upper - i_lower);
-
+        
         let v_lower = self.direction[i_lower as usize];
         let v_upper = self.direction[i_upper as usize];
-        lerp(&v_lower, &v_upper, &frac)
+        lerp(&v_lower, &v_upper, &d_index, &i_lower, &i_upper)
     }
 
     /// Interpolated frequency index bounds for a given frequency
@@ -194,7 +190,7 @@ impl Spectra {
         let c = self.energy_at(x1, y2);
         let d = self.energy_at(x2, y2);
 
-        bilerp(a, b, c, d, freq, f1, f2, dir, d1, d2)
+        bilerp(&a, &b, &c, &d, &freq, &f1, &f2, &dir, &d1, &d2)
     }
 
     /// One dimensional representation of the energy across the given axis
