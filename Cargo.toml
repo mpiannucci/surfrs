@@ -15,7 +15,7 @@ chrono = { version = "0.4", features = ["serde"] }
 regex = "1"
 num-traits = "0.2.15"
 rand = "0.8.5"
-itertools = "0.10.3"
+itertools = "0.10.5"
 sunrise = "1.0.0"
 contour = { version = "0.7.0", features = ["geojson"] }
 kdtree = "0.5.1"
@@ -26,3 +26,4 @@ readap = { git = "https://github.com/mpiannucci/readap" }
 [dev-dependencies]
 reqwest = { version = "0.11", features = ["json"] }
 tokio = { version = "1", features = ["full"] }
+futures-util = { version = "0.3.17", default-features = false, features = ["std"] }

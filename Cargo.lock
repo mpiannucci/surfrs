@@ -446,6 +446,7 @@ dependencies = [
  "futures-task",
  "pin-project-lite",
  "pin-utils",
+ "slab",
 ]
 
 [[package]]
@@ -1500,6 +1501,7 @@ dependencies = [
  "chrono",
  "contour",
  "csv",
+ "futures-util",
  "geojson",
  "gribberish",
  "image",
