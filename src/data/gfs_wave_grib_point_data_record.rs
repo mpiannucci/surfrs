@@ -12,7 +12,7 @@ use crate::{
     location::Location,
     model::{GFSWaveModel, NOAAModel},
     swell::Swell,
-    units::{Direction, Unit, UnitSystem},
+    units::{Direction, Unit, UnitSystem, UnitConvertible},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -118,5 +118,13 @@ impl GFSWaveGribPointDataRecord {
             wind_direction, 
             swell_components,
         }
+    }
+}
+
+impl UnitConvertible<GFSWaveGribPointDataRecord> for GFSWaveGribPointDataRecord {
+    fn to_units(&mut self, new_units: &UnitSystem) {
+        self.wind_speed.to_units(new_units);
+        self.wave_summary.to_units(new_units);
+        self.swell_components.iter_mut().for_each(|c| c.to_units(new_units));
     }
 }

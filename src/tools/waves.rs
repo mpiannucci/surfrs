@@ -6,6 +6,7 @@ const GRAVITY: f64 = 9.81;
 
 pub enum Error {
     ConvergenceFailure,
+    OutOfRange,
 }
 
 /// Computes the wavelength for a wave with the given period and depth. Units are metric, gravity is 9.81 m/s.
@@ -106,6 +107,32 @@ pub fn wavelength(freq: f64, depth: Option<f64>) -> f64 {
     } else {
         1.56 / freq.powi(2)
     }
+}
+
+/// Computes an estimate of the wave height for a given swell and beach conditions.
+pub fn estimate_breaking_wave_height(
+    swell: &Swell,
+    beach_angle: f64,
+    beach_slope: f64,
+    water_depth: f64,
+) -> Result<f64, Error> {
+    let deep_water_wave_height = swell.wave_height.value.as_ref().unwrap();
+    let period = swell.period.value.as_ref().unwrap();
+    let incident_angle = (swell.direction.value.as_ref().unwrap().degrees as f64 - beach_angle).abs() as i32 % 360;
+
+    if incident_angle > 90 {
+        return Err(Error::OutOfRange);
+    }
+
+    let (breaking_wave_height, _) = break_wave(
+        *period,
+        incident_angle as f64,
+        *deep_water_wave_height,
+        beach_slope,
+        water_depth,
+    )?;
+
+    Ok(breaking_wave_height)
 }
 
 /// Solves for the Breaking Wave Height and Breaking Water Depth given a swell and beach conditions. All units are metric, degrees, and gravity is 9.81 m/s.
