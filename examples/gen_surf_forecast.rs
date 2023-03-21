@@ -1,12 +1,14 @@
-use std::future;
+use std::{future, fs};
 
 use chrono::{DateTime, Utc};
 use futures_util::future::try_join_all;
 use gribberish::message::{read_messages};
 use reqwest::Client;
+use serde::{Serialize, Deserialize};
 use surfrs::{location::Location, model::{GFSWaveModel, ModelDataSource, NOAAModel}, data::gfs_wave_grib_point_data_record::GFSWaveGribPointDataRecord, units::{UnitConvertible, UnitSystem, Direction, Unit}, dimensional_data::DimensionalData, swell::Swell, tools::{waves::{break_wave, estimate_breaking_wave_height}, vector::min_max}};
 
 
+#[derive(Serialize, Deserialize)]
 struct SurfForecastDataRecord {
     pub date: DateTime<Utc>,
     pub wave_summary: Swell,
@@ -97,9 +99,13 @@ async fn main() {
             record.to_units(&UnitSystem::English);
 
             record
-        });
+        })
+        .collect::<Vec<_>>();
 
     // Fetch weather forecast
 
     // Combine and export json forecast data
+
+    let data = serde_json::to_string(&data).unwrap();
+    fs::write("forecast.json", data).unwrap();
 }
