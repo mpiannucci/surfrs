@@ -1,0 +1,92 @@
+{
+    "@context": [
+        "https://geojson.org/geojson-ld/geojson-context.jsonld",
+        {
+            "@version": "1.1",
+            "wx": "https://api.weather.gov/ontology#",
+            "s": "https://schema.org/",
+            "geo": "http://www.opengis.net/ont/geosparql#",
+            "unit": "http://codes.wmo.int/common/unit/",
+            "@vocab": "https://api.weather.gov/ontology#",
+            "geometry": {
+                "@id": "s:GeoCoordinates",
+                "@type": "geo:wktLiteral"
+            },
+            "city": "s:addressLocality",
+            "state": "s:addressRegion",
+            "distance": {
+                "@id": "s:Distance",
+                "@type": "s:QuantitativeValue"
+            },
+            "bearing": {
+                "@type": "s:QuantitativeValue"
+            },
+            "value": {
+                "@id": "s:value"
+            },
+            "unitCode": {
+                "@id": "s:unitCode",
+                "@type": "@id"
+            },
+            "forecastOffice": {
+                "@type": "@id"
+            },
+            "forecastGridData": {
+                "@type": "@id"
+            },
+            "publicZone": {
+                "@type": "@id"
+            },
+            "county": {
+                "@type": "@id"
+            }
+        }
+    ],
+    "id": "https://api.weather.gov/points/41.4099999,-71.45",
+    "type": "Feature",
+    "geometry": {
+        "type": "Point",
+        "coordinates": [
+            -71.450000000000003,
+            41.409999900000003
+        ]
+    },
+    "properties": {
+        "@id": "https://api.weather.gov/points/41.4099999,-71.45",
+        "@type": "wx:Point",
+        "cwa": "BOX",
+        "forecastOffice": "https://api.weather.gov/offices/BOX",
+        "gridId": "BOX",
+        "gridX": 66,
+        "gridY": 45,
+        "forecast": "https://api.weather.gov/gridpoints/BOX/66,45/forecast",
+        "forecastHourly": "https://api.weather.gov/gridpoints/BOX/66,45/forecast/hourly",
+        "forecastGridData": "https://api.weather.gov/gridpoints/BOX/66,45",
+        "observationStations": "https://api.weather.gov/gridpoints/BOX/66,45/stations",
+        "relativeLocation": {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -71.466525000000004,
+                    41.426994000000001
+                ]
+            },
+            "properties": {
+                "city": "Narragansett Pier",
+                "state": "RI",
+                "distance": {
+                    "unitCode": "wmoUnit:m",
+                    "value": 2338.7012043559998
+                },
+                "bearing": {
+                    "unitCode": "wmoUnit:degree_(angle)",
+                    "value": 143
+                }
+            }
+        },
+        "forecastZone": "https://api.weather.gov/zones/forecast/ANZ236",
+        "timeZone": "America/New_York",
+        "radarStation": "KBOX"
+    }
+}
