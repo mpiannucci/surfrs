@@ -10,3 +10,4 @@ pub mod swell;
 pub mod tide_station;
 pub mod tools;
 pub mod units;
+pub mod weather;

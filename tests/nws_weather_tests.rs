@@ -1,9 +1,18 @@
 use std::fs;
 
-use surfrs::{data::nws_weather_forecast_data::NwsWeatherForecastDataRecordCollection, units::{Unit, CardinalDirection, Direction}};
+use surfrs::{data::nws_weather_forecast_data::{NwsWeatherForecastDataRecordCollection, NwsGridPointData}, units::{Unit, CardinalDirection, Direction}};
 
 fn read_mock_data(name: &str) -> String {
     fs::read_to_string(format!("mock/{}", name)).unwrap()
+}
+
+#[test]
+fn read_gridpoints_data() {
+    let raw_data = read_mock_data("nws_gridpoints.json");
+    let gridpoints = NwsGridPointData::from_json(&raw_data).unwrap();
+    assert_eq!(gridpoints.properties.grid_id, "BOX");
+    assert_eq!(gridpoints.properties.grid_x, 66);
+    assert_eq!(gridpoints.properties.grid_y, 45);
 }
 
 #[test]

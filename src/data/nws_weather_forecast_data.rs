@@ -5,6 +5,27 @@ use crate::{dimensional_data::DimensionalData, units::{Direction, Unit}};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct NwsGridPointProperties {
+    pub grid_id: String,
+    pub grid_x: usize,
+    pub grid_y: usize,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NwsGridPointData {
+    pub properties: NwsGridPointProperties,
+    // Ignore everything else
+}
+
+impl NwsGridPointData {
+    pub fn from_json(data: &str) -> Result<Self, serde_json::Error> {
+        serde_json::from_str(data)
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct WMODataField {
     unit_code: String,
     value: f64,
