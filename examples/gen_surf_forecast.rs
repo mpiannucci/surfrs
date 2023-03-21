@@ -1,12 +1,26 @@
-use std::{future, fs};
+use std::{fs, future};
 
 use chrono::{DateTime, Utc};
 use futures_util::future::try_join_all;
-use gribberish::message::{read_messages};
+use gribberish::message::read_messages;
 use reqwest::Client;
-use serde::{Serialize, Deserialize};
-use surfrs::{location::Location, model::{GFSWaveModel, ModelDataSource, NOAAModel}, data::gfs_wave_grib_point_data_record::GFSWaveGribPointDataRecord, units::{UnitConvertible, UnitSystem, Direction, Unit}, dimensional_data::DimensionalData, swell::Swell, tools::{waves::{break_wave, estimate_breaking_wave_height}, vector::min_max}, weather::create_points_url};
-
+use serde::{Deserialize, Serialize};
+use surfrs::{
+    data::{
+        gfs_wave_grib_point_data_record::GFSWaveGribPointDataRecord,
+        nws_weather_forecast_data::{NwsGridPointData, NwsWeatherForecastDataRecordCollection},
+    },
+    dimensional_data::DimensionalData,
+    location::Location,
+    model::{GFSWaveModel, ModelDataSource, NOAAModel},
+    swell::Swell,
+    tools::{
+        vector::min_max,
+        waves::{break_wave, estimate_breaking_wave_height},
+    },
+    units::{Direction, Unit, UnitConvertible, UnitSystem},
+    weather::{create_hourly_forecast_url, create_points_url},
+};
 
 #[derive(Serialize, Deserialize)]
 struct SurfForecastDataRecord {
@@ -23,7 +37,9 @@ impl UnitConvertible<SurfForecastDataRecord> for SurfForecastDataRecord {
     fn to_units(&mut self, new_units: &UnitSystem) {
         self.wind_speed.to_units(new_units);
         self.wave_summary.to_units(new_units);
-        self.swell_components.iter_mut().for_each(|c| c.to_units(new_units));
+        self.swell_components
+            .iter_mut()
+            .for_each(|c| c.to_units(new_units));
         self.minimum_breaking_height.to_units(new_units);
         self.maximum_breaking_height.to_units(new_units);
     }
@@ -60,30 +76,30 @@ async fn main() {
     //         // Extract data to grib data records
     //         let messages = read_messages(b).collect();
     //         let record = GFSWaveGribPointDataRecord::from_messages(&atlantic_wave_model, &messages, &location);
-            
+
     //         // Compute breaking wave data
     //         let breaking_wave_heights = record.swell_components
     //             .iter()
     //             .filter_map(|s| estimate_breaking_wave_height(s, angle, slope, depth).ok())
     //             .collect::<Vec<_>>();
-            
+
     //         // https://github.com/mpiannucci/surfpy/blob/af65f70c36c37b3454305711058cabc15d129028/surfpy/swell.py#L42
     //         let (_, breaking_wave_height) = min_max(&breaking_wave_heights);
 
     //         // Take the maximum breaking height and give it a scale factor of 0.9 for refraction
     //         // or anything we are not checking for.
     //         let breaking_wave_height = breaking_wave_height * 0.8;
-    //         let max_breaking_wave_height = DimensionalData { 
-    //             value: Some(breaking_wave_height), 
-    //             variable_name: "max reaking wave height".into(), 
-    //             unit: Unit::Meters 
+    //         let max_breaking_wave_height = DimensionalData {
+    //             value: Some(breaking_wave_height),
+    //             variable_name: "max reaking wave height".into(),
+    //             unit: Unit::Meters
     //         };
 
     //         // For now assume this is significant wave height as the max and the rms as the min
-    //         let min_breaking_wave_height = DimensionalData { 
-    //             value: Some(breaking_wave_height / 1.4), 
-    //             variable_name: "min breaking wave height".into(), 
-    //             unit: Unit::Meters 
+    //         let min_breaking_wave_height = DimensionalData {
+    //             value: Some(breaking_wave_height / 1.4),
+    //             variable_name: "min breaking wave height".into(),
+    //             unit: Unit::Meters
     //         };
 
     //         let mut record = SurfForecastDataRecord {
@@ -104,9 +120,33 @@ async fn main() {
 
     // Fetch weather forecast
 
+    let client = reqwest::Client::builder()
+        .user_agent("hopewaves.app")
+        .build()
+        .unwrap();
+
     let weather_location = Location::new(41.41, -71.45, "Narragansett Pier".into());
     let weather_url = create_points_url(&weather_location);
-    //reqwest::get(&weather_url).await.unwrap().json();
+    println!("{weather_url}");
+    let weather_gridpoints = client
+        .get(&weather_url)
+        .send()
+        .await
+        .unwrap()
+        .json::<NwsGridPointData>()
+        .await
+        .unwrap();
+
+    let weather_url = create_hourly_forecast_url(&weather_gridpoints.properties.grid_id, &weather_gridpoints.properties.grid_x, &weather_gridpoints.properties.grid_y);
+    let weather_forecast = client.get(&weather_url)
+        .send()
+        .await
+        .unwrap()
+        .json::<NwsWeatherForecastDataRecordCollection>()
+        .await
+        .unwrap();
+
+    println!("{:#?}", weather_forecast);
 
     // Combine and export json forecast data
 
