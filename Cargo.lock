@@ -1510,6 +1510,7 @@ dependencies = [
  "num-traits",
  "quick-xml",
  "rand",
+ "rayon",
  "readap",
  "regex",
  "reqwest",

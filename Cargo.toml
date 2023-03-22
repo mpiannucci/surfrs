@@ -27,3 +27,4 @@ readap = { git = "https://github.com/mpiannucci/readap" }
 reqwest = { version = "0.11", features = ["json"] }
 tokio = { version = "1", features = ["full"] }
 futures-util = { version = "0.3.17", default-features = false, features = ["std"] }
+rayon = "1.5.1"

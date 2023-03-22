@@ -1,9 +1,11 @@
-use std::{fs, future};
 use std::time::Instant;
+use std::{fs};
 
+use rayon::prelude::*;
 use chrono::{DateTime, Utc};
 use futures_util::future::try_join_all;
 use gribberish::message::read_messages;
+use rayon::prelude::IntoParallelRefIterator;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use surfrs::{
@@ -17,7 +19,7 @@ use surfrs::{
     swell::Swell,
     tools::{
         vector::min_max,
-        waves::{break_wave, estimate_breaking_wave_height},
+        waves::{estimate_breaking_wave_height},
     },
     units::{Direction, Unit, UnitConvertible, UnitSystem},
     weather::{create_hourly_forecast_url, create_points_url},
@@ -52,7 +54,7 @@ async fn main() {
 
     let location = Location::new(41.35, -71.4, "Block Island Sound".into());
     let depth = 30.0;
-    let angle =  145.0;
+    let angle = 145.0;
     let slope = 0.02;
     let now = chrono::Utc::now();
 
@@ -61,30 +63,36 @@ async fn main() {
     let atlantic_wave_model = GFSWaveModel::atlantic();
 
     let client = Client::new();
-    let requests = (0..120)
-        .map(|i| {
-            let url = atlantic_wave_model.create_url(&ModelDataSource::NODDAWS, i, Some(now));
-            let client = &client;
-            async move {
-                let resp = client.get(url).send().await?;
-                resp.bytes().await
-            }
-        });
+    let requests = (0..120).map(|i| {
+        let url = atlantic_wave_model.create_url(&ModelDataSource::NODDAWS, i, Some(now));
+        let client = &client;
+        async move {
+            let resp = client.get(url).send().await?;
+            resp.bytes().await
+        }
+    });
 
-    let data = try_join_all(requests)
+    let mut wave_data = try_join_all(requests)
         .await
         .unwrap()
-        .iter()
+        .par_iter()
         .enumerate()
         .map(|(i, b)| {
-            println!("Processing GFS Wave Model Data: {} of 120", i + 1);
+            if i == 0 {
+                println!("Processing GFS Wave Model Data");
+            }
 
             // Extract data to grib data records
             let messages = read_messages(b).collect();
-            let record = GFSWaveGribPointDataRecord::from_messages(&atlantic_wave_model, &messages, &location);
+            let record = GFSWaveGribPointDataRecord::from_messages(
+                &atlantic_wave_model,
+                &messages,
+                &location,
+            );
 
             // Compute breaking wave data
-            let breaking_wave_heights = record.swell_components
+            let breaking_wave_heights = record
+                .swell_components
                 .iter()
                 .filter_map(|s| estimate_breaking_wave_height(s, angle, slope, depth).ok())
                 .collect::<Vec<_>>();
@@ -98,14 +106,14 @@ async fn main() {
             let max_breaking_wave_height = DimensionalData {
                 value: Some(breaking_wave_height),
                 variable_name: "max reaking wave height".into(),
-                unit: Unit::Meters
+                unit: Unit::Meters,
             };
 
             // For now assume this is significant wave height as the max and the rms as the min
             let min_breaking_wave_height = DimensionalData {
                 value: Some(breaking_wave_height / 1.4),
                 variable_name: "min breaking wave height".into(),
-                unit: Unit::Meters
+                unit: Unit::Meters,
             };
 
             let mut record = SurfForecastDataRecord {
@@ -134,7 +142,7 @@ async fn main() {
 
     let weather_location = Location::new(41.41, -71.45, "Narragansett Pier".into());
     let weather_url = create_points_url(&weather_location);
-    println!("{weather_url}");
+
     let weather_gridpoints = client
         .get(&weather_url)
         .send()
@@ -144,8 +152,13 @@ async fn main() {
         .await
         .unwrap();
 
-    let weather_url = create_hourly_forecast_url(&weather_gridpoints.properties.grid_id, &weather_gridpoints.properties.grid_x, &weather_gridpoints.properties.grid_y);
-    let weather_forecast = client.get(&weather_url)
+    let weather_url = create_hourly_forecast_url(
+        &weather_gridpoints.properties.grid_id,
+        &weather_gridpoints.properties.grid_x,
+        &weather_gridpoints.properties.grid_y,
+    );
+    let weather_forecast = client
+        .get(&weather_url)
         .send()
         .await
         .unwrap()
@@ -154,13 +167,26 @@ async fn main() {
         .unwrap()
         .records();
 
-    println!("TODO: Merging Weather and Wave Data");
+    println!("Merging Weather and Wave Data");
 
     // Combine and export json forecast data
+    for wave_record in wave_data.iter_mut() {
+        let Some(weather_record) = weather_forecast
+            .par_iter()
+            .find_any(|wx| wx.start_time == wave_record.date) else {
+                continue;
+        };
 
-    println!("TODO: Writing Surf Forecast Data");
-    // let data = serde_json::to_string(&data).unwrap();
-    // fs::write("forecast.json", data).unwrap();
+        wave_record.wind_speed = weather_record.wind_speed.clone();
+        wave_record.wind_direction = weather_record.wind_direction.clone();
+    }
 
-    println!("Finished Surf Forecast Generation in {} seconds", start.elapsed().as_secs());
+    println!("Writing Surf Forecast Data");
+    let data = serde_json::to_string(&wave_data).unwrap();
+    fs::write("gfs_wave_forecast_nws_wind.json", data).unwrap();
+
+    println!(
+        "Finished Surf Forecast Generation in {} seconds",
+        start.elapsed().as_secs()
+    );
 }
