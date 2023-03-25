@@ -16,11 +16,19 @@ impl DimensionalData<f64> {
     pub fn get_value(&self) -> f64 {
         self.value.unwrap_or(f64::NAN)
     }
+
+    pub fn get_value_opt(&self) -> Option<f64> {
+        self.value.clone()
+    }
 }
 
 impl DimensionalData<f32> {
     pub fn get_value(&self) -> f32 {
         self.value.unwrap_or(f32::NAN)
+    }
+
+    pub fn get_value_opt(&self) -> Option<f32> {
+        self.value.clone()
     }
 }
 
@@ -31,6 +39,10 @@ impl DimensionalData<Direction> {
             .unwrap_or(Direction::from_cardinal_direction(
                 CardinalDirection::Invalid,
             ))
+    }
+
+    pub fn get_value_opt(&self) -> Option<Direction> {
+        self.value.clone()
     }
 }
 
