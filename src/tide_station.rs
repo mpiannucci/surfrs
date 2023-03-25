@@ -61,6 +61,17 @@ pub struct TideStation {
 }
 
 impl TideStation {
+    pub fn new(station_id: &str, location: &Location, state: &str) -> Self {
+        Self {
+            station_id: station_id.to_string(),
+            name: location.name.clone(),
+            latitude: location.latitude,
+            longitude: location.longitude,
+            state: state.to_string(),
+            reference_id: "".to_string(),
+        }
+    }
+
     pub fn tidal_data_url(&self, start_date: &chrono::DateTime<Utc>, end_date: &chrono::DateTime<Utc>, datum: &TideDatum, interval: &DataInterval, units: &UnitSystem) -> String {
         format!("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date={0}%20{1}&end_date={2}%20{3}&station={4}&product=predictions&datum={5}&interval={6}&units={7}&time_zone=gmt&application=web_services&format=json", 
             start_date.format("%Y%m%d"), 

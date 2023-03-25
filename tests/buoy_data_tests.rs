@@ -2,7 +2,6 @@ extern crate surfrs;
 
 use std::f64::consts::PI;
 use std::fs;
-use std::time::Instant;
 use surfrs::data::forecast_cbulletin_wave_data_record::{
     ForecastCBulletinWaveRecord, ForecastCBulletinWaveRecordCollection,
 };
@@ -14,7 +13,7 @@ use surfrs::data::directional_spectral_wave_data_record::DirectionalSpectralWave
 use surfrs::data::swden_wave_data_record::SwdenWaveDataRecordCollection;
 use surfrs::data::wave_data_record::WaveDataRecordCollection;
 use surfrs::swell::{Swell, SwellProvider};
-use surfrs::tools::vector::{bin, min_max};
+use surfrs::tools::vector::{bin};
 use surfrs::units::{UnitConvertible, UnitSystem};
 
 fn read_mock_data(name: &str) -> String {
