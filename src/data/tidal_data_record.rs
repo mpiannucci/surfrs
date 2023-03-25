@@ -16,11 +16,11 @@ pub enum TidalEvent {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TidalDataRecord {
     #[serde(rename = "t", deserialize_with = "utc_date_time_from_str")]
-    date: chrono::DateTime<Utc>,
+    pub date: chrono::DateTime<Utc>,
     #[serde(rename = "v", deserialize_with = "tidal_value_f64")]
-    value: f64,
+    pub value: f64,
     #[serde(rename = "type")]
-    event: Option<TidalEvent>,
+    pub event: Option<TidalEvent>,
 }
 
 fn utc_date_time_from_str<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
