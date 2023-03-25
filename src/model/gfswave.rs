@@ -5,9 +5,9 @@ use crate::tools::date::closest_gfs_model_datetime;
 use super::{ModelDataSource, ModelTimeOutputResolution, NOAAModel};
 
 pub struct GFSWaveModel {
-    id: &'static str,
-    name: &'static str,
-    description: &'static str,
+    pub id: &'static str,
+    pub name: &'static str,
+    pub description: &'static str,
 }
 
 impl GFSWaveModel {
