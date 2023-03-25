@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::units::{Direction, Unit, UnitConvertible, UnitSystem};
+use crate::units::{CardinalDirection, Direction, Unit, UnitConvertible, UnitSystem};
 use std::fmt::{self, Display};
 use std::option::Option;
 use std::str::FromStr;
@@ -10,6 +10,28 @@ pub struct DimensionalData<T> {
     pub value: Option<T>,
     pub variable_name: String,
     pub unit: Unit,
+}
+
+impl DimensionalData<f64> {
+    pub fn get_value(&self) -> f64 {
+        self.value.unwrap_or(f64::NAN)
+    }
+}
+
+impl DimensionalData<f32> {
+    pub fn get_value(&self) -> f32 {
+        self.value.unwrap_or(f32::NAN)
+    }
+}
+
+impl DimensionalData<Direction> {
+    pub fn get_value(&self) -> Direction {
+        self.value
+            .clone()
+            .unwrap_or(Direction::from_cardinal_direction(
+                CardinalDirection::Invalid,
+            ))
+    }
 }
 
 impl<T> DimensionalData<T>
