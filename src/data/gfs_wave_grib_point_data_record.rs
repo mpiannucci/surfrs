@@ -1,10 +1,7 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
-use gribberish::{
-    message::{Message},
-    templates::product::tables::FixedSurfaceType,
-};
+use gribberish::{message::Message, templates::product::tables::FixedSurfaceType};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -12,7 +9,7 @@ use crate::{
     location::Location,
     model::{GFSWaveModel, NOAAModel},
     swell::Swell,
-    units::{Direction, Unit, UnitSystem, UnitConvertible},
+    units::{Direction, Unit, UnitConvertible, UnitSystem},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -56,17 +53,19 @@ impl GFSWaveGribPointDataRecord {
             }
 
             match model.query_location_data(location, m) {
-                Ok(value) => {data.insert(abbrev, value);},
+                Ok(value) => {
+                    data.insert(abbrev, value);
+                }
                 Err(err) => println!("{err}"),
             }
         });
 
         let wave_summary = Swell::new(
-            &UnitSystem::Metric, 
-            data["HTSGW"], 
-            data["PERPW"], 
-            Direction::from_degrees(data["DIRPW"] as i32), 
-            None
+            &UnitSystem::Metric,
+            data["HTSGW"],
+            data["PERPW"],
+            Direction::from_degrees(data["DIRPW"] as i32),
+            None,
         );
 
         let wind_speed = DimensionalData {
@@ -86,11 +85,17 @@ impl GFSWaveGribPointDataRecord {
             let ht_key = format!("SWELL_{i}");
             let per_key = format!("SWPER_{i}");
             let dir_key = format!("SWDIR_{i}");
-            if data.contains_key(&ht_key) && data.contains_key(&per_key) && data.contains_key(&dir_key) {
+            if data.contains_key(&ht_key)
+                && data.contains_key(&per_key)
+                && data.contains_key(&dir_key)
+                && !data[&ht_key].is_nan()
+                && !data[&per_key].is_nan()
+                && !data[&dir_key].is_nan()
+            {
                 let component = Swell::new(
                     &UnitSystem::Metric,
                     data[&ht_key],
-                    data[&per_key], 
+                    data[&per_key],
                     Direction::from_degrees(data[&dir_key] as i32),
                     None,
                 );
@@ -99,11 +104,17 @@ impl GFSWaveGribPointDataRecord {
             }
         }
 
-        if data.contains_key("WVHGT") && data.contains_key("WVPER") && data.contains_key("WVDIR") {
+        if data.contains_key("WVHGT")
+            && data.contains_key("WVPER")
+            && data.contains_key("WVDIR")
+            && !data["WVHGT"].is_nan()
+            && !data["WVPER"].is_nan()
+            && !data["WVDIR"].is_nan()
+        {
             let component = Swell::new(
                 &UnitSystem::Metric,
                 data["WVHGT"],
-                data["WVPER"], 
+                data["WVPER"],
                 Direction::from_degrees(data["WVDIR"] as i32),
                 None,
             );
@@ -111,13 +122,18 @@ impl GFSWaveGribPointDataRecord {
             swell_components.push(component);
         };
 
-        swell_components.sort_by(|a, b| b.wave_height.partial_cmp(&a.wave_height).unwrap());
-        
+        swell_components.sort_by(|a, b| {
+            b.wave_height
+                .get_value()
+                .partial_cmp(&a.wave_height.get_value())
+                .unwrap()
+        });
+
         GFSWaveGribPointDataRecord {
             date,
-            wave_summary, 
-            wind_speed, 
-            wind_direction, 
+            wave_summary,
+            wind_speed,
+            wind_direction,
             swell_components,
         }
     }
@@ -127,6 +143,8 @@ impl UnitConvertible<GFSWaveGribPointDataRecord> for GFSWaveGribPointDataRecord 
     fn to_units(&mut self, new_units: &UnitSystem) {
         self.wind_speed.to_units(new_units);
         self.wave_summary.to_units(new_units);
-        self.swell_components.iter_mut().for_each(|c| c.to_units(new_units));
+        self.swell_components
+            .iter_mut()
+            .for_each(|c| c.to_units(new_units));
     }
 }
