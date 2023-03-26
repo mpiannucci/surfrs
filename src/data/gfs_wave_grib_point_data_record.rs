@@ -110,6 +110,8 @@ impl GFSWaveGribPointDataRecord {
 
             swell_components.push(component);
         };
+
+        swell_components.sort_by(|a, b| b.wave_height.partial_cmp(&a.wave_height).unwrap());
         
         GFSWaveGribPointDataRecord {
             date,

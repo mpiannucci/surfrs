@@ -1,18 +1,18 @@
 Station 44097
-40° 58.1' N  71° 7.6' W
+40Â° 58.0' N  71Â° 7.4' W
 
-8:43 pm EDT 09/24/18
-0043 GMT 09/25/18
-Seas: 6.6 ft
-Peak Period: 6 sec
-Water Temp: 66.7 °F
+3:56 pm EDT
+1956 GMT 03/25/23
+Seas: 5.6 ft
+Peak Period: 5 sec
+Water Temp: 42.6 Â°F
 
 Wave Summary
-8:43 pm EDT 09/24/18
-0000 GMT 09/25/18
-Swell: 1.3 ft
-Period: 12.5 sec
-Direction: E
-Wind Wave: 6.2 ft
-Period: 6.2 sec
-Direction: E
+4:26 pm EDT
+2000 GMT 03/25/23
+Swell: 1.0 ft
+Period: 15.4 sec
+Direction: ESE
+Wind Wave: 6.9 ft
+Period: 5.6 sec
+Direction: ESE
