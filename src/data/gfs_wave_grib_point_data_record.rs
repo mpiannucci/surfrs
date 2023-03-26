@@ -52,7 +52,7 @@ impl GFSWaveGribPointDataRecord {
                 _ => {}
             }
 
-            match model.interp_location_data(location, m) {
+            match model.query_location_data(location, m) {
                 Ok(value) => {
                     data.insert(abbrev, value);
                 }
