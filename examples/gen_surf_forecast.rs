@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use surfrs::{
     data::{
         gfs_wave_grib_point_data_record::GFSWaveGribPointDataRecord,
-        nws_weather_forecast_data::{NwsGridPointData, NwsWeatherForecastDataRecordCollection},
+        nws_weather_forecast_data_record::{NwsGridPointData, NwsWeatherForecastDataRecordCollection},
     },
     dimensional_data::DimensionalData,
     location::Location,

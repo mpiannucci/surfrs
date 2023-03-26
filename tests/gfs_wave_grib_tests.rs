@@ -32,7 +32,6 @@ fn extract_atlantic_wave_data_record() {
     println!("{:?}", wave_data.swell_components[0].to_string());
     println!("{:?}", wave_data.swell_components[1].to_string());
     println!("{:?}", wave_data.swell_components[2].to_string());
-    println!("{:?}", wave_data.swell_components[3].to_string());
 
     // 2023-01-21 03:00:00 UTC
     // "1.0 m @ 8.9 s 186° s"

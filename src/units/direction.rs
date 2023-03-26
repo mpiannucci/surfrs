@@ -98,9 +98,8 @@ impl FromStr for Direction {
         let parse_cardinal: Result<CardinalDirection, DataParseError> = s.parse();
         match parse_cardinal {
             Ok(dir) => Ok(Direction {
-                direction: dir,
-                // TODO
-                degrees: 0,
+                direction: dir.clone(),
+                degrees: dir.to_degrees(),
             }),
             Err(_) => {
                 let parse_direction = s.parse::<i32>();
@@ -112,9 +111,3 @@ impl FromStr for Direction {
         }
     }
 }
-
-// impl From<Direction> for Measurement {
-//     fn from(_: Direction) -> Measurement {
-//         Measurement::Direction
-//     }
-// }
