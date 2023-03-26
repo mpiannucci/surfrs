@@ -26,6 +26,7 @@ impl GFSWaveGribPointDataRecord {
         model: &GFSWaveModel,
         messages: &Vec<Message>,
         location: &Location,
+        tolerance: f64,
     ) -> Self {
         let mut date: DateTime<Utc> = Utc::now();
         let mut data: HashMap<String, f64> = HashMap::new();
@@ -52,9 +53,11 @@ impl GFSWaveGribPointDataRecord {
                 _ => {}
             }
 
-            match model.query_location_data(location, m) {
+            match model.query_location_tolerance(location, &tolerance, m) {
                 Ok(value) => {
-                    data.insert(abbrev, value);
+                    let sum: f64 = value.iter().sum();
+                    let mean: f64 = sum / value.len() as f64;
+                    data.insert(abbrev, mean);
                 }
                 Err(err) => println!("{err}"),
             }

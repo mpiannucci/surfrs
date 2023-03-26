@@ -26,12 +26,12 @@ fn extract_atlantic_wave_data_record() {
         .expect("Failed to read data from the grib file");
 
     let messages = read_messages(&buf).collect::<Vec<_>>();
-    let wave_data = GFSWaveGribPointDataRecord::from_messages(&model, &messages, &location);
+    let wave_data = GFSWaveGribPointDataRecord::from_messages(&model, &messages, &location, 0.167);
 
-    println!("{}", wave_data.date);
-    println!("{:?}", wave_data.swell_components[0].to_string());
-    println!("{:?}", wave_data.swell_components[1].to_string());
-    println!("{:?}", wave_data.swell_components[2].to_string());
+    // println!("{}", wave_data.date);
+    // println!("{:?}", wave_data.swell_components[0].to_string());
+    // println!("{:?}", wave_data.swell_components[1].to_string());
+    // println!("{:?}", wave_data.swell_components[2].to_string());
 
     // 2023-01-21 03:00:00 UTC
     // "1.0 m @ 8.9 s 186° s"

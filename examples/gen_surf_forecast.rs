@@ -88,6 +88,7 @@ async fn main() {
                 &atlantic_wave_model,
                 &messages,
                 &location,
+                0.167
             );
 
             // Compute breaking wave data

@@ -56,6 +56,33 @@ pub trait NOAAModel {
         query_date: Option<DateTime<Utc>>,
     ) -> String;
 
+    fn query_location_tolerance(&self, location: &Location, tolerance: &f64, message: &Message) -> Result<Vec<f64>, String> {
+        let bbox = message.location_bbox()?;
+
+        if !location.within_bbox(&bbox) {
+            return Err("location is not within the models bounds".into());
+        }
+
+        let min_lat = location.relative_latitude() - *tolerance;
+        let max_lat = location.relative_latitude() + *tolerance;
+        let min_lng = location.relative_longitude() - *tolerance;
+        let max_lng = location.relative_longitude() + *tolerance;
+
+        let data = message.data()?;
+
+        let data = message.latlng()?
+            .iter()
+            .enumerate()
+            .filter(|(_, (lat, lng))| {
+                normalize_latitude(*lat) >= min_lat && normalize_latitude(*lat) <= max_lat && normalize_longitude(*lng) >= min_lng && normalize_longitude(*lng) <= max_lng
+            })
+            .map(|(i, _)|data[i])
+            .filter(|v| !v.is_nan())
+            .collect();
+
+        Ok(data)
+    }
+
     fn query_location_data(&self, location: &Location, message: &Message) -> Result<f64, String> {
         let bbox = message.location_bbox()?;
 

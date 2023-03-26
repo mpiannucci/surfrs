@@ -1,6 +1,6 @@
 use std::fs;
 
-use surfrs::{data::nws_weather_forecast_data_record::{NwsWeatherForecastDataRecordCollection, NwsGridPointData}, units::{Unit, CardinalDirection, Direction}};
+use surfrs::{data::nws_weather_forecast_data_record::{NwsWeatherForecastDataRecordCollection, NwsGridPointData}, units::{Unit, CardinalDirection}};
 
 fn read_mock_data(name: &str) -> String {
     fs::read_to_string(format!("mock/{}", name)).unwrap()
