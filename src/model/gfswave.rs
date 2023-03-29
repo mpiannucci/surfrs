@@ -1,6 +1,6 @@
 use chrono::prelude::*;
 
-use crate::tools::date::closest_gfs_model_datetime;
+use crate::tools::date::closest_gfs_model_stations_datetime;
 
 use super::{ModelDataSource, ModelTimeOutputResolution, NOAAModel};
 
@@ -66,7 +66,7 @@ impl NOAAModel for GFSWaveModel {
     }
 
     fn closest_model_run_date(&self, date: &DateTime<Utc>) -> DateTime<Utc> {
-        closest_gfs_model_datetime(date)
+        closest_gfs_model_stations_datetime(date)
     }
 
     fn time_resolution(&self) -> ModelTimeOutputResolution {

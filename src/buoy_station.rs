@@ -1,6 +1,6 @@
 use crate::{
     location::Location, model::ModelDataSource, station::Station,
-    tools::{date::closest_gfs_model_datetime, dap::{DapConstraint, format_dods_url}},
+    tools::{date::closest_gfs_model_stations_datetime, dap::{DapConstraint, format_dods_url}},
 };
 use chrono::{DateTime, Datelike, Timelike, Utc};
 use geojson::{Feature, FeatureCollection, JsonObject, Geometry, JsonValue, Value};
@@ -202,7 +202,7 @@ impl BuoyStation {
         source: &ModelDataSource,
         date: &DateTime<Utc>,
     ) -> String {
-        let model_date = closest_gfs_model_datetime(date);
+        let model_date = closest_gfs_model_stations_datetime(date);
         format!(
             "{}/gfs.{}{:02}{:02}/{:02}/wave/station/bulls.t{:02}z/gfswave.{}.cbull",
             self.source_path(source),
@@ -220,7 +220,7 @@ impl BuoyStation {
         source: &ModelDataSource,
         date: &DateTime<Utc>,
     ) -> String {
-        let model_date = closest_gfs_model_datetime(date);
+        let model_date = closest_gfs_model_stations_datetime(date);
         format!(
             "{}/gfs.{}{:02}{:02}/{:02}/wave/station/bulls.t{:02}z/gfswave.{}.spec",
             self.source_path(source),
@@ -234,7 +234,7 @@ impl BuoyStation {
     }
 
     pub fn gfswave_lsl_url(&self, source: &ModelDataSource, date: &DateTime<Utc>) -> String {
-        let model_date = closest_gfs_model_datetime(date);
+        let model_date = closest_gfs_model_stations_datetime(date);
         format!(
             "{}/gfs.{}{:02}{:02}/{:02}/wave/station/ls-l",
             self.source_path(source),
