@@ -40,3 +40,30 @@ pub fn closest_hourly_model_datetime(datetime: &DateTime<Utc>) -> DateTime<Utc> 
         .with_nanosecond(0)
         .unwrap()
 }
+
+#[cfg(test)]
+mod test {
+    use crate::tools::date::{closest_gfs_model_gridded_datetime, closest_gfs_model_stations_datetime};
+
+    #[test]
+    fn test_closest_station_model_datetime() {
+        use chrono::prelude::*; 
+
+        let datetime = Utc.with_ymd_and_hms(2023, 4, 13, 23, 0, 0).unwrap();
+        let expected = Utc.with_ymd_and_hms(2023, 4, 13, 12, 0, 0).unwrap();
+
+        let result = closest_gfs_model_stations_datetime(&datetime);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_closest_gridded_model_datetime() {
+        use chrono::prelude::*; 
+
+        let datetime = Utc.with_ymd_and_hms(2023, 4, 13, 23, 0, 0).unwrap();
+        let expected = Utc.with_ymd_and_hms(2023, 4, 13, 18, 0, 0).unwrap();
+
+        let result = closest_gfs_model_gridded_datetime(&datetime);
+        assert_eq!(result, expected);
+    }
+}
