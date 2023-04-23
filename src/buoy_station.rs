@@ -205,7 +205,7 @@ impl BuoyStation {
     pub fn gfswave_data_url_prefix(&self, date: &DateTime<Utc>) -> String {
         let model_date = closest_gfs_model_stations_datetime(date);
         format!(
-            "gfs.{}{:02}{:02}/{:02}/wave/station/bulls.t{:02}z/",
+            "gfs.{}{:02}{:02}/{:02}/wave/station/bulls.t{:02}z",
             model_date.year(),
             model_date.month(),
             model_date.day(),
