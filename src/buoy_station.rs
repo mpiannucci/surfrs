@@ -369,11 +369,7 @@ impl BuoyStations {
         }
     }
 
-    pub fn gfswave_stations_root_url(
-        &self,
-        source: &ModelDataSource,
-        date: &DateTime<Utc>,
-    ) -> String {
+    pub fn gfswave_stations_root_url(source: &ModelDataSource, date: &DateTime<Utc>) -> String {
         let model_date = closest_gfs_model_stations_datetime(date);
         let prefix = Self::gfswave_data_url_prefix(&model_date);
         format!("{root}/{prefix}", root = Self::gfswave_source_path(source))
