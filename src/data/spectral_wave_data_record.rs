@@ -26,6 +26,11 @@ impl ParseableDataRecord for SpectralWaveDataRecord {
             true => 6,
             false => 5,
         };
+        if row.len() < start_index {
+            return Err(DataRecordParsingError::ParseFailure(
+                "Invalid Spectral Wave record: not enough rows parsed".to_string(),
+            ));
+        }
         let freq_count = (row.len() - start_index) / 2;
 
         let mut values: Vec<f64> = vec![0.0; freq_count];
@@ -56,7 +61,7 @@ impl ParseableDataRecord for SpectralWaveDataRecord {
 
         Ok(SpectralWaveDataRecord {
             date,
-            separation_frequency: separation_frequency,
+            separation_frequency,
             value: values,
             frequency: freqs,
         })

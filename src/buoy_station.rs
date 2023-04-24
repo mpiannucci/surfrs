@@ -79,7 +79,7 @@ pub struct BuoyStation {
 impl BuoyStation {
     pub fn new(station_id: String, latitude: f64, longitude: f64) -> BuoyStation {
         BuoyStation {
-            station_id: station_id,
+            station_id,
             latitude,
             longitude,
             raw_name: "".into(),
