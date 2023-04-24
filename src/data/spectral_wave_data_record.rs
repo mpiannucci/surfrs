@@ -39,8 +39,11 @@ impl ParseableDataRecord for SpectralWaveDataRecord {
         for i in 0..freq_count {
             let index = start_index + i * 2;
 
-            values[i] = row[index].parse().unwrap();
-            freqs[i] = row[index + 1].replace(&['(', ')'][..], "").parse().unwrap();
+            values[i] = row[index].parse().map_err(DataRecordParsingError::from)?;
+            freqs[i] = row[index + 1]
+                .replace(&['(', ')'][..], "")
+                .parse()
+                .map_err(DataRecordParsingError::from)?;
         }
 
         let separation_frequency = match has_sep_freq {
@@ -48,15 +51,15 @@ impl ParseableDataRecord for SpectralWaveDataRecord {
             false => None,
         };
 
+        let year = row[0].parse().map_err(DataRecordParsingError::from)?;
+        let month = row[1].parse().map_err(DataRecordParsingError::from)?;
+        let day = row[2].parse().map_err(DataRecordParsingError::from)?;
+        let hour = row[3].parse().map_err(DataRecordParsingError::from)?;
+        let minute = row[4].parse().map_err(DataRecordParsingError::from)?;
+
         let date = Utc
-            .with_ymd_and_hms(
-                row[0].parse().unwrap(),
-                row[1].parse().unwrap(),
-                row[2].parse().unwrap(),
-                row[3].parse().unwrap(),
-                row[4].parse().unwrap(),
-                0,
-            )
+            .with_ymd_and_hms(year, month, day, hour, minute, 0)
+            .single()
             .unwrap();
 
         Ok(SpectralWaveDataRecord {
