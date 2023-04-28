@@ -89,7 +89,7 @@ async fn main() {
                 &messages,
                 &location,
                 0.167
-            );
+            ).unwrap();
 
             // Compute breaking wave data
             let breaking_wave_heights = record

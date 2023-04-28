@@ -12,6 +12,8 @@ use crate::{
     units::{Direction, Unit, UnitConvertible, UnitSystem},
 };
 
+use super::parseable_data_record::DataRecordParsingError;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GFSWaveGribPointDataRecord {
     pub date: DateTime<Utc>,
@@ -27,7 +29,7 @@ impl GFSWaveGribPointDataRecord {
         messages: &Vec<Message>,
         location: &Location,
         tolerance: f64,
-    ) -> Self {
+    ) -> Result<Self, DataRecordParsingError> {
         let mut date: DateTime<Utc> = Utc::now();
         let mut data: HashMap<String, f64> = HashMap::new();
 
@@ -63,22 +65,36 @@ impl GFSWaveGribPointDataRecord {
             }
         });
 
+        let Some(wave_height) = data.get("HTSGW") else {
+            return Err(DataRecordParsingError::KeyMissing("HTSGW".into()));
+        };
+
+        let Some(period) = data.get("PERPW") else {
+            return Err(DataRecordParsingError::KeyMissing("PERPW".into()));
+        };
+
+        let Some(wave_direction) = data.get("DIRPW") else {
+            return Err(DataRecordParsingError::KeyMissing("DIRPW".into()));
+        };
+
         let wave_summary = Swell::new(
             &UnitSystem::Metric,
-            data["HTSGW"],
-            data["PERPW"],
-            Direction::from_degrees(data["DIRPW"] as i32),
+            *wave_height,
+            *period,
+            Direction::from_degrees(*wave_direction as i32),
             None,
         );
 
+        let wind_speed_value = data.get("WIND").map(|w| *w);
         let wind_speed = DimensionalData {
-            value: Some(data["WIND"]),
+            value: wind_speed_value,
             variable_name: "wind speed".into(),
             unit: Unit::MetersPerSecond,
         };
 
+        let wind_direction_value = data.get("WIND").map(|d| Direction::from_degrees(*d as i32));
         let wind_direction = DimensionalData {
-            value: Some(Direction::from_degrees(data["WDIR"] as i32)),
+            value: wind_direction_value,
             variable_name: "wind directions".into(),
             unit: Unit::Degrees,
         };
@@ -132,13 +148,13 @@ impl GFSWaveGribPointDataRecord {
                 .unwrap()
         });
 
-        GFSWaveGribPointDataRecord {
+        Ok(GFSWaveGribPointDataRecord {
             date,
             wave_summary,
             wind_speed,
             wind_direction,
             swell_components,
-        }
+        })
     }
 }
 

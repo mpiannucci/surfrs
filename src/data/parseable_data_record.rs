@@ -8,6 +8,7 @@ pub enum DataRecordParsingError {
     NotImplemented,
     InvalidData,
     ParseFailure(String),
+    KeyMissing(String),
 }
 
 impl std::fmt::Display for DataRecordParsingError {
@@ -21,6 +22,9 @@ impl std::fmt::Display for DataRecordParsingError {
                 write!(f, "Invalid data encountered while parsing data")
             }
             DataRecordParsingError::ParseFailure(_) => write!(f, "Data parse failure"),
+            DataRecordParsingError::KeyMissing(key) => {
+                write!(f, "Key missing from data: {}", key)
+            }
         }
     }
 }
