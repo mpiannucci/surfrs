@@ -1,5 +1,6 @@
-use std::num::{ParseFloatError, ParseIntError};
+use std::{num::{ParseFloatError, ParseIntError}, format};
 
+use chrono::ParseError;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -30,14 +31,20 @@ impl std::fmt::Display for DataRecordParsingError {
 }
 
 impl From<ParseFloatError> for DataRecordParsingError {
-    fn from(_error: ParseFloatError) -> Self {
-        DataRecordParsingError::ParseFailure("Float".to_string())
+    fn from(e: ParseFloatError) -> Self {
+        DataRecordParsingError::ParseFailure(format!("Float: {e}"))
     }
 }
 
 impl From<ParseIntError> for DataRecordParsingError {
-    fn from(_error: ParseIntError) -> Self {
-        DataRecordParsingError::ParseFailure("Int".to_string())
+    fn from(e: ParseIntError) -> Self {
+        DataRecordParsingError::ParseFailure(format!("Int: {e}"))
+    }
+}
+
+impl From<ParseError> for DataRecordParsingError {
+    fn from(e: ParseError) -> Self {
+        DataRecordParsingError::ParseFailure(format!("Date: {e}"))
     }
 }
 
