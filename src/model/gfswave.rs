@@ -84,20 +84,19 @@ impl NOAAModel for GFSWaveModel {
     fn create_url(
         &self,
         source: &ModelDataSource,
-        output_index: usize,
+        output_hour: usize,
         model_date: Option<DateTime<Utc>>,
     ) -> String {
         let id = self.id();
         let base = self.url_root(source);
         let model_date = self.closest_model_run_date(&model_date.unwrap_or(Utc::now()));
-        let timestep = self.time_resolution().hour_for_index(output_index);
         let year = model_date.year();
         let month = model_date.month();
         let day = model_date.day();
         let hour = model_date.hour();
 
         format!(
-            "{base}/gfs.{year}{month:02}{day:02}/{hour:02}/wave/gridded/gfswave.t{hour:02}z.{id}.f{timestep:03}.grib2"
+            "{base}/gfs.{year}{month:02}{day:02}/{hour:02}/wave/gridded/gfswave.t{hour:02}z.{id}.f{output_hour:03}.grib2"
         )
     }
 }
@@ -121,7 +120,7 @@ mod tests {
         assert_eq!(url, truth);
 
         let truth = "https://storage.googleapis.com/global-forecast-system/gfs.20230117/06/wave/gridded/gfswave.t06z.atlocn.0p16.f126.grib2";
-        let url = gfs_wave.create_url(&ModelDataSource::NODDGCP, 122, Some(date));
+        let url = gfs_wave.create_url(&ModelDataSource::NODDGCP, 126, Some(date));
         assert_eq!(url, truth);
     }
 }

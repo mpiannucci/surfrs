@@ -24,6 +24,7 @@ pub enum ModelTimeOutputResolution {
     Hourly,
     HybridHourlyThreeHourly(usize),
     ThreeHourly,
+    HybridThreeHourlySixHourly(usize),
 }
 
 impl ModelTimeOutputResolution {
@@ -38,7 +39,49 @@ impl ModelTimeOutputResolution {
                 }
             }
             ModelTimeOutputResolution::ThreeHourly => index * 3,
+            ModelTimeOutputResolution::HybridThreeHourlySixHourly(cutoff) => {
+                if (index * 3) <= *cutoff {
+                    index * 3
+                } else {
+                    cutoff + ((index * 3 - cutoff) / 3) * 6
+                }
+            }
         }
+    }
+
+    pub fn index_for_hour(&self, hour: usize) -> usize {
+        match self {
+            ModelTimeOutputResolution::Hourly => hour,
+            ModelTimeOutputResolution::HybridHourlyThreeHourly(cutoff) => {
+                if hour <= *cutoff {
+                    hour
+                } else {
+                    cutoff + (hour - cutoff) / 3
+                }
+            }
+            ModelTimeOutputResolution::ThreeHourly => hour / 3,
+            ModelTimeOutputResolution::HybridThreeHourlySixHourly(cutoff) => {
+                if hour <= *cutoff {
+                    hour / 3
+                } else {
+                    cutoff / 3 + (hour - cutoff) / 6
+                }
+            }
+        }
+    }
+
+    pub fn indexes_for_hour_range(&self, start_hour: usize, end_hour: usize) -> Vec<usize> {
+        (start_hour..=end_hour).map(|h| self.index_for_hour(h)).collect()
+    }
+
+    pub fn hours_for_index_range(&self, start_index: usize, end_index: usize) -> Vec<usize> {
+        (start_index..=end_index).map(|h| self.hour_for_index(h)).collect()
+    }
+
+    pub fn hours_for_hour_range(&self, start_hour: usize, end_hour: usize) -> Vec<usize> {
+        let start_index = self.index_for_hour(start_hour);
+        let end_index = self.index_for_hour(end_hour);
+        self.hours_for_index_range(start_index, end_index)
     }
 }
 
@@ -49,10 +92,14 @@ pub trait NOAAModel {
     fn time_resolution(&self) -> ModelTimeOutputResolution;
     fn closest_model_run_date(&self, date: &DateTime<Utc>) -> DateTime<Utc>;
     fn url_root(&self, source: &ModelDataSource) -> &'static str;
+    fn hour_for_index(&self, index: usize) -> usize {
+        self.time_resolution().hour_for_index(index)
+    }
+    
     fn create_url(
         &self,
         source: &ModelDataSource,
-        output_index: usize,
+        output_hour: usize,
         query_date: Option<DateTime<Utc>>,
     ) -> String;
 
@@ -218,5 +265,43 @@ pub trait NOAAModel {
             })
         )
         .map_err(|_| "Failed to contour data".into())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::ModelTimeOutputResolution;
+
+    #[test]
+    fn test_model_output_time_index_to_hour() {
+        assert_eq!(ModelTimeOutputResolution::Hourly.hour_for_index(140), 140);
+        assert_eq!(ModelTimeOutputResolution::ThreeHourly.hour_for_index(20), 60);
+        assert_eq!(ModelTimeOutputResolution::HybridHourlyThreeHourly(120).hour_for_index(90), 90);
+        assert_eq!(ModelTimeOutputResolution::HybridHourlyThreeHourly(120).hour_for_index(130), 150);
+        assert_eq!(ModelTimeOutputResolution::HybridThreeHourlySixHourly(240).hour_for_index(18), 54);
+        assert_eq!(ModelTimeOutputResolution::HybridThreeHourlySixHourly(240).hour_for_index(104), 384);
+    }
+
+    #[test]
+    fn test_model_output_time_hour_to_index() {
+        assert_eq!(ModelTimeOutputResolution::Hourly.index_for_hour(140), 140);
+        assert_eq!(ModelTimeOutputResolution::ThreeHourly.index_for_hour(63), 21);
+        assert_eq!(ModelTimeOutputResolution::HybridHourlyThreeHourly(120).index_for_hour(90), 90);
+        assert_eq!(ModelTimeOutputResolution::HybridHourlyThreeHourly(120).index_for_hour(132), 124);
+        assert_eq!(ModelTimeOutputResolution::HybridThreeHourlySixHourly(240).index_for_hour(240), 80);
+        assert_eq!(ModelTimeOutputResolution::HybridThreeHourlySixHourly(240).index_for_hour(384), 104);
+    }
+
+    #[test]
+    fn test_model_output_time_hours_for_hour_range() {
+        let hourly_hours = [117, 118, 119, 120, 121, 122, 123, 124, 125, 126];
+        let hybrid_hourly = [117, 118, 119, 120, 123, 126];
+        let three_hourly_hours = [117, 120, 123, 126];
+        let hybrid_three_hourly = [234, 237, 240, 246, 252, 258];
+
+        assert_eq!(ModelTimeOutputResolution::Hourly.hours_for_hour_range(117, 126), hourly_hours);
+        assert_eq!(ModelTimeOutputResolution::ThreeHourly.hours_for_hour_range(117, 126), three_hourly_hours);
+        assert_eq!(ModelTimeOutputResolution::HybridHourlyThreeHourly(120).hours_for_hour_range(117, 126), hybrid_hourly);
+        assert_eq!(ModelTimeOutputResolution::HybridThreeHourlySixHourly(240).hours_for_hour_range(234, 258), hybrid_three_hourly);
     }
 }

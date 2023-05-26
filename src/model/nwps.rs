@@ -84,7 +84,7 @@ mod tests {
         let box_nwps = NWPSModel::boston();
 
         let truth = "https://nomads.ncep.noaa.gov/pub/data/nccf/com/nwps/prod/er.20230311/box/06/CG1/box_nwps_CG1_20230311_0600.grib2";
-        let url = box_nwps.create_url(&ModelDataSource::NODDGCP, 0, Some(date));
+        let url = box_nwps.create_url(&ModelDataSource::NOMADS, 0, Some(date));
         assert_eq!(url, truth);
     }
 }
