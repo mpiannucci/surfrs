@@ -25,7 +25,7 @@ pub struct GFSWaveGribPointDataRecord {
 
 impl GFSWaveGribPointDataRecord {
     pub fn from_messages(
-        model: &GFSWaveModel,
+        model: &impl NOAAModel,
         messages: &Vec<Message>,
         location: &Location,
         tolerance: f64,

@@ -1,6 +1,6 @@
 use crate::units::UnitSystem;
 use serde::{Deserialize, Serialize};
-use std::{f64};
+use std::f64;
 use std::string::String;
 
 pub fn normalize_latitude(latitude: f64) -> f64 {
@@ -14,6 +14,14 @@ pub fn normalize_latitude(latitude: f64) -> f64 {
 pub fn normalize_longitude(longitude: f64) -> f64 {
     if longitude > 180.0 {
         longitude - 360.0
+    } else {
+        longitude
+    }
+}
+
+pub fn absolute_longitude(longitude: f64) -> f64 {
+    if longitude < 0.0 {
+        360.0 + longitude
     } else {
         longitude
     }
@@ -88,17 +96,19 @@ impl Location {
     }
 
     pub fn within_bbox(&self, bbox: &(f64, f64, f64, f64)) -> bool {
-        let within_lng = normalize_longitude(bbox.0) <= self.longitude &&  self.longitude <= normalize_longitude(bbox.2);
-        let within_lat = normalize_latitude(bbox.1) <= self.latitude &&  self.latitude <= normalize_latitude(bbox.3);
+        let within_lng = absolute_longitude(bbox.0) <= absolute_longitude(self.longitude)
+            && absolute_longitude(self.longitude) <= absolute_longitude(bbox.2);
+        let within_lat = normalize_latitude(bbox.1) <= self.latitude
+            && self.latitude <= normalize_latitude(bbox.3);
         within_lng && within_lat
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::location::normalize_latitude;
+    use crate::location::{normalize_latitude, absolute_longitude};
 
-    use super::{Location, normalize_longitude};
+    use super::{normalize_longitude, Location};
 
     #[test]
     fn test_normalize_coords() {
@@ -113,12 +123,42 @@ mod tests {
 
         let normal_start_lat = normalize_latitude(85.0);
         assert!((normal_start_lat - 85.0).abs() < 0.00001);
+
+        let normal_start_lng = normalize_longitude(0.0);
+        assert!((normal_start_lng - 0.0).abs() < 0.00001);
+
+        let normal_start_lng = normalize_longitude(359.75);
+        assert!((normal_start_lng - -0.25).abs() < 0.00001);
+
+        let normal_start_lat = normalize_latitude(-90.0);
+        assert!((normal_start_lat - -90.0).abs() < 0.00001);
+
+        let normal_start_lat = normalize_latitude(90.0);
+        assert!((normal_start_lat - 90.0).abs() < 0.00001);
+    }
+
+    #[test]
+    fn test_absolute_longitude() {
+        let normal_start_lng = absolute_longitude(260.0);
+        assert!((normal_start_lng - 260.0).abs() < 0.00001);
+
+        let normal_start_lng = absolute_longitude(90.0);
+        assert!((normal_start_lng - 90.0).abs() < 0.00001);
+
+        let normal_start_lng = absolute_longitude(0.0);
+        assert!((normal_start_lng - 0.0).abs() < 0.00001);
+
+        let normal_start_lng = absolute_longitude(-71.4);
+        assert!((normal_start_lng - 288.6).abs() < 0.00001);
     }
 
     #[test]
     fn test_within_bbox() {
         let location = Location::new(41.35, -71.4, "Block Island Sound".into());
         let bbox = (260.0, -0.00010999999999228294, 310.0001, 55.0);
+        assert!(location.within_bbox(&bbox));
+
+        let bbox = (0.0, -90.0, 359.75, 90.0);
         assert!(location.within_bbox(&bbox));
     }
 }

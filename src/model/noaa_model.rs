@@ -95,6 +95,9 @@ pub trait NOAAModel {
     fn hour_for_index(&self, index: usize) -> usize {
         self.time_resolution().hour_for_index(index)
     }
+    fn index_for_hour(&self, hour: usize) -> usize {
+        self.time_resolution().index_for_hour(hour)
+    }
     
     fn create_url(
         &self,
