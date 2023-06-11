@@ -106,6 +106,15 @@ pub trait NOAAModel {
         query_date: Option<DateTime<Utc>>,
     ) -> String;
 
+    fn create_idx_url(
+        &self,
+        source: &ModelDataSource,
+        output_hour: usize,
+        query_date: Option<DateTime<Utc>>,
+    ) -> String {
+        format!("{}.idx", self.create_url(source, output_hour, query_date))
+    }
+
     fn query_location_tolerance(&self, location: &Location, tolerance: &f64, message: &Message) -> Result<Vec<f64>, String> {
         let bbox = message.location_bbox()?;
 
