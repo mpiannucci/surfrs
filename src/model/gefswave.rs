@@ -11,7 +11,7 @@ pub struct GEFSWaveModel {
 }
 
 impl GEFSWaveModel {
-    pub fn global_16_mean() -> Self {
+    pub fn global_25_mean() -> Self {
         GEFSWaveModel {
             id: "mean.global.0p25",
             name: "GEFS Wave Global",
