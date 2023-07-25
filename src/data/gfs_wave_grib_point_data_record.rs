@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     dimensional_data::DimensionalData,
     location::Location,
-    model::{GFSWaveModel, NOAAModel},
+    model::NOAAModel,
     swell::Swell,
     units::{Direction, Unit, UnitConvertible, UnitSystem},
 };

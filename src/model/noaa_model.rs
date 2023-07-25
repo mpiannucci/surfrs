@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     location::{normalize_latitude, normalize_longitude, Location},
     tools::{
-        contour::{compute_latlng_gridded_contours}, analysis::{bilerp, lerp},
+        contour::compute_latlng_gridded_contours, analysis::{bilerp, lerp},
     }, units::{UnitSystem, Unit}
 };
 
@@ -116,7 +116,8 @@ pub trait NOAAModel {
     }
 
     fn query_location_tolerance(&self, location: &Location, tolerance: &f64, message: &Message) -> Result<Vec<f64>, String> {
-        let bbox = message.location_bbox()?;
+        let projector = message.latlng_projector()?;
+        let bbox = projector.bbox();
 
         if !location.within_bbox(&bbox) {
             return Err("location is not within the models bounds".into());
@@ -129,21 +130,27 @@ pub trait NOAAModel {
 
         let data = message.data()?;
 
-        let data = message.latlng()?
+        let (lat, lng) = projector.lat_lng();
+
+        let data = data
             .iter()
             .enumerate()
-            .filter(|(_, (lat, lng))| {
-                normalize_latitude(*lat) >= min_lat && normalize_latitude(*lat) <= max_lat && normalize_longitude(*lng) >= min_lng && normalize_longitude(*lng) <= max_lng
+            .filter(|(_, v)| !v.is_nan())
+            .filter(|(i, _)| {
+                let row = i / lat.len();
+                let col = i % lat.len();
+
+                normalize_latitude(lat[row]) >= min_lat && normalize_latitude(lat[row]) <= max_lat && normalize_longitude(lng[col]) >= min_lng && normalize_longitude(lng[col]) <= max_lng
             })
-            .map(|(i, _)|data[i])
-            .filter(|v| !v.is_nan())
+            .map(|(_, v)| *v)
             .collect();
 
         Ok(data)
     }
 
     fn query_location_data(&self, location: &Location, message: &Message) -> Result<f64, String> {
-        let bbox = message.location_bbox()?;
+        let projector = message.latlng_projector()?;
+        let bbox = projector.bbox();
 
         if !location.within_bbox(&bbox) {
             return Err("location is not within the models bounds".into());
@@ -151,7 +158,8 @@ pub trait NOAAModel {
 
         // This only works for regular grids.
         let (lat_size, lng_size) = message.grid_dimensions()?;
-        let (start, end) = message.grid_bounds()?;
+        let start = projector.latlng_start();
+        let end = projector.latlng_end();
 
         let lng_step = (end.1 - start.1) / lng_size as f64;
         let lat_step = (end.0 - start.0) / lat_size as f64;
@@ -170,7 +178,8 @@ pub trait NOAAModel {
     }
 
     fn interp_location_data(&self, location: &Location, message: &Message) -> Result<f64, String> {
-        let bbox = message.location_bbox()?;
+        let projector = message.latlng_projector()?;
+        let bbox = projector.bbox();
 
         if !location.within_bbox(&bbox) {
             return Err("location is not within the models bounds".into());
@@ -178,7 +187,8 @@ pub trait NOAAModel {
 
         // This only works for regular grids.
         let (lat_size, lng_size) = message.grid_dimensions()?;
-        let (start, end) = message.grid_bounds()?;
+        let start = projector.latlng_start();
+        let end = projector.latlng_end();
 
         let lng_step = (end.1 - start.1) / lng_size as f64;
         let lat_step = (end.0 - start.0) / lat_size as f64;
@@ -196,7 +206,7 @@ pub trait NOAAModel {
             .abs()
             .ceil() as usize;
 
-        let (lat, lng) = message.latitude_longitude_arrays()?;
+        let (lat, lng) = projector.lat_lng();
         let data = message.data()?;
 
         let a = data[lat_lower_index * lng_size + lng_lower_index];
@@ -231,8 +241,11 @@ pub trait NOAAModel {
         units: Option<UnitSystem>,
     ) -> Result<Vec<Feature>, String> {
         // This only works for regular grids.
+        let projector = message.latlng_projector()?;
         let (lat_count, lng_count) = message.grid_dimensions()?;
-        let ((lat_start, lng_start), (lat_end, lng_end)) = message.grid_bounds()?;
+
+        let (lat_start, lng_start) = projector.latlng_start();
+        let (lat_end, lng_end) = projector.latlng_end();
 
         let mut unit_abbrev = message.unit()?;
         let data = if let Some(unit_system) = units.as_ref() {
