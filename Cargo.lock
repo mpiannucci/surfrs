@@ -560,7 +560,7 @@ checksum = "b6c80984affa11d98d1b88b66ac8853f143217b399d3c74116778ff8fdb4ed2e"
 [[package]]
 name = "gribberish"
 version = "0.10.0"
-source = "git+https://github.com/mpiannucci/gribberish#89c469873d68120545ce2404a14466716936b16a"
+source = "git+https://github.com/mpiannucci/gribberish#8ed04c491db091f62a716ce4984247c9713a427b"
 dependencies = [
  "bitvec",
  "chrono",
@@ -576,7 +576,7 @@ dependencies = [
 [[package]]
 name = "gribberish-macros"
 version = "0.1.0"
-source = "git+https://github.com/mpiannucci/gribberish#89c469873d68120545ce2404a14466716936b16a"
+source = "git+https://github.com/mpiannucci/gribberish#8ed04c491db091f62a716ce4984247c9713a427b"
 dependencies = [
  "gribberish-types",
  "quote",
@@ -586,7 +586,7 @@ dependencies = [
 [[package]]
 name = "gribberish-types"
 version = "0.1.0"
-source = "git+https://github.com/mpiannucci/gribberish#89c469873d68120545ce2404a14466716936b16a"
+source = "git+https://github.com/mpiannucci/gribberish#8ed04c491db091f62a716ce4984247c9713a427b"
 
 [[package]]
 name = "h2"
