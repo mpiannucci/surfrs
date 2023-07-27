@@ -137,8 +137,8 @@ pub trait NOAAModel {
             .enumerate()
             .filter(|(_, v)| !v.is_nan())
             .filter(|(i, _)| {
-                let row = i / lat.len();
-                let col = i % lat.len();
+                let row = i / lng.len();
+                let col = i % lng.len();
 
                 normalize_latitude(lat[row]) >= min_lat && normalize_latitude(lat[row]) <= max_lat && normalize_longitude(lng[col]) >= min_lng && normalize_longitude(lng[col]) <= max_lng
             })

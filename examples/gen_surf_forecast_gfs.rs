@@ -55,7 +55,8 @@ impl UnitConvertible<SurfForecastDataRecord> for SurfForecastDataRecord {
 async fn main() {
     let start = Instant::now();
 
-    let location = Location::new(41.35, -71.4, "Block Island Sound".into());
+    //let location = Location::new(41.35, -71.4, "Block Island Sound".into());
+    let location = Location::new(41.0297, -71.1244, "NDBC 44097".into());
     let depth = 30.0;
     let angle = 145.0;
     let slope = 0.02;
@@ -225,6 +226,8 @@ async fn main() {
 
             let mean_index = gefs_wave_model_mean.index_for_hour(hour);
             let mean = ensemble_mean_data.get(&mean_index).unwrap();
+
+            println!("date: {} - wind_dir: {}", record.date, record.wind_direction);
 
             let mut record = SurfForecastDataRecord {
                 date: record.date,
