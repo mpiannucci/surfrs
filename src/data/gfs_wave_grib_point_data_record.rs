@@ -92,7 +92,7 @@ impl GFSWaveGribPointDataRecord {
             unit: Unit::MetersPerSecond,
         };
 
-        let wind_direction_value = data.get("WIND").map(|d| Direction::from_degrees(*d as i32));
+        let wind_direction_value = data.get("WDIR").map(|d| Direction::from_degrees(*d as i32));
         let wind_direction = DimensionalData {
             value: wind_direction_value,
             variable_name: "wind directions".into(),
