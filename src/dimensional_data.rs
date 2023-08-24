@@ -79,32 +79,35 @@ where
     }
 }
 
-impl UnitConvertible<DimensionalData<f64>> for DimensionalData<f64> {
-    fn to_units(&mut self, new_units: &UnitSystem) {
+impl UnitConvertible for DimensionalData<f64> {
+    fn to_units(&mut self, new_units: &UnitSystem) -> &mut Self {
         let new_unit = self.unit.convert_system(&new_units);
         self.value = match self.value {
             Some(value) => Some(self.unit.convert(value, &new_unit)),
             None => None,
         };
         self.unit = new_unit;
+        self
     }
 }
 
-impl UnitConvertible<DimensionalData<i64>> for DimensionalData<i64> {
-    fn to_units(&mut self, new_units: &UnitSystem) {
+impl UnitConvertible for DimensionalData<i64> {
+    fn to_units(&mut self, new_units: &UnitSystem) -> &mut Self {
         let new_unit = self.unit.convert_system(&new_units);
         self.value = match self.value {
             Some(value) => Some(self.unit.convert(value as f64, &new_unit) as i64),
             None => None,
         };
         self.unit = new_unit;
+
+        self
     }
 }
 
-impl UnitConvertible<DimensionalData<Direction>> for DimensionalData<Direction> {
-    fn to_units(&mut self, new_units: &UnitSystem) {
-        // Do nothing
+impl UnitConvertible for DimensionalData<Direction> {
+    fn to_units(&mut self, new_units: &UnitSystem) -> &mut Self {
         self.unit = self.unit.convert_system(&new_units);
+        self
     }
 }
 

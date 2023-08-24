@@ -158,12 +158,14 @@ impl GFSWaveGribPointDataRecord {
     }
 }
 
-impl UnitConvertible<GFSWaveGribPointDataRecord> for GFSWaveGribPointDataRecord {
-    fn to_units(&mut self, new_units: &UnitSystem) {
+impl UnitConvertible for GFSWaveGribPointDataRecord {
+    fn to_units(&mut self, new_units: &UnitSystem) -> &mut Self {
         self.wind_speed.to_units(new_units);
         self.wave_summary.to_units(new_units);
         self.swell_components
             .iter_mut()
-            .for_each(|c| c.to_units(new_units));
+            .for_each(|c| {c.to_units(new_units); });
+
+        self
     }
 }

@@ -71,9 +71,10 @@ impl ParseableDataRecord for SpectralWaveDataRecord {
     }
 }
 
-impl UnitConvertible<SpectralWaveDataRecord> for SpectralWaveDataRecord {
-    fn to_units(&mut self, _: &UnitSystem) {
+impl UnitConvertible for SpectralWaveDataRecord {
+    fn to_units(&mut self, _: &UnitSystem) -> &mut Self {
         // TODO: Maybe some conversion
+        self
     }
 }
 

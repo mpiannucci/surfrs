@@ -117,8 +117,8 @@ impl ParseableDataRecord for MeteorologicalDataRecord {
     }
 }
 
-impl UnitConvertible<MeteorologicalDataRecord> for MeteorologicalDataRecord {
-    fn to_units(&mut self, new_units: &UnitSystem) {
+impl UnitConvertible for MeteorologicalDataRecord {
+    fn to_units(&mut self, new_units: &UnitSystem) -> &mut Self {
         self.wind_direction.to_units(new_units);
         self.wind_speed.to_units(new_units);
         self.wind_gust_speed.to_units(new_units);
@@ -133,6 +133,8 @@ impl UnitConvertible<MeteorologicalDataRecord> for MeteorologicalDataRecord {
         self.dewpoint_temperature.to_units(new_units);
         self.visibility.to_units(new_units);
         self.tide.to_units(new_units);
+
+        self
     }
 }
 

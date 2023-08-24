@@ -193,12 +193,14 @@ impl ParseableDataRecord for ForecastCBulletinWaveRecord {
     }
 }
 
-impl UnitConvertible<ForecastCBulletinWaveRecord> for ForecastCBulletinWaveRecord {
-    fn to_units(&mut self, new_units: &UnitSystem) {
+impl UnitConvertible for ForecastCBulletinWaveRecord {
+    fn to_units(&mut self, new_units: &UnitSystem) -> &mut Self {
         self.significant_wave_height.to_units(new_units);
         for swell in &mut self.swell_components {
             swell.to_units(new_units);
         }
+
+        self
     }
 }
 

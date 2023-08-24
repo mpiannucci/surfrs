@@ -306,6 +306,6 @@ pub enum DataParseError {
     InvalidString,
 }
 
-pub trait UnitConvertible<T> {
-    fn to_units(&mut self, new_units: &UnitSystem);
+pub trait UnitConvertible {
+    fn to_units(&mut self, new_units: &UnitSystem) -> &mut Self;
 }

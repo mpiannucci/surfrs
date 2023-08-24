@@ -37,17 +37,18 @@ struct SurfForecastDataRecord {
     pub wave_height_mean: DimensionalData<f64>,
 }
 
-impl UnitConvertible<SurfForecastDataRecord> for SurfForecastDataRecord {
-    fn to_units(&mut self, new_units: &UnitSystem) {
+impl UnitConvertible for SurfForecastDataRecord {
+    fn to_units(&mut self, new_units: &UnitSystem) -> &mut Self {
         self.wind_speed.to_units(new_units);
         self.wave_summary.to_units(new_units);
         self.swell_components
             .iter_mut()
-            .for_each(|c| c.to_units(new_units));
+            .for_each(|c| {c.to_units(new_units); });
         self.minimum_breaking_height.to_units(new_units);
         self.maximum_breaking_height.to_units(new_units);
         self.wave_height_spread.to_units(new_units);
         self.wave_height_mean.to_units(new_units);
+        self
     }
 }
 

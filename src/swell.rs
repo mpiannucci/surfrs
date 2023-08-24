@@ -50,9 +50,10 @@ impl Swell {
     }
 }
 
-impl UnitConvertible<Swell> for Swell {
-    fn to_units(&mut self, new_units: &UnitSystem) {
+impl UnitConvertible for Swell {
+    fn to_units(&mut self, new_units: &UnitSystem) -> &mut Self {
         self.wave_height.to_units(new_units);
+        self
     }
 }
 
@@ -82,6 +83,7 @@ impl Display for SwellProviderError {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SwellSummary {
     pub summary: Swell,
     pub components: Vec<Swell>,
@@ -136,5 +138,13 @@ impl SwellSummary {
             .filter(|(i, _)| !false_components.contains(i))
             .map(|(_, s)| s.clone())
             .collect()
+    }
+}
+
+impl UnitConvertible for SwellSummary {
+    fn to_units(&mut self, new_units: &UnitSystem) -> &mut Self {
+        self.summary.to_units(new_units);
+        self.components.iter_mut().for_each(|c| {c.to_units(new_units);});
+        self
     }
 }

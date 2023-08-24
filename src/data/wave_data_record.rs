@@ -94,8 +94,8 @@ impl ParseableDataRecord for WaveDataRecord {
     }
 }
 
-impl UnitConvertible<WaveDataRecord> for WaveDataRecord {
-    fn to_units(&mut self, new_units: &UnitSystem) {
+impl UnitConvertible for WaveDataRecord {
+    fn to_units(&mut self, new_units: &UnitSystem) -> &mut Self {
         self.wave_height.to_units(new_units);
         self.average_wave_period.to_units(new_units);
         self.mean_wave_direction.to_units(new_units);
@@ -105,6 +105,8 @@ impl UnitConvertible<WaveDataRecord> for WaveDataRecord {
         self.wind_wave_height.to_units(new_units);
         self.wind_wave_period.to_units(new_units);
         self.wind_wave_direction.to_units(new_units);
+
+        self
     }
 }
 

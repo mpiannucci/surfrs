@@ -199,11 +199,12 @@ pub struct ForecastSpectralWaveDataRecord {
 //     }
 // }
 
-impl UnitConvertible<ForecastSpectralWaveDataRecord> for ForecastSpectralWaveDataRecord {
-    fn to_units(&mut self, new_units: &UnitSystem) {
+impl UnitConvertible for ForecastSpectralWaveDataRecord {
+    fn to_units(&mut self, new_units: &UnitSystem) -> &mut Self {
         self.depth.to_units(new_units);
         self.wind_speed.to_units(new_units);
         self.current_speed.to_units(new_units);
+        self
     }
 }
 

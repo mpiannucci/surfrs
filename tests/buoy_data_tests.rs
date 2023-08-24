@@ -2,18 +2,20 @@ extern crate surfrs;
 
 use std::f64::consts::PI;
 use std::fs;
+use surfrs::data::directional_spectral_wave_data_record::DirectionalSpectralWaveDataRecord;
 use surfrs::data::forecast_cbulletin_wave_data_record::{
     ForecastCBulletinWaveRecord, ForecastCBulletinWaveRecordCollection,
 };
 use surfrs::data::forecast_spectral_wave_data_record::ForecastSpectralWaveDataRecordCollection;
 use surfrs::data::latest_obs_data_record::LatestObsDataRecordCollection;
-use surfrs::data::meteorological_data_record::{MeteorologicalDataRecordCollection, StdmetDataRecordCollection};
-use surfrs::data::spectral_wave_data_record::{SpectralWaveDataRecordCollection};
-use surfrs::data::directional_spectral_wave_data_record::DirectionalSpectralWaveDataRecord;
+use surfrs::data::meteorological_data_record::{
+    MeteorologicalDataRecordCollection, StdmetDataRecordCollection,
+};
+use surfrs::data::spectral_wave_data_record::SpectralWaveDataRecordCollection;
 use surfrs::data::swden_wave_data_record::SwdenWaveDataRecordCollection;
 use surfrs::data::wave_data_record::WaveDataRecordCollection;
 use surfrs::swell::{Swell, SwellProvider};
-use surfrs::tools::vector::{bin};
+use surfrs::tools::vector::bin;
 use surfrs::units::{UnitConvertible, UnitSystem};
 
 fn read_mock_data(name: &str) -> String {
@@ -109,11 +111,6 @@ fn read_wave_spectra_data() {
 
     let record = records.skip(6).next().unwrap();
 
-    // println!("+++++++++++++++++++++++++++++++++++++++++++++++++");
-    // println!("BUOY -- {}", record.date);
-    // println!("{:?}", record.spectra.frequency);
-    // println!("{:?}", record.spectra.oned());
-
     let swell_data = record.swell_data();
     assert!(swell_data.is_ok());
     // assert_eq!(out, control);
@@ -136,28 +133,13 @@ fn read_wave_spectra_data() {
         .iter_mut()
         .enumerate()
         .for_each(|(i, component)| {
-            let is_false_positive = false_components.contains(&i);
+            let _is_false_positive = false_components.contains(&i);
             component.to_units(&UnitSystem::English);
-            // println!(
-            //     "BUOY -- {} {} {}",
-            //     &component,
-            //     component.energy.clone().unwrap(),
-            //     !is_false_positive
-            // );
         });
 
-    println!("buoy dirs: {:?}", &record.spectra.direction_deg());
     let cart_e = record.spectra.project_cartesian(50, Some(25.0), None);
     let (min_e, max_e) = record.spectra.energy_range();
-    let binned_cart_e = bin(&cart_e, &min_e, &max_e, &255);
-    // println!("buoy cartesian: {:?}", binned_cart_e);
-
-    // println!("buoy mwd:: {:?}", &record.spectra.mean_wave_direction_f());
-
-    // let _ = fs::write(
-    //     "contours2.json",
-    //     &record.spectra.contoured().unwrap().to_string(),
-    // );
+    let _binned_cart_e = bin(&cart_e, &min_e, &max_e, &255);
 }
 
 #[test]
@@ -169,10 +151,17 @@ fn read_cbulletin_forecast_station_data() {
 
     let bulletin_records: Vec<ForecastCBulletinWaveRecord> =
         bulletin_records_iter.unwrap().1.collect();
-    assert!(bulletin_records[0].swell_data().is_ok());
+
+    // Make sure every record is read validly
     for (_, record) in bulletin_records.iter().enumerate() {
         assert!(record.swell_data().is_ok());
     }
+
+    // Verify a random timestep
+    let swell_data = bulletin_records[7].swell_data().clone().unwrap().to_units(&UnitSystem::English).clone();
+    assert_eq!(swell_data.summary.wave_height.get_value().ceil() as i32, 4);
+    assert_eq!(swell_data.components[0].wave_height.get_value().ceil() as i32, 3);
+    assert_eq!(swell_data.components[0].period.get_value().ceil() as i32, 13);
 }
 
 #[test]
@@ -183,52 +172,27 @@ fn read_spectral_forecast_station_data() {
     let spectral_records_iter = data_collection.records();
     assert!(spectral_records_iter.is_ok());
 
-    let spectral_records = spectral_records_iter.unwrap().1;
-    let record = spectral_records.skip(6).next().unwrap();
-    // println!("++++++++");
-    // println!("FORECAST -- {}", record.date);
-    // println!("{:?}", record.spectra.frequency);
-    // println!("{:?}", record.spectra.oned());
-    // println!("forecast watershed: {:?}", watershed(&record.spectra.energy, record.spectra.frequency.len(), record.spectra.direction.len(), 100).unwrap().0);
+    let spectral_records = spectral_records_iter
+        .unwrap()
+        .1
+        .collect::<Vec<_>>();
 
-    // let watershed = watershed(&record.energy, record.frequency.len(), record.direction.len(), 100);
-    // println!("{:?}", watershed.unwrap().0);
+    let swell_data = spectral_records[0].swell_data();
+    assert!(swell_data.is_ok());
+    let swell_data = swell_data.unwrap();
 
-    let swell_data = record.swell_data().unwrap();
+    // Verify the extracted summary and primary components against truth cbull data
+    let mut summary = swell_data.summary;
+    summary.to_units(&UnitSystem::English);
 
-    let _swell_components = swell_data
-        .components
-        .iter()
-        .map(|s| s.to_string())
-        .collect::<Vec<String>>();
+    // This value should match the cbull, use ceil because forecasts are rounded conservatively
+    assert_eq!(summary.wave_height.get_value().ceil() as i32, 4);
 
-    // let control = "0.7 m @ 4.5 s 168° sse, 0.6 m @ 12.5 s 120° ese, 0.6 m @ 10.5 s 112° ese, 0.5 m @ 3.8 s 160° sse";
-    // let out = swell_components.join(", ");
+    let mut primary = swell_data.components[0].clone();
+    primary.to_units(&UnitSystem::English);
 
-    for mut component in swell_data.components {
-        component.to_units(&UnitSystem::English);
-        // println!(
-        //     "FORECAST -- {} {}",
-        //     component.clone(),
-        //     component.energy.unwrap()
-        // );
-    }
-
-    // println!("forecast dirs: {:?}", record.spectra.direction_deg());
-    // println!(
-    //     "forecast cartesian: {:?}",
-    //     record.spectra.project_cartesian(50, Some(25.0), None)
-    // );
-
-    // println!(
-    //     "forecast mwd:: {:?}",
-    //     &record.spectra.mean_wave_direction_f()
-    // );
-
-    // let _ = fs::write(
-    //     "contours.json",
-    //     &record.spectra.contoured().unwrap().to_string(),
-    // );
+    assert_eq!(primary.wave_height.get_value().ceil() as i32, 4);
+    assert_eq!(primary.period.get_value().ceil() as i32, 14);
 }
 
 #[test]
@@ -268,7 +232,7 @@ fn read_waimea_spectra_data() {
     });
 
     let record = records.skip(3).next().unwrap();
-    let swell_data = record.swell_data().unwrap();
+    assert!(record.swell_data().is_ok());
 }
 
 #[test]
@@ -330,9 +294,7 @@ fn read_dap_stdmet_data() {
 
     let record_collection = StdmetDataRecordCollection::from_data(&raw_data);
 
-    let data = record_collection
-        .records()
-        .collect::<Vec<_>>();
+    let data = record_collection.records().collect::<Vec<_>>();
 
     assert_eq!(data.len(), 11);
 }
