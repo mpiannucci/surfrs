@@ -319,17 +319,11 @@ impl Spectra {
         depth: Option<f64>,
         wind_speed: Option<f64>,
         wind_direction: Option<f64>,
-        blur: Option<f32>,
+        partitions: &(Vec<i32>, usize),
     ) -> Result<crate::swell::SwellSummary, SwellProviderError> {
-        let (imo, partition_count) = match self.partition(100, blur) {
-            Ok(result) => Ok(result),
-            Err(_) => Err(SwellProviderError::InsufficientData(
-                "watershed segmentation of the spectra failed".into(),
-            )),
-        }?;
-
+        let (imo, partition_count) = partitions;
         let (summary, components) = pt_mean(
-            partition_count,
+            *partition_count,
             &imo,
             &self.frequency,
             &self.direction,
@@ -349,8 +343,19 @@ impl Spectra {
     }
 
     /// Projects the energy data to cartesian coordinates
+    /// 
+    /// # Arguments
+    /// * `target` - The target energy data to project. This is usually the energy data of the swell component, 
+    ///             but can be any data of the same size as the spectra
+    /// * `size` - The size of the cartesian projection in pixels
+    /// * `period_threshold` - The maximum period to project. This is used to filter out the longer period swell
+    /// * `exp_scale` - The exponent to use for scaling the period. This is used to make the longer period swell more visible
+    /// 
+    /// # Returns
+    /// * A vector of the projected energy data
     pub fn project_cartesian(
         &self,
+        target: &[f64],
         size: usize,
         period_threshold: Option<f64>,
         exp_scale: Option<f64>,
@@ -407,7 +412,7 @@ impl Spectra {
                 };
 
             let nearest_i = nearest[0].1;
-            let nearest_energy = self.energy[*nearest_i];
+            let nearest_energy = target[*nearest_i];
             *ce = nearest_energy;
         });
 

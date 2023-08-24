@@ -90,15 +90,9 @@ impl DirectionalSpectralWaveDataRecord {
 
 impl SwellProvider for DirectionalSpectralWaveDataRecord {
     fn swell_data(&self) -> Result<SwellSummary, SwellProviderError> {
-        self.spectra.swell_data(None, None, None, Some(0.8))
-        // ?;
-
-        // swell_data.summary.direction.value.as_mut().unwrap().flip();
-
-        // swell_data.components
-        //     .iter_mut()
-        //     .for_each(|s| s.direction.value.as_mut().unwrap().flip());
-
-        // Ok(swell_data)
+        let partitions = self.spectra.partition(100, Some(0.8)).map_err(|_| {
+            SwellProviderError::SwellPartitionError("Failed to partition spectra".to_string())
+        })?;
+        self.spectra.swell_data(None, None, None, &partitions)
     }
 }

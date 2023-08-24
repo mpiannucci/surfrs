@@ -210,11 +210,14 @@ impl UnitConvertible for ForecastSpectralWaveDataRecord {
 
 impl SwellProvider for ForecastSpectralWaveDataRecord {
     fn swell_data(&self) -> Result<SwellSummary, crate::swell::SwellProviderError> {
+        let partitions = self.spectra.partition(100, None).map_err(|_| {
+            crate::swell::SwellProviderError::SwellPartitionError("Failed to partition spectra".into())
+        })?;
         self.spectra.swell_data(
             self.depth.value,
             self.wind_speed.value,
             self.wind_direction.value.as_ref().map(|d| d.radian()),
-            None,
+            &partitions,
         )
     }
 }

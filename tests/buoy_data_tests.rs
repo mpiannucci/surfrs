@@ -137,7 +137,7 @@ fn read_wave_spectra_data() {
             component.to_units(&UnitSystem::English);
         });
 
-    let cart_e = record.spectra.project_cartesian(50, Some(25.0), None);
+    let cart_e = record.spectra.project_cartesian(&record.spectra.energy, 50, Some(25.0), None);
     let (min_e, max_e) = record.spectra.energy_range();
     let _binned_cart_e = bin(&cart_e, &min_e, &max_e, &255);
 }

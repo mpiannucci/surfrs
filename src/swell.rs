@@ -71,6 +71,7 @@ impl fmt::Display for Swell {
 pub enum SwellProviderError {
     NotImplemented,
     InsufficientData(String),
+    SwellPartitionError(String),
 }
 
 impl Display for SwellProviderError {
@@ -78,6 +79,7 @@ impl Display for SwellProviderError {
         let description = match self {
             Self::NotImplemented => "not implemented".into(),
             Self::InsufficientData(s) => format!("insufficient data to create swell:  {s}"),
+            Self::SwellPartitionError(s) => format!("error partitioning swell: {s}"),
         };
         write!(f, "{}", description)
     }
