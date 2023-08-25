@@ -412,8 +412,8 @@ impl Spectra {
                 };
 
             let nearest_i = nearest[0].1;
-            let nearest_energy = target[*nearest_i];
-            *ce = nearest_energy;
+            let nearest_value = target[*nearest_i];
+            *ce = nearest_value;
         });
 
         cartesian
