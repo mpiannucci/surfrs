@@ -11,6 +11,7 @@ pub struct Swell {
     pub period: DimensionalData<f64>,
     pub direction: DimensionalData<Direction>,
     pub energy: Option<DimensionalData<f64>>,
+    pub partition: Option<usize>,
 }
 
 impl Swell {
@@ -20,6 +21,7 @@ impl Swell {
         period: f64,
         direction: Direction,
         energy: Option<f64>,
+        partition: Option<usize>,
     ) -> Swell {
         Swell {
             wave_height: DimensionalData {
@@ -46,6 +48,7 @@ impl Swell {
                 variable_name: "energy".into(),
                 unit: Unit::MetersSquaredPerHertz,
             }),
+            partition,
         }
     }
 }

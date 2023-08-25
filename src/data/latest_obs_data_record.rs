@@ -171,6 +171,7 @@ impl SwellProvider for LatestObsDataRecord {
                 period: self.dominant_wave_period.clone(),
                 direction: self.mean_wave_direction.clone(),
                 energy: None,
+                partition: None,
             },
             components: vec![],
         })

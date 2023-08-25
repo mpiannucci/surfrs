@@ -182,6 +182,7 @@ impl ParseableDataRecord for ForecastCBulletinWaveRecord {
                 period,
                 Direction::from_degrees(degrees),
                 None,
+                None,
             ));
         }
 
@@ -213,6 +214,7 @@ impl SwellProvider for ForecastCBulletinWaveRecord {
                 period: dominant.period, 
                 direction: dominant.direction,
                 energy: None,
+                partition: None,
             },
             components: self.swell_components.clone(),
         })

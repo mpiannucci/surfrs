@@ -428,7 +428,7 @@ pub fn pt_mean(
 
     // Compute pars
     let mut components: Vec<Swell> = Vec::new();
-    let mut summary: Swell = Swell::new(&UnitSystem::Metric, 0.0, 0.0, Direction::from_degrees(0), None);
+    let mut summary: Swell = Swell::new(&UnitSystem::Metric, 0.0, 0.0, Direction::from_degrees(0), None, Some(0));
 
     for ip in 0..num_partitions + 1 {
         let mo = sume[ip] * dth[0] * 1.0 / TPI;
@@ -473,6 +473,7 @@ pub fn pt_mean(
             peak_period,
             Direction::from_degrees(mean_wave_direction as i32),
             Some(energy),
+            Some(ip),
         );
 
         if ip == 0 {
