@@ -79,7 +79,7 @@ impl Spectra {
     ) -> Vec<Spectra> {
         let limit = limit.unwrap_or(components.1);
 
-        (1..limit)
+        (0..limit)
             .map(|i| Spectra::from_component(source_spectra, components, i as i32))
             .collect()
     }
