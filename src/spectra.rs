@@ -47,6 +47,43 @@ impl Spectra {
         }
     }
 
+    /// Given a swell partition map, return the spectra for the given component
+    /// with the energy of all other component members set to 0
+    pub fn from_component(
+        source_spectra: &Spectra,
+        components: &(Vec<i32>, usize),
+        id: i32,
+    ) -> Spectra {
+        let component_energy = source_spectra
+            .energy
+            .iter()
+            .zip(components.0.iter())
+            .map(|(e, i)| if i == &id { *e } else { 0.0 })
+            .collect::<Vec<f64>>();
+
+        Spectra::new(
+            source_spectra.frequency.clone(),
+            source_spectra.direction.clone(),
+            component_energy,
+            source_spectra.dir_convention.clone(),
+        )
+    }
+
+    /// Given a swell partition map, return the spectra for all components
+    /// with the energy of all other component members set to 0 for each 
+    /// component
+    pub fn split_from_components(
+        source_spectra: &Spectra,
+        components: &(Vec<i32>, usize),
+        limit: Option<usize>,
+    ) -> Vec<Spectra> {
+        let limit = limit.unwrap_or(components.1);
+
+        (1..limit)
+            .map(|i| Spectra::from_component(source_spectra, components, i as i32))
+            .collect()
+    }
+
     /// Period bins
     pub fn period(&self) -> Vec<f64> {
         self.frequency.iter().map(|f| 1.0 / f).collect()
@@ -124,7 +161,7 @@ impl Spectra {
         if i_lower < 0.0 {
             return self.direction[0];
         }
-        
+
         let v_lower = self.direction[i_lower as usize];
         let v_upper = self.direction[i_upper as usize];
         lerp(&v_lower, &v_upper, &d_index, &i_lower, &i_upper)
@@ -343,14 +380,14 @@ impl Spectra {
     }
 
     /// Projects the energy data to cartesian coordinates
-    /// 
+    ///
     /// # Arguments
-    /// * `target` - The target energy data to project. This is usually the energy data of the swell component, 
+    /// * `target` - The target energy data to project. This is usually the energy data of the swell component,
     ///             but can be any data of the same size as the spectra
     /// * `size` - The size of the cartesian projection in pixels
     /// * `period_threshold` - The maximum period to project. This is used to filter out the longer period swell
     /// * `exp_scale` - The exponent to use for scaling the period. This is used to make the longer period swell more visible
-    /// 
+    ///
     /// # Returns
     /// * A vector of the projected energy data
     pub fn project_cartesian(
@@ -407,9 +444,9 @@ impl Spectra {
             }
 
             let Ok(nearest) = kdtree.nearest(&p, 1, &squared_euclidean) else {
-                    *ce = f64::NAN;
-                    return;
-                };
+                *ce = f64::NAN;
+                return;
+            };
 
             let nearest_i = nearest[0].1;
             let nearest_value = target[*nearest_i];
