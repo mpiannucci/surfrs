@@ -162,6 +162,11 @@ fn read_cbulletin_forecast_station_data() {
     assert_eq!(swell_data.summary.wave_height.get_value().ceil() as i32, 4);
     assert_eq!(swell_data.components[0].wave_height.get_value().ceil() as i32, 3);
     assert_eq!(swell_data.components[0].period.get_value().ceil() as i32, 13);
+
+    let raw_data = read_mock_data("tpc55.cbull");
+    let mut data_collection = ForecastCBulletinWaveRecordCollection::from_data(raw_data.as_str());
+    let bulletin_records_iter = data_collection.records();
+    assert!(bulletin_records_iter.is_ok());
 }
 
 #[test]

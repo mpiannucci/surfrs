@@ -22,7 +22,7 @@ impl std::fmt::Display for DataRecordParsingError {
             DataRecordParsingError::InvalidData => {
                 write!(f, "Invalid data encountered while parsing data")
             }
-            DataRecordParsingError::ParseFailure(_) => write!(f, "Data parse failure"),
+            DataRecordParsingError::ParseFailure(e) => write!(f, "Data parse failure: {e}"),
             DataRecordParsingError::KeyMissing(key) => {
                 write!(f, "Key missing from data: {}", key)
             }

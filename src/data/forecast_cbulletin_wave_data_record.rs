@@ -24,9 +24,9 @@ impl FromStr for ForecastCBulletinWaveRecordMetadata {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut lines = s.lines();
 
-        let location_parser = Regex::new("Location\\s*:\\s*(.{0,10})\\s*\\(([+-]?[0-9]*[.]?[0-9]+[N|S])\\s*([+-]?[0-9]*[.]?[0-9]+[E|W])\\)");
+        let location_parser = Regex::new("Location\\s*:\\s*(.{0,10})\\s*\\(\\s*([+-]?[0-9]*[.]?[0-9]+[N|S])\\s*([+-]?[0-9]*[.]?[0-9]+[E|W])\\)");
         let location_parser = location_parser.map_err(|e| {
-            DataRecordParsingError::ParseFailure(format!("Failed to create location regex: {}", e))
+            DataRecordParsingError::ParseFailure(format!("Failed to create location regex: {e}"))
         })?;
 
         let location_str = lines.next().ok_or(DataRecordParsingError::ParseFailure(
@@ -54,9 +54,9 @@ impl FromStr for ForecastCBulletinWaveRecordMetadata {
         // The third has the model run date and time
         let model_run_parser =
             Regex::new("Cycle\\s*:\\s*([0-9]{0,4})([0-9]{0,2})([0-9]{0,2})\\s*([0-9]{0,2})");
-        let model_run_parser = model_run_parser.map_err(|_| {
+        let model_run_parser = model_run_parser.map_err(|e| {
             DataRecordParsingError::ParseFailure(
-                "Failed to create regex to parse model date run".into(),
+                format!("Failed to create regex to parse model date run: {e}"),
             )
         })?;
 
@@ -145,7 +145,7 @@ impl ParseableDataRecord for ForecastCBulletinWaveRecord {
         })?;
 
         let model_date = match metadata {
-            Some(m) => Ok(m.model_run_date.date_naive()), 
+            Some(m) => Ok(m.model_run_date.date_naive()),
             None => Err(DataRecordParsingError::InvalidData),
         }?;
 
@@ -211,7 +211,7 @@ impl SwellProvider for ForecastCBulletinWaveRecord {
         Ok(SwellSummary {
             summary: Swell {
                 wave_height: self.significant_wave_height.clone(),
-                period: dominant.period, 
+                period: dominant.period,
                 direction: dominant.direction,
                 energy: None,
                 partition: None,
