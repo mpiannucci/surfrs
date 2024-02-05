@@ -9,13 +9,11 @@ use geojson::{Feature, FeatureCollection, Geometry, JsonObject, JsonValue, Value
 use quick_xml::de::from_reader;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize};
 use std::{
-    convert::{Into, TryInto},
-    fmt,
-    string::String,
+    convert::{Into, TryInto}, fmt, hash::{Hash, Hasher}, string::String
 };
 
 #[repr(C)]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "lowercase")]
 pub enum BuoyType {
     None,
@@ -75,6 +73,12 @@ pub struct BuoyStation {
 
     #[serde(rename = "@elev", deserialize_with = "f64_from_str", default)]
     pub elevation: f64,
+}
+
+impl Hash for BuoyStation {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.station_id.hash(state);
+    }
 }
 
 impl BuoyStation {
