@@ -25,6 +25,7 @@ pub enum BuoyType {
     Dart,
     Tao,
     USV,
+    Virtual,
     Other,
 }
 
