@@ -75,6 +75,14 @@ pub struct BuoyStation {
     pub elevation: f64,
 }
 
+impl PartialEq for BuoyStation {
+    fn eq(&self, other: &Self) -> bool {
+        self.station_id == other.station_id
+    }
+}
+
+impl Eq for BuoyStation {}
+
 impl Hash for BuoyStation {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.station_id.hash(state);
