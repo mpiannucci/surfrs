@@ -2,7 +2,7 @@ use std::{collections::VecDeque, f64};
 
 use image::imageops;
 
-use crate::tools::{linspace::linspace, vector::argsort};
+use crate::tools::vector::argsort;
 
 /// Linearly interpolate between and b by fraction diff
 pub fn lerp(a: &f64, b: &f64, x: &f64, x0: &f64, x1: &f64) -> f64 {
@@ -17,7 +17,18 @@ pub fn lerp(a: &f64, b: &f64, x: &f64, x0: &f64, x1: &f64) -> f64 {
 ///     c = x0y1
 ///     d = x1y1
 /// Adapted from https://stackoverflow.com/a/8661834
-pub fn bilerp(a: &f64, b: &f64, c: &f64, d: &f64, x: &f64, x0: &f64, x1: &f64, y: &f64, y0: &f64, y1: &f64) -> f64 {
+pub fn bilerp(
+    a: &f64,
+    b: &f64,
+    c: &f64,
+    d: &f64,
+    x: &f64,
+    x0: &f64,
+    x1: &f64,
+    y: &f64,
+    y0: &f64,
+    y1: &f64,
+) -> f64 {
     let x_diff = x1 - x0;
     let y_diff = y1 - y0;
     let diff = x_diff * y_diff;
@@ -222,7 +233,7 @@ pub fn watershed(
     let fact = (steps as f64 - 1.0) / (max_value - min_value);
 
     // Digitize the signal, mapping each energy value to a level from 0 to steps
-    // If a blur is specified, apply it 
+    // If a blur is specified, apply it
     let imi = if let Some(blur) = blur {
         let range = max_value - min_value;
         let dat = data
@@ -397,179 +408,10 @@ pub fn watershed(
     Ok((imo, ic_label as usize + 1))
 }
 
-/// Implementation of:
-/// Pierre Soille, Luc M. Vincent, "Determining watersheds in digital pictures via
-/// flooding simulations", Proc. SPIE 1360, Visual Communications and Image Processing
-/// '90: Fifth in a Series, (1 September 1990); doi: 10.1117/12.24211;
-/// http://dx.doi.org/10.1117/12.24211
-///
-/// Adapted from https://github.com/mzur/watershed
-///
-pub fn watershed2(
-    data: &[f64],
-    width: usize,
-    height: usize,
-    steps: usize,
-) -> Result<(Vec<i32>, usize), WatershedError> {
-    const MASK: i32 = -2;
-    const WSHD: i32 = 0;
-    const INIT: i32 = -1;
-    const INQE: i32 = -3;
-
-    let size = width * height;
-    if size != data.len() {
-        return Err(WatershedError::InvalidData);
-    }
-
-    let mut current_label = 0;
-    let mut flag = false;
-    let mut fifo: VecDeque<usize> = VecDeque::new();
-    let mut labels: Vec<i32> = vec![INIT; size];
-
-    let neighbors = (0..size)
-        .map(|i| nearest_neighbors(width, height, i))
-        .collect::<Vec<_>>();
-
-    let min_value = data.iter().copied().fold(f64::INFINITY, f64::min);
-    let max_value = data.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-
-    // Scale the data
-    let fact = (steps as f64 - 1.0) / (max_value - min_value);
-
-    // Digitize the signal, mapping each energy value to a level from 0 to steps
-    let mut imi = data
-        .iter()
-        .map(|v| 1usize.max(steps.min((1.0 + (max_value - v) * fact).round() as usize)))
-        .collect::<Vec<usize>>();
-
-    let digital_min = imi.iter().min().unwrap().clone() as f64;
-    let digital_max = imi.iter().max().unwrap().clone() as f64;
-
-    let mut marker_partition = None;
-
-    imi = imi
-        .iter()
-        .enumerate()
-        .map(|(i, v)| {
-            if v >= &steps {
-                marker_partition = Some(i);
-                1
-            } else {
-                ((1.0 - ((digital_max - *v as f64) / (digital_max - digital_min))) * 255.0) as usize
-            }
-        })
-        .collect();
-
-    let indices = argsort(&imi);
-    let sorted_data = indices
-        .iter()
-        .map(|i| *(&imi[*i].clone()))
-        .collect::<Vec<usize>>();
-
-    let levels = linspace(digital_min, digital_max, steps)
-        .map(|v| v as usize)
-        .collect::<Vec<usize>>();
-
-    let mut level_indices: Vec<usize> = Vec::new();
-    let mut current_level = 0;
-
-    // Get the indices that delimit pixels with different values.
-    for i in 0..size {
-        if current_level < steps && sorted_data[i] > levels[current_level] {
-            // Skip levels until the next highest one is reached.
-            while current_level < steps && sorted_data[i] > levels[current_level] {
-                current_level += 1;
-            }
-            level_indices.push(i);
-        }
-    }
-    level_indices.push(size);
-
-    let mut start_index = 0;
-
-    for stop_index in level_indices {
-        // Mask all pixels at the current level.
-        for p in &indices[start_index..stop_index] {
-            labels[*p] = MASK;
-
-            // Initialize queue with neighbours of existing basins at the current level.
-            for q in &neighbors[*p] {
-                // p == q is ignored here because labels[p] < WSHD
-                if labels[*q] >= WSHD {
-                    labels[*p] = INQE;
-                    fifo.push_back(*p);
-                    break;
-                }
-            }
-        }
-
-        // Extend basins
-        while let Some(p) = fifo.pop_front() {
-            // Label i by inspecting neighbours.
-            for q in &neighbors[p] {
-                // Don't set lab_p in the outer loop because it may change.
-                let label_p = labels[p];
-                let label_q = labels[*q];
-
-                if label_q > 0 {
-                    if label_p == INQE || (label_p == WSHD && flag) {
-                        labels[p] = label_q;
-                    } else if label_p > 0 && label_p != label_q {
-                        labels[p] = WSHD;
-                        flag = false;
-                    }
-                } else if label_q == WSHD {
-                    if label_p == INQE {
-                        labels[p] = WSHD;
-                        flag = true;
-                    }
-                } else if label_q == MASK {
-                    labels[*q] = INQE;
-                    fifo.push_back(*q);
-                }
-            }
-        }
-
-        // Detect and process new minima at the current level.
-        for p in &indices[start_index..stop_index] {
-            // i is inside a new minimum. Create a new label.
-            if labels[*p] == MASK {
-                current_label += 1;
-                fifo.push_back(*p);
-                labels[*p] = current_label;
-                while let Some(q) = fifo.pop_front() {
-                    for r in &neighbors[q] {
-                        if labels[*r] == MASK {
-                            fifo.push_back(*r);
-                            labels[*r] = current_label;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Increment
-        start_index = stop_index;
-    }
-
-    // If there is a boundary layer, we count it the same as the watershed layer, it will count towards the
-    // significant wave height but not toward the swell components
-    if let Some(ip) = marker_partition {
-        let nan_partition = labels[ip];
-        labels.iter_mut().for_each(|v| {
-            if *v == nan_partition {
-                *v = 0;
-            }
-        });
-    }
-
-    Ok((labels, current_label as usize + 1))
-}
-
 #[cfg(test)]
 mod tests {
-    use super::lerp;
     use super::bilerp;
+    use super::lerp;
     use super::nearest_neighbors;
     use super::watershed;
     use rand;
@@ -584,7 +426,7 @@ mod tests {
     fn test_bilinear_interpolation() {
         // Test given:
         // 1 (1.0,1.0)      2 (2.0, 1.0)
-        //     q (1.5, 1.5)    
+        //     q (1.5, 1.5)
         // 3 (1.0, 2.0)     4(2.0, 2.0)
         //
         let interp = bilerp(&1.0, &2.0, &3.0, &4.0, &1.5, &1.0, &2.0, &1.5, &1.0, &2.0);
@@ -593,12 +435,12 @@ mod tests {
         // let interp = bilerp(&8.88, &8.73, &8.73, &8.71, &288.70, &288.666724, &288.833391, &41.35, &41.333306, &41.166639);
         // println!("{interp}");
 
-        // TODO: Directional test case 
+        // TODO: Directional test case
         // a: 0.89, b: 357.86, c: 359.26, d: 347.61
         // x0: -71.33327600000001, x1: -71.166609, y0: 41.333306, y1: 41.166639
         //82,83
         // value: -192.69783641705862
-    }   
+    }
 
     #[test]
     fn test_nearest_neighbors() {

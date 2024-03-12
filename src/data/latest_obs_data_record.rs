@@ -6,10 +6,10 @@ use geojson::{Feature, FeatureCollection};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    buoy_station::{BuoyStation},
+    buoy_station::BuoyStation,
     dimensional_data::DimensionalData,
     swell::{Swell, SwellProvider, SwellSummary},
-    units::{Direction, UnitConvertible, Unit, UnitSystem},
+    units::{Direction, Unit, UnitConvertible, UnitSystem},
 };
 
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
@@ -55,13 +55,14 @@ impl ParseableDataRecord for LatestObsDataRecord {
         let longitude = row[2].parse().unwrap();
         let date = Utc
             .with_ymd_and_hms(
-                row[3].parse().unwrap(), 
-                row[4].parse().unwrap(), 
-                row[5].parse().unwrap(), 
-                row[6].parse().unwrap(), 
+                row[3].parse().unwrap(),
+                row[4].parse().unwrap(),
+                row[5].parse().unwrap(),
+                row[6].parse().unwrap(),
                 row[7].parse().unwrap(),
-                0
-            ).unwrap();
+                0,
+            )
+            .unwrap();
 
         Ok(LatestObsDataRecord {
             station_id,
@@ -128,16 +129,8 @@ impl ParseableDataRecord for LatestObsDataRecord {
                 "dewpoint temperature".into(),
                 Unit::Celsius,
             ),
-            visibility: DimensionalData::from_raw_data(
-                row[20],
-                "".into(),
-                Unit::NauticalMiles,
-            ),
-            tide: DimensionalData::from_raw_data(
-                row[21],
-                "tide".into(),
-                Unit::Feet,
-            ),
+            visibility: DimensionalData::from_raw_data(row[20], "".into(), Unit::NauticalMiles),
+            tide: DimensionalData::from_raw_data(row[21], "tide".into(), Unit::Feet),
         })
     }
 }
@@ -226,36 +219,35 @@ pub fn latest_obs_feature_collection<'a>(
         .map(|lo| (lo.station_id.clone(), lo.clone()))
         .collect::<HashMap<String, LatestObsDataRecord>>();
 
-    let features = buoy_stations.iter().map(|b| {
-        let mut station_feature: Feature = b.clone().into();
+    let features = buoy_stations
+        .iter()
+        .map(|b| {
+            let mut station_feature: Feature = b.clone().into();
 
-        if let Some(latest_obs) = latest_obs_map.get(&b.station_id) {
-            let observation_data_value = serde_json::to_value(&latest_obs).unwrap();
-            let mut observation_data = observation_data_value
-                .as_object()
-                .unwrap()
-                .clone();
-            observation_data.remove("station_id");
-            observation_data.remove("latitude");
-            observation_data.remove("longitude");
+            if let Some(latest_obs) = latest_obs_map.get(&b.station_id) {
+                let observation_data_value = serde_json::to_value(&latest_obs).unwrap();
+                let mut observation_data = observation_data_value.as_object().unwrap().clone();
+                observation_data.remove("station_id");
+                observation_data.remove("latitude");
+                observation_data.remove("longitude");
 
-            observation_data.retain(|_, v| {
-                if let Some(v_obj) = v.as_object() {
-                    match v_obj.get("value") {
-                        Some(vv) => !vv.is_null(),
-                        None => true,
+                observation_data.retain(|_, v| {
+                    if let Some(v_obj) = v.as_object() {
+                        match v_obj.get("value") {
+                            Some(vv) => !vv.is_null(),
+                            None => true,
+                        }
+                    } else {
+                        true
                     }
-                } else {
-                    true
-                }
-             });
+                });
 
-            station_feature.set_property("latest_observations", observation_data);
-        }
+                station_feature.set_property("latest_observations", observation_data);
+            }
 
-        station_feature
-    })
-    .collect();
+            station_feature
+        })
+        .collect();
 
     FeatureCollection {
         bbox: None,
