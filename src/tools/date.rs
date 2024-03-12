@@ -33,14 +33,20 @@ pub fn closest_gfs_model_gridded_datetime(datetime: &DateTime<Utc>) -> DateTime<
     round_to_nearest_multiple_hour(&adjusted, 6)
 }
 
-// TODO: Fix and document this function
-pub fn gfs_model_gridded_fmrc_datetimes(
+// Creates a list of datetimes corresponding to all of the model runs for the GFS model within 
+// the given start and end datetimes. 
+// 
+// This function does not account for the fact that the most 
+// recent model run may not have been completed yet. To filter out any uncompleted model runs,
+// use the closest_gfs_model_stations_datetime or closest_gfs_model_gridded_datetime functions to get
+// the most recent model run and then filter out any datetimes that are greater than the most recent model run
+pub fn gfs_model_fmrc_datetimes(
     (start, end): (DateTime<Utc>, DateTime<Utc>),
 ) -> Vec<DateTime<Utc>> {
     let mut datetimes = vec![];
-    let mut current = start;
+    let mut current = round_to_nearest_multiple_hour(&start, 6);
     while current <= end {
-        datetimes.push(closest_gfs_model_gridded_datetime(&current));
+        datetimes.push(current);
         current = current + Duration::hours(6);
     }
     datetimes
@@ -63,7 +69,7 @@ pub fn closest_hourly_model_datetime(datetime: &DateTime<Utc>) -> DateTime<Utc> 
 mod test {
     use crate::tools::date::{
         closest_gfs_model_gridded_datetime, closest_gfs_model_stations_datetime,
-        closest_hourly_model_datetime, round_to_nearest_multiple_hour,
+        closest_hourly_model_datetime, gfs_model_fmrc_datetimes, round_to_nearest_multiple_hour,
     };
     use chrono::prelude::*;
 
@@ -103,14 +109,16 @@ mod test {
         assert_eq!(result, expected);
     }
 
-    // #[test]
-    // fn test_gfs_gridded_model_fmrc_datetime() {
-    //     let start = Utc.with_ymd_and_hms(2023, 4, 13, 0, 0, 0).unwrap();
-    //     let end = Utc.with_ymd_and_hms(2023, 4, 14, 0, 0, 0).unwrap();
+    #[test]
+    fn test_gfs_gridded_model_fmrc_datetime() {
+        let start = Utc.with_ymd_and_hms(2023, 4, 13, 0, 0, 0).unwrap();
+        let end = Utc.with_ymd_and_hms(2023, 4, 14, 0, 0, 0).unwrap();
 
-    //     let result = gfs_model_gridded_fmrc_datetimes((start, end));
-    //     println!("{:?}", result);
-    // }
+        let result = gfs_model_fmrc_datetimes((start, end));
+        assert_eq!(result.len(), 5);
+        assert_eq!(result[0], start);
+        assert_eq!(result[4], end);
+    }
 
     #[test]
     fn test_closest_hourly_model_datetime() {
