@@ -15,6 +15,9 @@ use crate::units::{direction, Direction, Unit, UnitConvertible, UnitSystem};
 
 use super::parseable_data_record::DataRecordParsingError;
 
+pub const FORECAST_SPECTRAL_WAVE_DATA_RECORD_HEADER_LENGTH: usize = 985;
+pub const FORECAST_SPECTRAL_WAVE_DATA_RECORD_LENGTH: usize = 20137;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ForecastSpectralWaveDataRecordMetadata {
     pub frequency: Vec<f64>,
