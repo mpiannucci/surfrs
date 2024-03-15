@@ -182,6 +182,9 @@ fn read_spectral_forecast_station_data() {
         .1
         .collect::<Vec<_>>();
 
+    assert_eq!(spectral_records[0].reference_date, spectral_records[0].date);
+    assert_eq!(spectral_records[3].reference_date, spectral_records[0].date);
+
     let swell_data = spectral_records[0].swell_data();
     assert!(swell_data.is_ok());
     let swell_data = swell_data.unwrap();

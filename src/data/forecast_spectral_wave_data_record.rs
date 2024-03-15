@@ -160,6 +160,7 @@ impl FromStr for ForecastSpectralWaveDataRecordMetadata {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ForecastSpectralWaveDataRecord {
     pub date: DateTime<Utc>,
+    pub reference_date: DateTime<Utc>,
     pub location: Location,
     pub depth: DimensionalData<f64>,
     pub wind_speed: DimensionalData<f64>,
@@ -229,6 +230,7 @@ pub struct ForecastSpectralWaveRecordIterator<'a> {
     lines: Skip<Lines<'a>>,
     point_regex: Regex,
     metadata: ForecastSpectralWaveDataRecordMetadata,
+    reference_date: Option<DateTime<Utc>>,
 }
 
 impl<'a> ForecastSpectralWaveRecordIterator<'a> {
@@ -245,6 +247,7 @@ impl<'a> ForecastSpectralWaveRecordIterator<'a> {
             lines,
             point_regex,
             metadata,
+            reference_date: None,
         })
     }
 
@@ -275,6 +278,10 @@ impl<'a> ForecastSpectralWaveRecordIterator<'a> {
         let date = Utc
             .with_ymd_and_hms(year, month, day, hour, minute, 0)
             .unwrap();
+
+        if self.reference_date.is_none() {
+            self.reference_date = Some(date);
+        }
 
         let line = self.lines.next().ok_or(DataRecordParsingError::EOF)?;
 
@@ -384,6 +391,7 @@ impl<'a> ForecastSpectralWaveRecordIterator<'a> {
 
         Ok(ForecastSpectralWaveDataRecord {
             date,
+            reference_date: self.reference_date.unwrap_or(date),
             location: Location::new(latitude, longitude, "".into()),
             depth: DimensionalData {
                 value: Some(depth),
