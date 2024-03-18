@@ -1,6 +1,9 @@
 use std::{f64::consts::PI, ops::Sub, vec};
 
-use crate::{swell::Swell, units::{Direction, direction::DirectionConvention, UnitSystem}};
+use crate::{
+    swell::Swell,
+    units::{direction::DirectionConvention, Direction, UnitSystem},
+};
 
 const GRAVITY: f64 = 9.81;
 
@@ -118,7 +121,8 @@ pub fn estimate_breaking_wave_height(
 ) -> Result<f64, Error> {
     let deep_water_wave_height = swell.wave_height.value.as_ref().unwrap();
     let period = swell.period.value.as_ref().unwrap();
-    let incident_angle = (swell.direction.value.as_ref().unwrap().degrees as f64 - beach_angle).abs() as i32 % 360;
+    let incident_angle =
+        (swell.direction.value.as_ref().unwrap().degrees as f64 - beach_angle).abs() as i32 % 360;
 
     if incident_angle > 90 {
         return Err(Error::OutOfRange);
@@ -235,7 +239,7 @@ pub fn pt_mean(
     const TPI: f64 = 2.0 * PI;
     let dera = 1.0f64.atan() / 45.0;
     const WSMULT: f64 = 1.7;
-    
+
     let sig = (0..frequency.len() + 2)
         .map(|ik| {
             if ik == 0 {
@@ -273,7 +277,10 @@ pub fn pt_mean(
     for ik in 1..dsii.len() - 1 {
         dsii[ik] = dsip[ik];
     }
-    dsii[frequency.len() - 1] = 0.5 * sig[frequency.len()] * ((frequency[frequency.len() - 1] / frequency[frequency.len() - 2])  - 1.) / (frequency[frequency.len() - 1] / frequency[frequency.len() - 2]);
+    dsii[frequency.len() - 1] = 0.5
+        * sig[frequency.len()]
+        * ((frequency[frequency.len() - 1] / frequency[frequency.len() - 2]) - 1.)
+        / (frequency[frequency.len() - 1] / frequency[frequency.len() - 2]);
 
     let fte = 0.25 * sig[frequency.len()] * dth[dth.len() - 1] * sig[frequency.len()];
 
@@ -296,7 +303,7 @@ pub fn pt_mean(
         .map(|th| {
             if let (Some(u_abs), Some(u_dir)) = (wind_speed, wind_direction) {
                 let upar = WSMULT * u_abs * 0.0f64.max((th - dera * u_dir).cos());
-                
+
                 if upar < c_nk {
                     sig[sig.len() - 1]
                 } else {
@@ -305,16 +312,16 @@ pub fn pt_mean(
                         if upar < c[ik] {
                             break;
                         }
-    
+
                         ik = Sub::sub(ik, 1);
                     }
-    
+
                     let mut rd = (c[ik] - upar) / (c[ik] - c[ik + 1]);
                     if rd < 0.0 {
                         ik = 0;
                         rd = 0.0f64.max(rd + 1.0);
                     }
-    
+
                     // sig starts at 1 and goes to freqcount + 1
                     rd * sig[ik + 2] + (1.0 - rd) * sig[ik + 1]
                 }
@@ -428,7 +435,15 @@ pub fn pt_mean(
 
     // Compute pars
     let mut components: Vec<Swell> = Vec::new();
-    let mut summary: Swell = Swell::new(&UnitSystem::Metric, 0.0, 0.0, Direction::from_degrees(0), None, Some(0));
+    let mut summary: Swell = Swell::new(
+        &UnitSystem::Metric,
+        0.0,
+        0.0,
+        Direction::from_degrees(0),
+        None,
+        None,
+        Some(0),
+    );
 
     for ip in 0..num_partitions + 1 {
         let mo = sume[ip] * dth[0] * 1.0 / TPI;
@@ -454,16 +469,18 @@ pub fn pt_mean(
         // let peak_wave_direction = (270.0 - f64::atan2(sumeyp, sumexp).to_degrees()) % 360.0;
 
         // Parabolic fit around the spectral peak
-        let mut energy = sumf[ifpmax[ip]][ip] * dth[0];
+        let mut spectral_density = sumf[ifpmax[ip]][ip] * dth[0];
         if ifpmax[ip] > 0 && ifpmax[ip] < frequency.len() - 1 {
             let el = sumf[ifpmax[ip] - 1][ip] * dth[0];
             let eh = sumf[ifpmax[ip] + 1][ip] * dth[0];
             let numer = 0.125 * (el - eh).powf(2.0);
-            let denom = el - 2.0 * energy + eh;
+            let denom = el - 2.0 * spectral_density + eh;
             if denom != 0.0 {
-                energy = energy - numer / denom.abs().copysign(denom);
+                spectral_density = spectral_density - numer / denom.abs().copysign(denom);
             }
         }
+
+        let energy = spectral_density * (peak_period.powf(2.0) / 2.0 * PI);
 
         // let wind_sea_fraction = sumew[ip] / sume[ip];
 
@@ -472,8 +489,9 @@ pub fn pt_mean(
             hs,
             peak_period,
             Direction::from_degrees(mean_wave_direction as i32),
+            Some(spectral_density),
             Some(energy),
-            Some(ip),
+            Some(ip)
         );
 
         if ip == 0 {

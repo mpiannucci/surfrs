@@ -29,7 +29,9 @@ pub enum Unit {
     Degrees,
     Seconds,
     Percent,
+    KiloJoules,
     Unknown,
+
 }
 
 impl Unit {
@@ -53,6 +55,7 @@ impl Unit {
             Unit::Degrees => "°",
             Unit::Seconds => "s",
             Unit::Percent => "%",
+            Unit::KiloJoules => "kJ",
             Unit::Unknown => "",
         }
     }
@@ -77,6 +80,7 @@ impl Unit {
             Unit::Degrees => "degrees",
             Unit::Seconds => "seconds",
             Unit::Percent => "percent",
+            Unit::KiloJoules => "kilojoules",
             Unit::Unknown => "unknown",
         }
     }
@@ -103,6 +107,7 @@ impl From<&str> for Unit {
             "°" | "deg" | "degs" | "degrees" | "degree" => Unit::Degrees,
             "s" | "second" | "seconds" => Unit::Seconds,
             "%" | "percent" | "percentage" | "wmounit:percent" => Unit::Percent,
+            "kj" | "kilojoules" | "kilojoule" => Unit::KiloJoules,
             _ => Unit::Unknown,
         }
     }

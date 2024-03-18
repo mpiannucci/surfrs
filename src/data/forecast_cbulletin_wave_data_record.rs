@@ -183,6 +183,7 @@ impl ParseableDataRecord for ForecastCBulletinWaveRecord {
                 Direction::from_degrees(degrees),
                 None,
                 None,
+                None,
             ));
         }
 
@@ -213,6 +214,7 @@ impl SwellProvider for ForecastCBulletinWaveRecord {
                 wave_height: self.significant_wave_height.clone(),
                 period: dominant.period,
                 direction: dominant.direction,
+                spectral_density: None,
                 energy: None,
                 partition: None,
             },

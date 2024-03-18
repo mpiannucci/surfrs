@@ -118,6 +118,7 @@ impl SwellProvider for WaveDataRecord {
                 period: self.average_wave_period.clone(),
                 direction: self.mean_wave_direction.clone(),
                 energy: None,
+                spectral_density: None,
                 partition: None,
             },
             components: vec![
@@ -126,6 +127,7 @@ impl SwellProvider for WaveDataRecord {
                     period: self.swell_wave_period.clone(),
                     direction: self.swell_wave_direction.clone(),
                     energy: None,
+                    spectral_density: None,
                     partition: None,
                 },
                 Swell {
@@ -133,6 +135,7 @@ impl SwellProvider for WaveDataRecord {
                     period: self.wind_wave_period.clone(),
                     direction: self.wind_wave_direction.clone(),
                     energy: None,
+                    spectral_density: None,
                     partition: None,
                 },
             ],

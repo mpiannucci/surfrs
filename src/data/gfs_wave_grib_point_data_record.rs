@@ -84,6 +84,7 @@ impl GFSWaveGribPointDataRecord {
             Direction::from_degrees(*wave_direction as i32),
             None,
             None,
+            None,
         );
 
         let wind_speed_value = data.get("WIND").map(|w| *w);
@@ -119,6 +120,7 @@ impl GFSWaveGribPointDataRecord {
                     Direction::from_degrees(data[&dir_key] as i32),
                     None,
                     None,
+                    None,
                 );
 
                 swell_components.push(component);
@@ -137,6 +139,7 @@ impl GFSWaveGribPointDataRecord {
                 data["WVHGT"],
                 data["WVPER"],
                 Direction::from_degrees(data["WVDIR"] as i32),
+                None,
                 None,
                 None,
             );
