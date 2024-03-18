@@ -13,6 +13,12 @@ https://www.ndbc.noaa.gov/wavemeas.pdf
 
 https://www.ndbc.noaa.gov/wavecalc.shtml
 
+https://www.usna.edu/NAOE/_files/documents/Courses/EN455/EN455_Chapter3.pdf
+
+https://youtu.be/2ODs5lxqRdw?si=Y-GfeRESkYibPoT3
+
+https://www.oceanopticsbook.info/view/surfaces/level-2/wave-variance-spectra-theory
+
 https://www.ndbc.noaa.gov/algor.shtml
 
 https://www.researchgate.net/publication/255607845_WAVE_SYSTEM_DIAGNOSTICS_FOR_NUMERICAL_WAVE_MODELS)
