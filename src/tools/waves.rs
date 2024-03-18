@@ -480,7 +480,7 @@ pub fn pt_mean(
             }
         }
 
-        let energy = sume[ip] * (peak_period.powf(2.0) / (2.0 * PI));
+        let energy = (1029.0 * (9.8f64).powf(2.0))/(4.0 * PI) * sume[ip] * peak_period.powf(2.0);
 
         // let wind_sea_fraction = sumew[ip] / sume[ip];
 
