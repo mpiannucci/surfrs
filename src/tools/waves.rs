@@ -480,7 +480,7 @@ pub fn pt_mean(
             }
         }
 
-        let energy = spectral_density * (peak_period.powf(2.0) / (2.0 * PI));
+        let energy = sume[ip] * (peak_period.powf(2.0) / (2.0 * PI));
 
         // let wind_sea_fraction = sumew[ip] / sume[ip];
 
