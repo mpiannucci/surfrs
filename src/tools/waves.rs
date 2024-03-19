@@ -78,7 +78,7 @@ pub fn wavenu3(si: f64, h: f64) -> (f64, f64) {
     (k, cg)
 }
 
-// Chen and Thomson wavenumber approximation.
+/// Chen and Thomson wavenumber approximation.
 pub fn wavenuma(angle_freq: f64, water_depth: f64) -> f64 {
     let koh = 0.10194 * angle_freq * angle_freq * water_depth;
     let d = [0.0, 0.6522, 0.4622, 0.0, 0.0864, 0.0675];
@@ -90,8 +90,8 @@ pub fn wavenuma(angle_freq: f64, water_depth: f64) -> f64 {
     (koh * (1.0 + 1.0 / (koh * a)).sqrt()) / water_depth
 }
 
-// Wave celerity C
-// When depth is not supplied use deep water approximation
+/// Wave celerity C
+/// When depth is not supplied use deep water approximation
 pub fn celerity(freq: f64, depth: Option<f64>) -> f64 {
     if let Some(depth) = depth {
         let angle_freq = 2.0 * PI * freq;
@@ -101,8 +101,8 @@ pub fn celerity(freq: f64, depth: Option<f64>) -> f64 {
     }
 }
 
-// Wavelength L
-// When depth is not suppliked use deep water approximation
+/// Wavelength L
+/// When depth is not suppliked use deep water approximation
 pub fn wavelength(freq: f64, depth: Option<f64>) -> f64 {
     if let Some(depth) = depth {
         let angle_freq = 2.0 * PI * freq;
@@ -110,6 +110,11 @@ pub fn wavelength(freq: f64, depth: Option<f64>) -> f64 {
     } else {
         1.56 / freq.powi(2)
     }
+}
+
+/// Computes the wave energy for a given wave height and period. Units are metric, gravity is 9.81 m/s.
+pub fn wave_energy(hs: f64, tp: f64) -> f64 {
+    (1029.0 * ((9.81f64).powf(2.0)) / (16.0 * PI)) * hs.powf(2.0) * tp.powf(2.0) / 1000.0
 }
 
 /// Computes an estimate of the wave height for a given swell and beach conditions.
@@ -480,7 +485,7 @@ pub fn pt_mean(
             }
         }
 
-        let energy = (1029.0 * (9.8f64).powf(2.0))/(4.0 * PI) * sume[ip] * peak_period.powf(2.0);
+        let energy = wave_energy(hs, peak_period);
 
         // let wind_sea_fraction = sumew[ip] / sume[ip];
 

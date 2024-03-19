@@ -15,6 +15,8 @@ pub struct Swell {
     pub partition: Option<usize>,
 }
 
+//      let energy = (1029.0 * ((9.81f64).powf(2.0))/(16.0 * PI)) * hs.powf(2.0) * peak_period.powf(2.0) / 1000.0;
+
 impl Swell {
     pub fn new(
         units: &UnitSystem,

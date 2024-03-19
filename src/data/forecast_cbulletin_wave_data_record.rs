@@ -8,6 +8,7 @@ use serde::{Serialize, Deserialize};
 use crate::dimensional_data::DimensionalData;
 use crate::location::Location;
 use crate::swell::{Swell, SwellProvider, SwellSummary};
+use crate::tools::waves::wave_energy;
 use crate::units::{Direction, UnitConvertible, Unit, UnitSystem};
 
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
@@ -182,7 +183,7 @@ impl ParseableDataRecord for ForecastCBulletinWaveRecord {
                 period,
                 Direction::from_degrees(degrees),
                 None,
-                None,
+                Some(wave_energy(wave_height, period)),
                 None,
             ));
         }

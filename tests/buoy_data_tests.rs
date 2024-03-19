@@ -137,7 +137,9 @@ fn read_wave_spectra_data() {
             component.to_units(&UnitSystem::English);
         });
 
-    let cart_e = record.spectra.project_cartesian(&record.spectra.energy, 50, Some(25.0), None);
+    let cart_e = record
+        .spectra
+        .project_cartesian(&record.spectra.energy, 50, Some(25.0), None);
     let (min_e, max_e) = record.spectra.energy_range();
     let _binned_cart_e = bin(&cart_e, &min_e, &max_e, &255);
 }
@@ -158,10 +160,21 @@ fn read_cbulletin_forecast_station_data() {
     }
 
     // Verify a random timestep
-    let swell_data = bulletin_records[7].swell_data().clone().unwrap().to_units(&UnitSystem::English).clone();
+    let swell_data = bulletin_records[7]
+        .swell_data()
+        .clone()
+        .unwrap()
+        .to_units(&UnitSystem::English)
+        .clone();
     assert_eq!(swell_data.summary.wave_height.get_value().ceil() as i32, 4);
-    assert_eq!(swell_data.components[0].wave_height.get_value().ceil() as i32, 3);
-    assert_eq!(swell_data.components[0].period.get_value().ceil() as i32, 13);
+    assert_eq!(
+        swell_data.components[0].wave_height.get_value().ceil() as i32,
+        3
+    );
+    assert_eq!(
+        swell_data.components[0].period.get_value().ceil() as i32,
+        13
+    );
 
     let raw_data = read_mock_data("tpc55.cbull");
     let mut data_collection = ForecastCBulletinWaveRecordCollection::from_data(raw_data.as_str());
@@ -177,10 +190,7 @@ fn read_spectral_forecast_station_data() {
     let spectral_records_iter = data_collection.records();
     assert!(spectral_records_iter.is_ok());
 
-    let spectral_records = spectral_records_iter
-        .unwrap()
-        .1
-        .collect::<Vec<_>>();
+    let spectral_records = spectral_records_iter.unwrap().1.collect::<Vec<_>>();
 
     assert_eq!(spectral_records[0].reference_date, spectral_records[0].date);
     assert_eq!(spectral_records[3].reference_date, spectral_records[0].date);

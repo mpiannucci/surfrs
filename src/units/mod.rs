@@ -292,6 +292,14 @@ impl UnitSystem {
             _ => 0.0,
         }
     }
+
+    pub fn density_of_seawater(&self) -> f64 {
+        match self {
+            UnitSystem::Metric => 1029.0,
+            UnitSystem::English => 64.0,
+            _ => 0.0,
+        }
+    }
 }
 
 impl Display for UnitSystem {

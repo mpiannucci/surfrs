@@ -5,11 +5,7 @@ use gribberish::{message::Message, templates::product::tables::FixedSurfaceType}
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    dimensional_data::DimensionalData,
-    location::Location,
-    model::NOAAModel,
-    swell::Swell,
-    units::{Direction, Unit, UnitConvertible, UnitSystem},
+    dimensional_data::DimensionalData, location::Location, model::NOAAModel, swell::Swell, tools::waves::wave_energy, units::{Direction, Unit, UnitConvertible, UnitSystem}
 };
 
 use super::parseable_data_record::DataRecordParsingError;
@@ -83,7 +79,7 @@ impl GFSWaveGribPointDataRecord {
             *period,
             Direction::from_degrees(*wave_direction as i32),
             None,
-            None,
+            Some(wave_energy(*wave_height, *period)),
             None,
         );
 
@@ -119,7 +115,7 @@ impl GFSWaveGribPointDataRecord {
                     data[&per_key],
                     Direction::from_degrees(data[&dir_key] as i32),
                     None,
-                    None,
+                    Some(wave_energy(data[&ht_key], data[&per_key])),
                     None,
                 );
 
@@ -140,7 +136,7 @@ impl GFSWaveGribPointDataRecord {
                 data["WVPER"],
                 Direction::from_degrees(data["WVDIR"] as i32),
                 None,
-                None,
+                Some(wave_energy(data["WVHGT"], data["WVPER"])),
                 None,
             );
 
