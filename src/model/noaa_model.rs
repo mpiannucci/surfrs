@@ -10,12 +10,33 @@ use crate::{
     }, units::{UnitSystem, Unit}
 };
 
+#[derive(Debug, Clone)]
+pub struct ModelDataSourceError(pub String);
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "lowercase")]
 pub enum ModelDataSource {
     NODDAWS,
     NODDGCP,
     NOMADS,
+}
+
+impl TryFrom<&str> for ModelDataSource {
+    type Error = ModelDataSourceError;
+    
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let lowered = value.to_lowercase();
+
+        if lowered.contains("aws") || lowered.contains("amazon") {
+            Ok(ModelDataSource::NODDAWS)
+        } else if lowered.contains("gcp") || lowered.contains("gcs") || lowered.contains("google") {
+            Ok(ModelDataSource::NODDGCP)
+        } else if lowered.contains("nomads") || lowered.contains("noaa") {
+            Ok(ModelDataSource::NOMADS)
+        } else {
+            Err(ModelDataSourceError(format!("Unknown data source: {value}")))
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -295,7 +316,19 @@ pub trait NOAAModel {
 
 #[cfg(test)]
 mod test {
+    use crate::model::ModelDataSource;
+
     use super::ModelTimeOutputResolution;
+
+    #[test]
+    fn test_model_source_parse() {
+        assert_eq!(ModelDataSource::try_from("NOMADS").unwrap(), ModelDataSource::NOMADS);
+        assert_eq!(ModelDataSource::try_from("noaa").unwrap(), ModelDataSource::NOMADS);
+        assert_eq!(ModelDataSource::try_from("NODDAWS").unwrap(), ModelDataSource::NODDAWS);
+        assert_eq!(ModelDataSource::try_from("noddgcp").unwrap(), ModelDataSource::NODDGCP);
+        assert_eq!(ModelDataSource::try_from("noddgcs").unwrap(), ModelDataSource::NODDGCP);
+        assert!(ModelDataSource::try_from("unknown").is_err());
+    }
 
     #[test]
     fn test_model_output_time_index_to_hour() {
