@@ -8,9 +8,9 @@ use serde_json::Value;
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum TidalEvent {
     #[serde(rename = "H")]
-    High, 
+    High,
     #[serde(rename = "L")]
-    Low, 
+    Low,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -29,7 +29,7 @@ where
 {
     let s: String = Deserialize::deserialize(deserializer)?;
     let naive = NaiveDateTime::parse_from_str(&s, "%Y-%m-%d %H:%M").map_err(de::Error::custom)?;
-    Ok(DateTime::<Utc>::from_utc(naive, Utc))
+    Ok(DateTime::<Utc>::from_naive_utc_and_offset(naive, Utc))
 }
 
 fn tidal_value_f64<'de, D: Deserializer<'de>>(deserializer: D) -> Result<f64, D::Error> {

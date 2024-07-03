@@ -29,7 +29,7 @@ impl<'a> SwdenWaveDataRecordIterator<'a> {
         let dates: Vec<i64> = coords[0].1.clone().try_into().unwrap();
         let dates = dates
             .iter()
-            .map(|t| DateTime::from_utc(NaiveDateTime::from_timestamp_opt(*t, 0).unwrap(), Utc))
+            .map(|t| DateTime::from_timestamp(*t, 0).unwrap())
             .collect::<Vec<DateTime<Utc>>>();
         let energy_spectra = dataset.variable_data_iter("spectral_wave_density").unwrap();
         let mean_wave_direction = dataset.variable_data_iter("mean_wave_dir").unwrap();

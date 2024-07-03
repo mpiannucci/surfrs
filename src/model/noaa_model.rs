@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use geojson::Feature;
-use gribberish::message::Message;
+use gribberish::{error::GribberishError, message::Message};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -23,7 +23,7 @@ pub enum ModelDataSource {
 
 impl TryFrom<&str> for ModelDataSource {
     type Error = ModelDataSourceError;
-    
+
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         let lowered = value.to_lowercase();
 
@@ -119,7 +119,7 @@ pub trait NOAAModel {
     fn index_for_hour(&self, hour: usize) -> usize {
         self.time_resolution().index_for_hour(hour)
     }
-    
+
     fn create_url(
         &self,
         source: &ModelDataSource,
@@ -136,12 +136,12 @@ pub trait NOAAModel {
         format!("{}.idx", self.create_url(source, output_hour, query_date))
     }
 
-    fn query_location_tolerance(&self, location: &Location, tolerance: &f64, message: &Message) -> Result<Vec<f64>, String> {
+    fn query_location_tolerance(&self, location: &Location, tolerance: &f64, message: &Message) -> Result<Vec<f64>, GribberishError> {
         let projector = message.latlng_projector()?;
         let bbox = projector.bbox();
 
         if !location.within_bbox(&bbox) {
-            return Err("location is not within the models bounds".into());
+            return Err(GribberishError::MessageError("location is not within the models bounds".into()));
         }
 
         let min_lat = location.relative_latitude() - *tolerance;
@@ -169,12 +169,12 @@ pub trait NOAAModel {
         Ok(data)
     }
 
-    fn query_location_data(&self, location: &Location, message: &Message) -> Result<f64, String> {
+    fn query_location_data(&self, location: &Location, message: &Message) -> Result<f64, GribberishError> {
         let projector = message.latlng_projector()?;
         let bbox = projector.bbox();
 
         if !location.within_bbox(&bbox) {
-            return Err("location is not within the models bounds".into());
+            return Err(GribberishError::MessageError("location is not within the models bounds".into()));
         }
 
         // This only works for regular grids.
@@ -198,12 +198,12 @@ pub trait NOAAModel {
         Ok(value)
     }
 
-    fn interp_location_data(&self, location: &Location, message: &Message) -> Result<f64, String> {
+    fn interp_location_data(&self, location: &Location, message: &Message) -> Result<f64, GribberishError> {
         let projector = message.latlng_projector()?;
         let bbox = projector.bbox();
 
         if !location.within_bbox(&bbox) {
-            return Err("location is not within the models bounds".into());
+            return Err(GribberishError::MessageError("location is not within the models bounds".into()));
         }
 
         // This only works for regular grids.
@@ -260,7 +260,7 @@ pub trait NOAAModel {
         threshold_max: Option<f64>,
         threshold_count: Option<usize>,
         units: Option<UnitSystem>,
-    ) -> Result<Vec<Feature>, String> {
+    ) -> Result<Vec<Feature>, GribberishError> {
         // This only works for regular grids.
         let projector = message.latlng_projector()?;
         let (lat_count, lng_count) = message.grid_dimensions()?;
@@ -288,16 +288,16 @@ pub trait NOAAModel {
         };
 
         compute_latlng_gridded_contours(
-            data, 
-            lng_count, 
-            lat_count, 
-            lng_start, 
-            lng_end, 
-            lat_start, 
-            lat_end, 
-            threshold_min, 
-            threshold_max, 
-            threshold_count, 
+            data,
+            lng_count,
+            lat_count,
+            lng_start,
+            lng_end,
+            lat_start,
+            lat_end,
+            threshold_min,
+            threshold_max,
+            threshold_count,
             Some(|index: &usize, value: &f64| {
                 if index % 2 > 0 {
                     format!(
@@ -310,7 +310,7 @@ pub trait NOAAModel {
                 }
             })
         )
-        .map_err(|_| "Failed to contour data".into())
+        .map_err(|_| GribberishError::MessageError("Failed to contour data".into()))
     }
 }
 

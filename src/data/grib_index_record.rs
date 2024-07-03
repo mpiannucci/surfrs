@@ -28,7 +28,7 @@ impl ParseableDataRecord for GribIndexRecord {
         let index: usize = row[0].parse().map_err(DataRecordParsingError::from)?;
         let offset: usize = row[1].parse().map_err(DataRecordParsingError::from)?;
         // HACK: Postfix with 00s to add minute stamp to allow NaiveDateTime to parse it
-        let raw_date_string = format!("{raw}00", raw=row[2]);
+        let raw_date_string = format!("{raw}00", raw = row[2]);
         let var = row[3].to_string();
         let level = row[4].to_string();
         let valid = row[5].to_string();
@@ -36,7 +36,7 @@ impl ParseableDataRecord for GribIndexRecord {
         const DATE_FORMAT: &'static str = "d=%Y%m%d%H%M";
         let reference_date = NaiveDateTime::parse_from_str(&raw_date_string, DATE_FORMAT)
             .map_err(DataRecordParsingError::from)?;
-        let reference_date = DateTime::<Utc>::from_utc(reference_date, Utc);
+        let reference_date = DateTime::<Utc>::from_naive_utc_and_offset(reference_date, Utc);
 
         Ok(GribIndexRecord {
             index,
@@ -94,7 +94,10 @@ mod tests {
         let data_row: Vec<&str> = raw_data.split(":").collect();
         let grib_index = GribIndexRecord::from_data_row(None, &data_row).unwrap();
 
-        let ref_date = Utc.with_ymd_and_hms(2023, 05, 15, 12, 0, 0).single().unwrap();
+        let ref_date = Utc
+            .with_ymd_and_hms(2023, 05, 15, 12, 0, 0)
+            .single()
+            .unwrap();
         assert_eq!(grib_index.index, 8);
         assert_eq!(grib_index.offset, 2540945);
         assert_eq!(grib_index.reference_date, ref_date);
