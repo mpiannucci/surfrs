@@ -486,7 +486,7 @@ pub fn pt_mean(
             }
         }
 
-        let energy = if ip == 0 {
+        let energy = if ip > 0 {
             Some(wave_energy(hs, peak_period))
         } else {
             None
@@ -515,9 +515,14 @@ pub fn pt_mean(
     components.sort_by(|sl, sr| sr.energy.partial_cmp(&sl.energy).unwrap());
 
     // Calculate the total energy by simply summing the energy of all swell components
-    let summary_energy = components.iter().fold(0.0, |acc, x| {
-        acc + &x.energy.as_ref().map(|x| x.get_value()).unwrap_or(0.0)
-    });
+    let mut summary_energy = 0.0;
+    for component in &components {
+        summary_energy += component
+            .energy
+            .as_ref()
+            .map(|x| x.get_value())
+            .unwrap_or(0.0);
+    }
 
     summary.energy = Some(DimensionalData {
         value: Some(summary_energy),
