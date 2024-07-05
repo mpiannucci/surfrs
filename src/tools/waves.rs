@@ -1,8 +1,9 @@
 use std::{f64::consts::PI, ops::Sub, vec};
 
 use crate::{
+    dimensional_data::DimensionalData,
     swell::Swell,
-    units::{direction::DirectionConvention, Direction, UnitSystem},
+    units::{direction::DirectionConvention, Direction, Unit, UnitSystem},
 };
 
 const GRAVITY: f64 = 9.81;
@@ -485,7 +486,11 @@ pub fn pt_mean(
             }
         }
 
-        let energy = wave_energy(hs, peak_period);
+        let energy = if ip == 0 {
+            Some(wave_energy(hs, peak_period))
+        } else {
+            None
+        };
 
         // let wind_sea_fraction = sumew[ip] / sume[ip];
 
@@ -495,8 +500,8 @@ pub fn pt_mean(
             peak_period,
             Direction::from_degrees(mean_wave_direction as i32),
             Some(spectral_density),
-            Some(energy),
-            Some(ip)
+            energy,
+            Some(ip),
         );
 
         if ip == 0 {
@@ -504,9 +509,21 @@ pub fn pt_mean(
         } else {
             components.push(component);
         }
-
-        components.sort_by(|sl, sr| sr.energy.partial_cmp(&sl.energy).unwrap());
     }
+
+    // Sort components by energy
+    components.sort_by(|sl, sr| sr.energy.partial_cmp(&sl.energy).unwrap());
+
+    // Calculate the total energy by simply summing the energy of all swell components
+    let summary_energy = components.iter().fold(0.0, |acc, x| {
+        acc + &x.energy.as_ref().map(|x| x.get_value()).unwrap_or(0.0)
+    });
+
+    summary.energy = Some(DimensionalData {
+        value: Some(summary_energy),
+        variable_name: "energy".into(),
+        unit: Unit::KiloJoules,
+    });
 
     (summary, components)
 }
