@@ -222,6 +222,25 @@ pub fn steepness_coefficient(zero_moment: f64, second_moment: f64) -> f64 {
     (8.0 * PI * second_moment) / (9.81 * zero_moment.sqrt())
 }
 
+/// Rate of change of the wind-sea peak wave frequency.
+/// Based on fetch-limited relationships, (Ewans & Kibblewhite, 1986).
+///
+/// Units are metric, gravity is 9.81 m/s
+/// https://github.com/wavespectra/wavespectra/blob/master/wavespectra/partition/tracking.py
+pub fn dfp_wind_sea(wind_speed: f64, period: f64, dt: f64, scale: f64) -> f64 {
+    let tmp = 15.8 * (9.81 / wind_speed).powf(0.57);
+    let t0 = (period / tmp).powf(-1.0 / 0.43);
+    scale * tmp * (t0 + dt).powf(-0.43) - period
+}
+
+/// Rate of change of the swell peak wave frequency.
+///
+/// Units are metric, gravity is 9.81 m/s
+/// Based on the swell dispersion relationship derived by Snodgrass et al (1966).
+pub fn dfp_swell_sea(dt: f64, distance: f64) -> f64 {
+    dt * 9.81 / (4.0 * PI * distance)
+}
+
 /// Calculate wavenumber and group velocity from the interpolation
 /// array filled by DISTAB from a given intrinsic frequency and the
 /// waterdepth.
