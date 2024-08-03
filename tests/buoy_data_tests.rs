@@ -1,5 +1,9 @@
 extern crate surfrs;
 
+use chrono::{DateTime, Utc};
+use rayon::prelude::*;
+
+use std::collections::HashMap;
 use std::f64::consts::PI;
 use std::fs;
 use surfrs::data::directional_spectral_wave_data_record::DirectionalSpectralWaveDataRecord;
@@ -16,6 +20,7 @@ use surfrs::data::swden_wave_data_record::SwdenWaveDataRecordCollection;
 use surfrs::data::wave_data_record::WaveDataRecordCollection;
 use surfrs::swell::{Swell, SwellProvider};
 use surfrs::tools::vector::bin;
+use surfrs::tools::waves::track_partitions;
 use surfrs::units::{UnitConvertible, UnitSystem};
 
 fn read_mock_data(name: &str) -> String {
@@ -211,6 +216,59 @@ fn read_spectral_forecast_station_data() {
 
     assert_eq!(primary.wave_height.get_value().ceil() as i32, 4);
     assert_eq!(primary.period.get_value().ceil() as i32, 14);
+}
+
+#[test]
+fn track_partitioned_swell_components() {
+    let raw_data = read_mock_data("gfswave.44097.spec");
+    let mut data_collection =
+        ForecastSpectralWaveDataRecordCollection::from_data(raw_data.as_str());
+    let spectral_records_iter = data_collection.records();
+    assert!(spectral_records_iter.is_ok());
+
+    let spectral_records = spectral_records_iter.unwrap().1.collect::<Vec<_>>();
+    let inputs = spectral_records.par_iter().map(|record| {
+        let swell_data = record.swell_data();
+        assert!(swell_data.is_ok());
+
+        let swell_data = swell_data.unwrap();
+        let mut swell_components = swell_data.filtered_components();
+        swell_components.truncate(5);
+        let wind_speed = record.wind_speed.get_value();
+        let time = record.date;
+        (wind_speed, time, swell_components)
+    })
+    .collect::<Vec<_>>();
+
+    let tracked = track_partitions(
+        &inputs,
+        9.99,
+        30.0,
+        20.0,
+        1.0,
+        1e6,
+    );
+
+    let mut partition_map: HashMap<usize, Vec<(DateTime<Utc>, Swell)>> = HashMap::new();
+    for i in 0..tracked.len() {
+        let timestep = &tracked[i];
+        let timestamp = inputs[i].1;
+        for partition in timestep{
+            let Some(partition_id) = partition.partition else {
+                continue;
+            };
+
+            let partition_swells = partition_map.get_mut(&partition_id);
+            if partition_swells.is_none() {
+                partition_map.insert(partition_id, vec![(timestamp.clone(), partition.clone())]);
+            } else {
+                partition_swells.unwrap().push((timestamp.clone(), partition.clone()));
+            }
+        }
+    }
+
+    let tracked_partition_map_data = serde_json::to_string(&partition_map).unwrap();
+    _ = fs::write("tracked_partitions.json", tracked_partition_map_data);
 }
 
 #[test]
