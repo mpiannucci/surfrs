@@ -233,7 +233,7 @@ fn track_partitioned_swell_components() {
 
         let swell_data = swell_data.unwrap();
         let mut swell_components = swell_data.filtered_components();
-        swell_components.truncate(5);
+        swell_components.truncate(3);
         let time = record.date;
         (time, swell_components)
     })
@@ -241,7 +241,7 @@ fn track_partitioned_swell_components() {
 
     let tracked = track_partitions(
         &inputs,
-        20.0,
+        30.0,
         1e6,
     );
 
