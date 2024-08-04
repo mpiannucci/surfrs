@@ -234,25 +234,21 @@ fn track_partitioned_swell_components() {
         let swell_data = swell_data.unwrap();
         let mut swell_components = swell_data.filtered_components();
         swell_components.truncate(5);
-        let wind_speed = record.wind_speed.get_value();
         let time = record.date;
-        (wind_speed, time, swell_components)
+        (time, swell_components)
     })
     .collect::<Vec<_>>();
 
     let tracked = track_partitions(
         &inputs,
-        9.99,
-        30.0,
         20.0,
-        1.0,
         1e6,
     );
 
     let mut partition_map: HashMap<usize, Vec<(DateTime<Utc>, Swell)>> = HashMap::new();
     for i in 0..tracked.len() {
         let timestep = &tracked[i];
-        let timestamp = inputs[i].1;
+        let timestamp = inputs[i].0;
         for partition in timestep{
             let Some(partition_id) = partition.partition else {
                 continue;

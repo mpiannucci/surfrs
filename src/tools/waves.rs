@@ -1,6 +1,7 @@
-use std::{f64::consts::PI, ops::Sub, vec};
+use std::{collections::HashSet, f64::consts::PI, ops::Sub, vec};
 
 use chrono::{DateTime, Utc};
+use itertools::Itertools;
 
 use crate::{
     dimensional_data::DimensionalData,
@@ -252,11 +253,8 @@ pub fn dfp_swell_sea(dt: f64, distance: f64) -> f64 {
 /// Adapted from wavespectra library
 /// https://github.com/wavespectra/wavespectra/blob/master/wavespectra/partition/tracking.py
 pub fn track_partitions(
-    inputs: &[(f64, DateTime<Utc>, Vec<Swell>)],
-    separation_frequency: f64,
-    max_wind_sea_dir_delta: f64,
-    max_swell_dir_delta: f64,
-    wind_sea_freq_scale: f64,
+    inputs: &[(DateTime<Utc>, Vec<Swell>)],
+    max_dir_delta: f64,
     swell_source_distance: f64,
 ) -> Vec<Vec<Swell>> {
     // Create a new partition map. The partition id is inferred from the
@@ -270,68 +268,84 @@ pub fn track_partitions(
     // For the first time step, all partitions are candidates for tracking and they
     // keep their original partition id.
     if inputs.len() < 2 {
-        return inputs.iter().map(|x| x.2.to_vec()).collect();
+        return inputs.iter().map(|x| x.1.to_vec()).collect();
     }
 
     // Since all of the partitions are candidates for tracking in the first time step,
     // we can start the partition counter at the length of the consecutive_partitions
     // asumming that the first time steps
-    let mut partition_count = inputs.first().as_ref().unwrap().2.len();
+    let mut partition_count = inputs.first().as_ref().unwrap().1.len();
 
     // Create a new partition map. There is definitely a better way to do this, but lets just get the
     // logic working first without modifying the input data
     let mut partition_map: Vec<Vec<(usize, f64)>> = inputs
         .iter()
-        .map(|x| x.2.iter().map(|s| (s.partition.unwrap_or(999), 999.99)).collect())
+        .map(|x| {
+            x.1.iter()
+                .map(|s| (s.partition.unwrap_or(999), 999.99))
+                .collect()
+        })
         .collect();
 
     for i in 1..partition_map.len() {
         let prev = inputs.get(i - 1).unwrap();
         let current = inputs.get(i).unwrap();
 
-        let dt = (current.1 - prev.1).num_seconds() as f64;
+        let dt = (current.0 - prev.0).num_seconds() as f64;
         let dfp_swell = dfp_swell_sea(dt, swell_source_distance);
-        let wind_speed = current.0;
 
-        current.2.iter().enumerate().for_each(|(icp, p)| {
-            let dfp_wind = dfp_wind_sea(wind_speed, p.period.get_value(), dt, wind_sea_freq_scale);
-            let partition_dir = p.direction.get_value().degrees;
-            let partition_period = p.period.get_value();
+        let matches = current
+            .1
+            .iter()
+            .enumerate()
+            .map(|(icp, p)| {
+                let partition_dir = p.direction.get_value().degrees;
+                let partition_period = p.period.get_value();
 
-            let closest = prev
-                .2
-                .iter()
-                .enumerate()
-                .map(|(ipp, prev_p)| {
-                    let prev_partition_dir = prev_p.direction.get_value().degrees;
-                    let dir_delta =
-                        ((((partition_dir - prev_partition_dir) + 180) % 360) - 180).abs();
-                    let period_delta = (partition_period - prev_p.period.get_value()).abs();
+                prev.1
+                    .iter()
+                    .enumerate()
+                    .map(|(ipp, prev_p)| {
+                        let prev_partition_dir = prev_p.direction.get_value().degrees;
+                        let dir_delta =
+                            ((((partition_dir - prev_partition_dir) + 180) % 360) - 180).abs();
+                        //println!("Dir delta: {} partition dir: {}, prev partition dir: {}", dir_delta, partition_dir, prev_partition_dir);
+                        let period_delta = (partition_period - prev_p.period.get_value()).abs();
 
-                    let score = if partition_period <= separation_frequency {
-                        (dir_delta as f64 / max_wind_sea_dir_delta).abs() + (period_delta / dfp_wind).abs()
-                    } else {
-                        (dir_delta as f64 / max_swell_dir_delta).abs() + (period_delta / dfp_swell).abs()
-                    }
-                    .abs();
-                    (ipp, score)
-                })
-                .min_by(|(_i, a), (_ii, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+                        let score = if dir_delta > max_dir_delta as i32 {
+                            999.99
+                        } else {
+                            (dir_delta as f64 / max_dir_delta).abs()
+                                + (period_delta / dfp_swell).abs()
+                        }
+                        .abs();
+                        (icp, ipp, score)
+                    })
+                    .min_by(|(_i, __i, a), (_ii, __ii, b)| a.partial_cmp(b).unwrap())
+            })
+            .sorted_by(|a, b| {
+                a.as_ref()
+                    .unwrap()
+                    .2
+                    .partial_cmp(&b.as_ref().unwrap().2)
+                    .unwrap()
+            })
+            .collect::<Vec<_>>();
 
-            if let Some((ip, score)) = closest {
-                let (ip, _) = partition_map[i - 1][ip];
-                println!("Closest: {} {}", ip, score);
-                if score < 1.0 {
-                    partition_map[i][icp] = (ip, score);
-                } else {
+        let mut hit: HashSet<usize> = HashSet::new();
+        for m in matches {
+            if let Some((icp, ipp, score)) = m {
+                let (ipp, _) = partition_map[i - 1][ipp];
+                if hit.contains(&ipp) || score > 999.0 {
                     partition_map[i][icp] = (partition_count, 0.0);
                     partition_count += 1;
+                } else {
+                    //println!("Hit: {} score {}", ipp, score);
+                    partition_map[i][icp] = (ipp, score);
+                    hit.insert(ipp);
                 }
-            } else {
-                partition_map[i][icp] = (partition_count, 0.0);
-                partition_count += 1;
             }
-        });
+        }
     }
 
     // Now that we have the partition map, we can use it to create the new partitions
@@ -339,7 +353,7 @@ pub fn track_partitions(
         .iter()
         .enumerate()
         .map(|(i, x)| {
-            x.2.iter()
+            x.1.iter()
                 .enumerate()
                 .map(|(icp, p)| {
                     let (ip, _) = partition_map[i][icp];
