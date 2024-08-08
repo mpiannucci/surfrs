@@ -1,4 +1,7 @@
-use std::{f64::consts::PI, ops::Sub, vec};
+use std::{collections::HashSet, f64::consts::PI, ops::Sub, vec};
+
+use chrono::{DateTime, Utc};
+use itertools::Itertools;
 
 use crate::{
     dimensional_data::DimensionalData,
@@ -241,12 +244,130 @@ pub fn dfp_swell_sea(dt: f64, distance: f64) -> f64 {
     dt * 9.81 / (4.0 * PI * distance)
 }
 
-/// Calculate wavenumber and group velocity from the interpolation
-/// array filled by DISTAB from a given intrinsic frequency and the
-/// waterdepth.
-// pub fn wav_nu()
+/// Takes a timeseries of wind, times, and wave partitions and returns
+/// the wave partitions with unique partition ids. This means that the
+/// wave partitions are tracked through time, and every partition id is
+/// unique over the entire timeseries.
+/// Units are metric, gravity is 9.81 m/s
+///
+/// Adapted from wavespectra library
+/// https://github.com/wavespectra/wavespectra/blob/master/wavespectra/partition/tracking.py
+pub fn track_partitions(
+    inputs: &[(DateTime<Utc>, Vec<Swell>)],
+    max_dir_delta: f64,
+    swell_source_distance: f64,
+) -> Vec<Vec<Swell>> {
+    // Create a new partition map. The partition id is inferred from the
+    // index of the parition in the consectutive_partitions list. If
+    // the given index is None, then the partition is not a candidate for
+    // tracking forward. If the index is Some, then the partition is a candidate
+    // for tracking forward, and should be checked against all other partitions
+    // in the next time step. Once a partition is recognized as a match, the
+    // candidate is overwritten with the matched partition id to be checked
+    // for the next time step.
+    // For the first time step, all partitions are candidates for tracking and they
+    // keep their original partition id.
+    if inputs.len() < 2 {
+        return inputs.iter().map(|x| x.1.to_vec()).collect();
+    }
 
-/// Calculates the Compute mean parameters per swell component given a discretized specrtral signal
+    // Since all of the partitions are candidates for tracking in the first time step,
+    // we can start the partition counter at the length of the consecutive_partitions
+    // asumming that the first time steps
+    let mut partition_count = inputs.first().as_ref().unwrap().1.len();
+
+    // Create a new partition map. There is definitely a better way to do this, but lets just get the
+    // logic working first without modifying the input data
+    let mut partition_map: Vec<Vec<(usize, f64)>> = inputs
+        .iter()
+        .map(|x| {
+            x.1.iter()
+                .map(|s| (s.partition.unwrap_or(999), 999.99))
+                .collect()
+        })
+        .collect();
+
+    for i in 1..partition_map.len() {
+        let prev = inputs.get(i - 1).unwrap();
+        let current = inputs.get(i).unwrap();
+
+        let dt = (current.0 - prev.0).num_seconds() as f64;
+        let dfp_swell = dfp_swell_sea(dt, swell_source_distance);
+
+        let matches = current
+            .1
+            .iter()
+            .enumerate()
+            .map(|(icp, p)| {
+                let partition_dir = p.direction.get_value().degrees;
+                let partition_period = p.period.get_value();
+
+                prev.1
+                    .iter()
+                    .enumerate()
+                    .map(|(ipp, prev_p)| {
+                        let prev_partition_dir = prev_p.direction.get_value().degrees;
+                        let dir_delta =
+                            ((((partition_dir - prev_partition_dir) + 180) % 360) - 180).abs();
+                        //println!("Dir delta: {} partition dir: {}, prev partition dir: {}", dir_delta, partition_dir, prev_partition_dir);
+                        let period_delta = (partition_period - prev_p.period.get_value()).abs();
+
+                        let score = if dir_delta > max_dir_delta as i32 {
+                            999.99
+                        } else {
+                            (dir_delta as f64 / max_dir_delta).abs()
+                                + (period_delta / dfp_swell).abs()
+                        }
+                        .abs();
+                        (icp, ipp, score)
+                    })
+                    .min_by(|(_i, __i, a), (_ii, __ii, b)| a.partial_cmp(b).unwrap())
+            })
+            .sorted_by(|a, b| {
+                a.as_ref()
+                    .unwrap()
+                    .2
+                    .partial_cmp(&b.as_ref().unwrap().2)
+                    .unwrap()
+            })
+            .collect::<Vec<_>>();
+
+        let mut hit: HashSet<usize> = HashSet::new();
+        for m in matches {
+            if let Some((icp, ipp, score)) = m {
+                let (ipp, _) = partition_map[i - 1][ipp];
+                if hit.contains(&ipp) || score > 999.0 {
+                    partition_map[i][icp] = (partition_count, 0.0);
+                    partition_count += 1;
+                } else {
+                    //println!("Hit: {} score {}", ipp, score);
+                    partition_map[i][icp] = (ipp, score);
+                    hit.insert(ipp);
+                }
+            }
+        }
+    }
+
+    // Now that we have the partition map, we can use it to create the new partitions
+    inputs
+        .iter()
+        .enumerate()
+        .map(|(i, x)| {
+            x.1.iter()
+                .enumerate()
+                .map(|(icp, p)| {
+                    let (ip, _) = partition_map[i][icp];
+                    Swell {
+                        partition: Some(ip),
+                        ..p.clone()
+                    }
+                })
+                .collect()
+        })
+        .collect()
+}
+
+/// Calculates the Compute mean parameters per swell component given a discretized spectral signal
 /// Ported from WW3 code: PTMEAN in w3partmd.f90
 pub fn pt_mean(
     num_partitions: usize,
