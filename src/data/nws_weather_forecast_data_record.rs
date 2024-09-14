@@ -102,7 +102,6 @@ impl From<&NwsWeatherForecastPeriodData> for NwsWeatherForecastDataRecord {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct NwsWeatherForecastDataRecordCollectionProperties {
-    updated: DateTime<Utc>,
     units: String,
     forecast_generator: String,
     generated_at: DateTime<Utc>,

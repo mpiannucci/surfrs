@@ -26,22 +26,22 @@ fn read_hourly_forecast_data() {
     assert!(records.len() > 0);
 
     let temperature = &records[0].temperature;
-    assert!((temperature.value.unwrap_or(0.0) - 38.0).abs() < 0.0001);
+    assert!((temperature.value.unwrap_or(0.0) - 72.0).abs() < 0.0001);
     assert_eq!(temperature.unit, Unit::Fahrenheit);
-    
+
     let dewpoint = &records[0].dewpoint;
-    assert!((dewpoint.value.unwrap_or(0.0) - 0.55555555555555558).abs() < 0.0001);
+    assert!((dewpoint.value.unwrap_or(0.0) - 17.777777777777779).abs() < 0.0001);
     assert_eq!(dewpoint.unit, Unit::Celsius);
 
     let humidity = &records[0].humidity;
-    assert!((humidity.value.unwrap_or(0.0) - 82.0).abs() < 0.0001);
+    assert!((humidity.value.unwrap_or(0.0) - 76.0).abs() < 0.0001);
     assert_eq!(humidity.unit, Unit::Percent);
 
     let wind_speed = &records[0].wind_speed;
-    assert!((wind_speed.value.unwrap_or(0.0) - 22.0).abs() < 0.0001);
+    assert!((wind_speed.value.unwrap_or(0.0) - 6.0).abs() < 0.0001);
     assert_eq!(wind_speed.unit, Unit::MilesPerHour);
 
     let wind_direction = &records[0].wind_direction;
     let wind_direction_value = wind_direction.value.as_ref().map(|d| d.cardinal_direction()).unwrap_or(&CardinalDirection::Invalid);
-    assert!(wind_direction_value == &CardinalDirection::North);
+    assert!(wind_direction_value == &CardinalDirection::East);
 }
