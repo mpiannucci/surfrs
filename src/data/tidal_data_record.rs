@@ -1,6 +1,5 @@
-
 use chrono::prelude::*;
-use serde::{Serialize, Deserialize, de, Deserializer};
+use serde::{de, Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 
 // https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=20230102%2021:10&end_date=20230110%2021:10&station=8454658&product=predictions&datum=MTL&interval=&units=english&time_zone=gmt&application=web_services&format=json
@@ -36,7 +35,7 @@ fn tidal_value_f64<'de, D: Deserializer<'de>>(deserializer: D) -> Result<f64, D:
     Ok(match Value::deserialize(deserializer)? {
         Value::String(s) => s.parse().map_err(de::Error::custom)?,
         Value::Number(num) => num.as_f64().ok_or(de::Error::custom("Invalid f64"))? as f64,
-        _ => return Err(de::Error::custom("Invalid type for f64"))
+        _ => return Err(de::Error::custom("Invalid type for f64")),
     })
 }
 

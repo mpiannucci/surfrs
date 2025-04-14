@@ -1,7 +1,10 @@
 use chrono::{DateTime, Utc};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use crate::{dimensional_data::DimensionalData, units::{Direction, Unit}};
+use crate::{
+    dimensional_data::DimensionalData,
+    units::{Direction, Unit},
+};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -90,8 +93,16 @@ impl From<&NwsWeatherForecastPeriodData> for NwsWeatherForecastDataRecord {
                 variable_name: "humidity".to_string(),
                 unit: Unit::from(data.relative_humidity.unit_code.as_str()),
             },
-            wind_speed: DimensionalData::from_raw_data(wind_speed_parts[0], "wind speed".into(), Unit::from(wind_speed_parts[1])),
-            wind_direction: DimensionalData::from_raw_data(&data.wind_direction, "wind direction".into(), Unit::Degrees),
+            wind_speed: DimensionalData::from_raw_data(
+                wind_speed_parts[0],
+                "wind speed".into(),
+                Unit::from(wind_speed_parts[1]),
+            ),
+            wind_direction: DimensionalData::from_raw_data(
+                &data.wind_direction,
+                "wind direction".into(),
+                Unit::Degrees,
+            ),
             icon: data.icon.clone(),
             short_forecast: data.short_forecast.clone(),
             detailed_forecast: data.detailed_forecast.clone(),
@@ -122,6 +133,10 @@ impl NwsWeatherForecastDataRecordCollection {
     }
 
     pub fn records(&self) -> Vec<NwsWeatherForecastDataRecord> {
-        self.properties.periods.iter().map(|record| NwsWeatherForecastDataRecord::from(record)).collect()
+        self.properties
+            .periods
+            .iter()
+            .map(|record| NwsWeatherForecastDataRecord::from(record))
+            .collect()
     }
 }

@@ -1,8 +1,8 @@
 use chrono::prelude::*;
 
-use crate::tools::date::{closest_gfs_model_gridded_datetime};
+use crate::tools::date::closest_gfs_model_gridded_datetime;
 
-use super::{NOAAModel, ModelTimeOutputResolution};
+use super::{ModelTimeOutputResolution, NOAAModel};
 
 pub struct NWPSModel {
     id: &'static str,
@@ -39,7 +39,10 @@ impl NOAAModel for NWPSModel {
         ModelTimeOutputResolution::Hourly
     }
 
-    fn closest_model_run_date(&self, date: &chrono::DateTime<chrono::Utc>) -> chrono::DateTime<chrono::Utc> {
+    fn closest_model_run_date(
+        &self,
+        date: &chrono::DateTime<chrono::Utc>,
+    ) -> chrono::DateTime<chrono::Utc> {
         closest_gfs_model_gridded_datetime(date)
     }
 
@@ -75,7 +78,7 @@ mod tests {
 
     use crate::model::NWPSModel;
 
-    use super::{NOAAModel};
+    use super::NOAAModel;
     use crate::model::ModelDataSource;
 
     #[test]

@@ -1,5 +1,5 @@
-use std::{fs, collections::HashMap};
 use std::time::Instant;
+use std::{collections::HashMap, fs};
 
 use chrono::{DateTime, Utc};
 use futures_util::StreamExt;
@@ -33,7 +33,7 @@ struct SurfForecastDataRecord {
     pub swell_components: Vec<Swell>,
     pub minimum_breaking_height: DimensionalData<f64>,
     pub maximum_breaking_height: DimensionalData<f64>,
-    pub wave_height_spread: DimensionalData<f64>, 
+    pub wave_height_spread: DimensionalData<f64>,
     pub wave_height_mean: DimensionalData<f64>,
 }
 
@@ -41,9 +41,9 @@ impl UnitConvertible for SurfForecastDataRecord {
     fn to_units(&mut self, new_units: &UnitSystem) -> &mut Self {
         self.wind_speed.to_units(new_units);
         self.wave_summary.to_units(new_units);
-        self.swell_components
-            .iter_mut()
-            .for_each(|c| {c.to_units(new_units); });
+        self.swell_components.iter_mut().for_each(|c| {
+            c.to_units(new_units);
+        });
         self.minimum_breaking_height.to_units(new_units);
         self.maximum_breaking_height.to_units(new_units);
         self.wave_height_spread.to_units(new_units);
@@ -111,7 +111,7 @@ async fn main() {
             let spread_mean: f64 = sum / value.len() as f64;
             (i, spread_mean)
         })
-        .collect::<HashMap<_,_>>();
+        .collect::<HashMap<_, _>>();
 
     println!("Fetching GEFS Ensemble Mean");
     let gefs_wave_model_mean = GEFSWaveModel::global_25_mean();
@@ -156,7 +156,7 @@ async fn main() {
             let spread_mean: f64 = sum / value.len() as f64;
             (i, spread_mean)
         })
-        .collect::<HashMap<_,_>>();
+        .collect::<HashMap<_, _>>();
 
     println!("Fetching GFS Wave Model Data");
     let atlantic_wave_model = GFSWaveModel::atlantic();
@@ -228,7 +228,10 @@ async fn main() {
             let mean_index = gefs_wave_model_mean.index_for_hour(hour);
             let mean = ensemble_mean_data.get(&mean_index).unwrap();
 
-            println!("date: {} - wind_dir: {}", record.date, record.wind_direction);
+            println!(
+                "date: {} - wind_dir: {}",
+                record.date, record.wind_direction
+            );
 
             let mut record = SurfForecastDataRecord {
                 date: record.date,
@@ -297,8 +300,9 @@ async fn main() {
     for wave_record in wave_data.iter_mut() {
         let Some(weather_record) = weather_forecast
             .par_iter()
-            .find_any(|wx| wx.start_time == wave_record.date) else {
-                continue;
+            .find_any(|wx| wx.start_time == wave_record.date)
+        else {
+            continue;
         };
 
         wave_record.wind_speed = weather_record.wind_speed.clone();

@@ -106,7 +106,7 @@ impl Location {
 
 #[cfg(test)]
 mod tests {
-    use crate::location::{normalize_latitude, absolute_longitude};
+    use crate::location::{absolute_longitude, normalize_latitude};
 
     use super::{normalize_longitude, Location};
 

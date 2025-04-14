@@ -1,4 +1,7 @@
-use std::{num::{ParseFloatError, ParseIntError}, format};
+use std::{
+    format,
+    num::{ParseFloatError, ParseIntError},
+};
 
 use chrono::ParseError;
 use serde::{Deserialize, Serialize};

@@ -1,6 +1,6 @@
 use chrono::prelude::*;
 
-use crate::tools::date::{closest_gfs_model_gridded_datetime};
+use crate::tools::date::closest_gfs_model_gridded_datetime;
 
 use super::{ModelDataSource, ModelTimeOutputResolution, NOAAModel};
 

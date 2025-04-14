@@ -1,10 +1,10 @@
 use std::fmt::Display;
 
 use chrono::Utc;
-use geojson::{Feature, Geometry, Value, JsonObject, JsonValue};
-use serde::{Serialize, Deserialize};
+use geojson::{Feature, Geometry, JsonObject, JsonValue, Value};
+use serde::{Deserialize, Serialize};
 
-use crate::{station::Station, location::Location, units::UnitSystem};
+use crate::{location::Location, station::Station, units::UnitSystem};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DataInterval {
@@ -25,11 +25,11 @@ impl Display for DataInterval {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TideDatum {
-    MHHW, 
-    MHW, 
-    MTL, 
-    MSL, 
-    MLW, 
+    MHHW,
+    MHW,
+    MTL,
+    MSL,
+    MLW,
     MLLW,
 }
 
@@ -45,7 +45,6 @@ impl Display for TideDatum {
         }
     }
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TideStation {
@@ -72,15 +71,22 @@ impl TideStation {
         }
     }
 
-    pub fn tidal_data_url(&self, start_date: &chrono::DateTime<Utc>, end_date: &chrono::DateTime<Utc>, datum: &TideDatum, interval: &DataInterval, units: &UnitSystem) -> String {
+    pub fn tidal_data_url(
+        &self,
+        start_date: &chrono::DateTime<Utc>,
+        end_date: &chrono::DateTime<Utc>,
+        datum: &TideDatum,
+        interval: &DataInterval,
+        units: &UnitSystem,
+    ) -> String {
         format!("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date={0}%20{1}&end_date={2}%20{3}&station={4}&product=predictions&datum={5}&interval={6}&units={7}&time_zone=gmt&application=web_services&format=json", 
             start_date.format("%Y%m%d"), 
             start_date.format("%H:%M"), 
             end_date.format("%Y%m%d"), 
             end_date.format("%H:%M"), 
-            self.station_id, 
-            datum, 
-            interval, 
+            self.station_id,
+            datum,
+            interval,
             units
         )
     }
@@ -126,8 +132,8 @@ impl Into<Feature> for TideStation {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TideStations {
-    #[serde(rename="count")]
-    pub station_count: usize, 
+    #[serde(rename = "count")]
+    pub station_count: usize,
     pub stations: Vec<TideStation>,
 }
 
@@ -200,6 +206,12 @@ mod tests {
 
         let start_date = Utc::now();
         let end_date = start_date.checked_add_days(Days::new(7)).unwrap();
-        let _ = station.tidal_data_url(&start_date, &end_date, &TideDatum::MLW, &DataInterval::Default, &UnitSystem::English);
+        let _ = station.tidal_data_url(
+            &start_date,
+            &end_date,
+            &TideDatum::MLW,
+            &DataInterval::Default,
+            &UnitSystem::English,
+        );
     }
 }

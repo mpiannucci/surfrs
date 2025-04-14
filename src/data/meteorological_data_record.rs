@@ -310,7 +310,10 @@ impl<'a> StdmetDataRecordCollection<'a> {
     }
 
     pub fn records(&'a self) -> impl Iterator<Item = MeteorologicalDataRecord> + 'a {
-        let dates = self.dates.iter().map(|t| DateTime::from_timestamp(*t, 0).unwrap());
+        let dates = self
+            .dates
+            .iter()
+            .map(|t| DateTime::from_timestamp(*t, 0).unwrap());
         let wind_dir = self.dataset.variable_data_iter("wind_dir").unwrap();
         let wind_spd = self.dataset.variable_data_iter("wind_spd").unwrap();
         let gust = self.dataset.variable_data_iter("gust").unwrap();

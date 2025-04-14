@@ -16,7 +16,7 @@ regex = "1"
 num-traits = "0.2.15"
 rand = "0.8.5"
 itertools = "0.10.5"
-sunrise = "1.0.0"
+sunrise = "1.2.0"
 contour = { version = "0.7.0", features = ["geojson"] }
 kdtree = "0.5.1"
 image = "0.24.5"

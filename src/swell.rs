@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::dimensional_data::DimensionalData;
-use crate::units::{Direction, UnitConvertible, Unit, UnitSystem};
+use crate::units::{Direction, Unit, UnitConvertible, UnitSystem};
 use std::collections::HashMap;
 use std::fmt::{self, Debug, Display};
 
@@ -108,7 +108,7 @@ pub trait SwellProvider {
 }
 
 impl SwellSummary {
-    /// Extracts the component indexes which match swell components that may show up only because of a 
+    /// Extracts the component indexes which match swell components that may show up only because of a
     /// mirrored false positive from spectral extraction. This usally happens at the exact same dominant periods, with about
     /// a 180 degree difference in mean wave direction
     pub fn probable_false_components(&self) -> Vec<usize> {
@@ -129,12 +129,18 @@ impl SwellSummary {
                 continue;
             }
 
-            let truth_direction = self.components[i_components[0]].direction.value.as_ref().unwrap();
+            let truth_direction = self.components[i_components[0]]
+                .direction
+                .value
+                .as_ref()
+                .unwrap();
 
-            // Assuming sorted from max to min energy already 
+            // Assuming sorted from max to min energy already
             for i in 1..i_components.len() {
                 let idx = i_components[i];
-                if truth_direction.is_opposite(self.components[idx].direction.value.as_ref().unwrap()) {
+                if truth_direction
+                    .is_opposite(self.components[idx].direction.value.as_ref().unwrap())
+                {
                     indexes.push(idx);
                 }
             }
@@ -158,7 +164,9 @@ impl SwellSummary {
 impl UnitConvertible for SwellSummary {
     fn to_units(&mut self, new_units: &UnitSystem) -> &mut Self {
         self.summary.to_units(new_units);
-        self.components.iter_mut().for_each(|c| {c.to_units(new_units);});
+        self.components.iter_mut().for_each(|c| {
+            c.to_units(new_units);
+        });
         self
     }
 }

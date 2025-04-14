@@ -9,7 +9,10 @@ use geojson::{Feature, FeatureCollection, Geometry, JsonObject, JsonValue, Value
 use quick_xml::de::from_reader;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize};
 use std::{
-    convert::{Into, TryInto}, fmt::{self, Display}, hash::{Hash, Hasher}, string::String
+    convert::{Into, TryInto},
+    fmt::{self, Display},
+    hash::{Hash, Hasher},
+    string::String,
 };
 
 #[repr(C)]
@@ -341,7 +344,10 @@ impl Into<Feature> for BuoyStation {
         properties.insert("id".to_string(), JsonValue::from(self.id().to_string()));
         properties.insert("name".to_string(), JsonValue::from(self.name()));
         properties.insert("isActive".to_string(), JsonValue::from(self.is_active()));
-        properties.insert("type".to_string(), JsonValue::from(self.buoy_type.to_string()));
+        properties.insert(
+            "type".to_string(),
+            JsonValue::from(self.buoy_type.to_string()),
+        );
 
         Feature {
             bbox: None,

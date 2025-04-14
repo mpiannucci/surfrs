@@ -19,13 +19,22 @@ impl FromStr for DapConstraint {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut parts = s.split('[');
-        let var = unwrap_or_return!(parts.next(), "No variable found for dap constraint".to_string()).to_string();
+        let var = unwrap_or_return!(
+            parts.next(),
+            "No variable found for dap constraint".to_string()
+        )
+        .to_string();
         let ranges = parts
             .map(|range| {
                 let mut parts = range.split(':');
                 let start = parts.next().unwrap().parse::<usize>().unwrap();
                 let step = parts.next().unwrap().parse::<usize>().unwrap();
-                let end = parts.next().unwrap().replace("]", "").parse::<usize>().unwrap();
+                let end = parts
+                    .next()
+                    .unwrap()
+                    .replace("]", "")
+                    .parse::<usize>()
+                    .unwrap();
                 (start, step, end)
             })
             .collect::<Vec<(usize, usize, usize)>>();
@@ -80,4 +89,3 @@ mod tests {
         assert_eq!(constraint.to_string(), "time")
     }
 }
-

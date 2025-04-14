@@ -1,12 +1,14 @@
 extern crate surfrs;
 
-use surfrs::buoy_station::BuoyStations;
-use surfrs::data::latest_obs_data_record::{LatestObsDataRecordCollection, latest_obs_feature_collection};
-use surfrs::station::Station;
-use std::fs::{File, self};
+use geojson::FeatureCollection;
+use std::fs::{self, File};
 use std::io::Read;
 use std::path::Path;
-use geojson::FeatureCollection;
+use surfrs::buoy_station::BuoyStations;
+use surfrs::data::latest_obs_data_record::{
+    latest_obs_feature_collection, LatestObsDataRecordCollection,
+};
+use surfrs::station::Station;
 
 fn read_stations_mock() -> String {
     let stations_xml_path = Path::new("mock/activestations.xml");
@@ -45,10 +47,7 @@ fn read_stations_xml() {
     assert_eq!(restored_stations.is_ok(), true);
 
     let restored_stations = restored_stations.unwrap();
-    assert_eq!(
-        buoy_stations.station_count,
-        restored_stations.station_count
-    );
+    assert_eq!(buoy_stations.station_count, restored_stations.station_count);
     assert_eq!(
         restored_stations.stations.len(),
         buoy_stations.stations.len()
@@ -68,13 +67,15 @@ fn read_stations_latest_observations() {
     let mut data_collection = LatestObsDataRecordCollection::from_data(raw_data.as_str());
     let latest_obs_records = data_collection.records().collect();
 
-    let feature_collection = latest_obs_feature_collection(&buoy_stations.stations, &latest_obs_records);
+    let feature_collection =
+        latest_obs_feature_collection(&buoy_stations.stations, &latest_obs_records);
     let serialized_feature_collection = serde_json::to_string(&feature_collection);
     assert!(serialized_feature_collection.is_ok());
 
     let serialized_feature_collection = serialized_feature_collection.unwrap();
     assert!(!serialized_feature_collection.contains("null"));
 
-    let deserialized_feature_collection = serde_json::from_str::<FeatureCollection>(&serialized_feature_collection);
+    let deserialized_feature_collection =
+        serde_json::from_str::<FeatureCollection>(&serialized_feature_collection);
     assert!(deserialized_feature_collection.is_ok());
 }

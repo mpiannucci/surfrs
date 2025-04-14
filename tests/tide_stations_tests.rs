@@ -1,4 +1,4 @@
-use std::{path::Path, fs::File, io::Read};
+use std::{fs::File, io::Read, path::Path};
 
 use surfrs::tide_station::TideStations;
 
@@ -18,10 +18,7 @@ fn read_stations_mock() -> String {
 fn read_stations_json() {
     let raw_station_data = read_stations_mock();
     let tide_stations = TideStations::from_raw_data(&raw_station_data);
-    assert_eq!(
-        tide_stations.station_count,
-        tide_stations.stations.len()
-    );
+    assert_eq!(tide_stations.station_count, tide_stations.stations.len());
 
     let station_id = "8454658";
     let narragansett_pier_station = tide_stations.find_station_by_id(&station_id);

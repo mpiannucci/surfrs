@@ -33,10 +33,10 @@ pub fn closest_gfs_model_gridded_datetime(datetime: &DateTime<Utc>) -> DateTime<
     round_to_nearest_multiple_hour(&adjusted, 6)
 }
 
-// Creates a list of datetimes corresponding to all of the model runs for the GFS model within 
-// the given start and end datetimes. 
-// 
-// This function does not account for the fact that the most 
+// Creates a list of datetimes corresponding to all of the model runs for the GFS model within
+// the given start and end datetimes.
+//
+// This function does not account for the fact that the most
 // recent model run may not have been completed yet. To filter out any uncompleted model runs,
 // use the closest_gfs_model_stations_datetime or closest_gfs_model_gridded_datetime functions to get
 // the most recent model run and then filter out any datetimes that are greater than the most recent model run

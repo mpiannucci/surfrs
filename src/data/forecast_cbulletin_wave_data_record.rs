@@ -1,15 +1,15 @@
 use std::str::FromStr;
 
-use chrono::{DateTime, Utc, Datelike, TimeZone};
+use chrono::{DateTime, Datelike, TimeZone, Utc};
 use csv::Reader;
 use regex::Regex;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use crate::dimensional_data::DimensionalData;
 use crate::location::Location;
 use crate::swell::{Swell, SwellProvider, SwellSummary};
 use crate::tools::waves::wave_energy;
-use crate::units::{Direction, UnitConvertible, Unit, UnitSystem};
+use crate::units::{Direction, Unit, UnitConvertible, UnitSystem};
 
 use super::parseable_data_record::{DataRecordParsingError, ParseableDataRecord};
 
@@ -56,9 +56,9 @@ impl FromStr for ForecastCBulletinWaveRecordMetadata {
         let model_run_parser =
             Regex::new("Cycle\\s*:\\s*([0-9]{0,4})([0-9]{0,2})([0-9]{0,2})\\s*([0-9]{0,2})");
         let model_run_parser = model_run_parser.map_err(|e| {
-            DataRecordParsingError::ParseFailure(
-                format!("Failed to create regex to parse model date run: {e}"),
-            )
+            DataRecordParsingError::ParseFailure(format!(
+                "Failed to create regex to parse model date run: {e}"
+            ))
         })?;
 
         let model_run_date = match model_run_parser.captures(lines.next().unwrap_or("")) {
@@ -105,7 +105,9 @@ impl FromStr for ForecastCBulletinWaveRecordMetadata {
                     })?;
                 let minute = 0;
 
-                let d = Utc.with_ymd_and_hms(year, month, day, hour, minute, 0).unwrap();
+                let d = Utc
+                    .with_ymd_and_hms(year, month, day, hour, minute, 0)
+                    .unwrap();
                 Ok(d)
             }
             None => Err(DataRecordParsingError::ParseFailure(
@@ -156,13 +158,12 @@ impl ParseableDataRecord for ForecastCBulletinWaveRecord {
             model_date.month()
         };
 
-        let date = Utc.with_ymd_and_hms(model_date.year(), month, day, hour, 0, 0).unwrap();
+        let date = Utc
+            .with_ymd_and_hms(model_date.year(), month, day, hour, 0, 0)
+            .unwrap();
 
-        let significant_wave_height = DimensionalData::from_raw_data(
-            row[1],
-            "significant wave height".into(),
-            Unit::Feet,
-        );
+        let significant_wave_height =
+            DimensionalData::from_raw_data(row[1], "significant wave height".into(), Unit::Feet);
 
         let mut swell_components = Vec::new();
 
@@ -347,7 +348,7 @@ mod tests {
     fn test_wave_cbulletin_row_parse() {
         let metadata = ForecastCBulletinWaveRecordMetadata {
             location: Location::new(40.98, -71.12, "".into()),
-            model_run_date: Utc.with_ymd_and_hms(2020, 05, 19, 18, 0, 0).unwrap()
+            model_run_date: Utc.with_ymd_and_hms(2020, 05, 19, 18, 0, 0).unwrap(),
         };
 
         let row = "0118  3  2 04 142  2 07 163                                        ";

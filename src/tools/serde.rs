@@ -1,6 +1,6 @@
 use std::fmt;
 
-use serde::{Deserializer, de::Visitor};
+use serde::{de::Visitor, Deserializer};
 
 pub struct F64Visitor;
 

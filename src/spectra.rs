@@ -70,7 +70,7 @@ impl Spectra {
     }
 
     /// Given a swell partition map, return the spectra for all components
-    /// with the energy of all other component members set to 0 for each 
+    /// with the energy of all other component members set to 0 for each
     /// component
     pub fn split_from_components(
         source_spectra: &Spectra,

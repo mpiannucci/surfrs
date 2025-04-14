@@ -18,7 +18,7 @@ pub fn compute_contours<C: Fn(&Vec<f64>) -> Vec<f64>, F: Fn(&usize, &f64) -> Str
     height: usize,
     thresholds: &[f64],
     coordinate_transform: Option<C>,
-    label_format: Option<F>
+    label_format: Option<F>,
 ) -> Result<Vec<Feature>, ContourError> {
     let contour_builder = ContourBuilder::new(width as u32, height as u32, true);
 
@@ -52,18 +52,17 @@ pub fn compute_contours<C: Fn(&Vec<f64>) -> Vec<f64>, F: Fn(&usize, &f64) -> Str
                 .iter()
                 .map(|r| {
                     r.iter()
-                        .map(|c| {
-                            c.iter()
-                                .map(|point| coordinate_transform(point))
-                                .collect()
-                        })
+                        .map(|c| c.iter().map(|point| coordinate_transform(point)).collect())
                         .collect()
                 })
                 .collect();
             let new_polygon = Value::MultiPolygon(new_coordinates);
             f.geometry = Some(new_polygon.into());
 
-            f.set_property("normalized", (&c.threshold() - thresholds.first().unwrap()) / threshold_range);
+            f.set_property(
+                "normalized",
+                (&c.threshold() - thresholds.first().unwrap()) / threshold_range,
+            );
 
             if let Some(formatter) = label_format.as_ref() {
                 let label = formatter(&i, &c.threshold());
@@ -79,16 +78,16 @@ pub fn compute_contours<C: Fn(&Vec<f64>) -> Vec<f64>, F: Fn(&usize, &f64) -> Str
 
 pub fn compute_latlng_gridded_contours<F: Fn(&usize, &f64) -> String>(
     data: Vec<f64>,
-    lng_count: usize, 
+    lng_count: usize,
     lat_count: usize,
-    lng_start: f64, 
-    lng_end: f64, 
-    lat_start: f64, 
-    lat_end: f64, 
+    lng_start: f64,
+    lng_end: f64,
+    lat_start: f64,
+    lat_end: f64,
     threshold_min: Option<f64>,
     threshold_max: Option<f64>,
     threshold_count: Option<usize>,
-    label_format: Option<F>
+    label_format: Option<F>,
 ) -> Result<Vec<Feature>, ContourError> {
     let lng_step = (lng_end - lng_start) / lng_count as f64;
     let diff = normalize_longitude(lng_end) - normalize_longitude(lng_start);

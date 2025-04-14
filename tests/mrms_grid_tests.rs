@@ -25,15 +25,15 @@
 
 //     let collection = compute_latlng_gridded_contours(
 //         data,
-//         lng_count, 
-//         lat_count, 
-//         lng_start, 
-//         lat_start, 
-//         lng_end, 
-//         lat_end, 
-//         Some(0.0), 
-//         Some(80.0), 
-//         Some(16), 
+//         lng_count,
+//         lat_count,
+//         lng_start,
+//         lat_start,
+//         lng_end,
+//         lat_end,
+//         Some(0.0),
+//         Some(80.0),
+//         Some(16),
 //         Some(|_: &usize, value: &f64| {
 //             format!("{value:.0}")
 //         })

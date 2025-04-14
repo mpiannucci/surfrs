@@ -227,29 +227,27 @@ fn track_partitioned_swell_components() {
     assert!(spectral_records_iter.is_ok());
 
     let spectral_records = spectral_records_iter.unwrap().1.collect::<Vec<_>>();
-    let inputs = spectral_records.par_iter().map(|record| {
-        let swell_data = record.swell_data();
-        assert!(swell_data.is_ok());
+    let inputs = spectral_records
+        .par_iter()
+        .map(|record| {
+            let swell_data = record.swell_data();
+            assert!(swell_data.is_ok());
 
-        let swell_data = swell_data.unwrap();
-        let mut swell_components = swell_data.filtered_components();
-        swell_components.truncate(3);
-        let time = record.date;
-        (time, swell_components)
-    })
-    .collect::<Vec<_>>();
+            let swell_data = swell_data.unwrap();
+            let mut swell_components = swell_data.filtered_components();
+            swell_components.truncate(3);
+            let time = record.date;
+            (time, swell_components)
+        })
+        .collect::<Vec<_>>();
 
-    let tracked = track_partitions(
-        &inputs,
-        30.0,
-        1e6,
-    );
+    let tracked = track_partitions(&inputs, 30.0, 1e6);
 
     let mut partition_map: HashMap<usize, Vec<(DateTime<Utc>, Swell)>> = HashMap::new();
     for i in 0..tracked.len() {
         let timestep = &tracked[i];
         let timestamp = inputs[i].0;
-        for partition in timestep{
+        for partition in timestep {
             let Some(partition_id) = partition.partition else {
                 continue;
             };
@@ -258,7 +256,9 @@ fn track_partitioned_swell_components() {
             if partition_swells.is_none() {
                 partition_map.insert(partition_id, vec![(timestamp.clone(), partition.clone())]);
             } else {
-                partition_swells.unwrap().push((timestamp.clone(), partition.clone()));
+                partition_swells
+                    .unwrap()
+                    .push((timestamp.clone(), partition.clone()));
             }
         }
     }

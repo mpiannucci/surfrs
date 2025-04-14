@@ -6,8 +6,10 @@ use serde::{Deserialize, Serialize};
 use crate::{
     location::{normalize_latitude, normalize_longitude, Location},
     tools::{
-        contour::compute_latlng_gridded_contours, analysis::{bilerp, lerp},
-    }, units::{UnitSystem, Unit}
+        analysis::{bilerp, lerp},
+        contour::compute_latlng_gridded_contours,
+    },
+    units::{Unit, UnitSystem},
 };
 
 #[derive(Debug, Clone)]
@@ -34,7 +36,9 @@ impl TryFrom<&str> for ModelDataSource {
         } else if lowered.contains("nomads") || lowered.contains("noaa") {
             Ok(ModelDataSource::NOMADS)
         } else {
-            Err(ModelDataSourceError(format!("Unknown data source: {value}")))
+            Err(ModelDataSourceError(format!(
+                "Unknown data source: {value}"
+            )))
         }
     }
 }
@@ -92,11 +96,15 @@ impl ModelTimeOutputResolution {
     }
 
     pub fn indexes_for_hour_range(&self, start_hour: usize, end_hour: usize) -> Vec<usize> {
-        (start_hour..=end_hour).map(|h| self.index_for_hour(h)).collect()
+        (start_hour..=end_hour)
+            .map(|h| self.index_for_hour(h))
+            .collect()
     }
 
     pub fn hours_for_index_range(&self, start_index: usize, end_index: usize) -> Vec<usize> {
-        (start_index..=end_index).map(|h| self.hour_for_index(h)).collect()
+        (start_index..=end_index)
+            .map(|h| self.hour_for_index(h))
+            .collect()
     }
 
     pub fn hours_for_hour_range(&self, start_hour: usize, end_hour: usize) -> Vec<usize> {
@@ -136,12 +144,19 @@ pub trait NOAAModel {
         format!("{}.idx", self.create_url(source, output_hour, query_date))
     }
 
-    fn query_location_tolerance(&self, location: &Location, tolerance: &f64, message: &Message) -> Result<Vec<f64>, GribberishError> {
+    fn query_location_tolerance(
+        &self,
+        location: &Location,
+        tolerance: &f64,
+        message: &Message,
+    ) -> Result<Vec<f64>, GribberishError> {
         let projector = message.latlng_projector()?;
         let bbox = projector.bbox();
 
         if !location.within_bbox(&bbox) {
-            return Err(GribberishError::MessageError("location is not within the models bounds".into()));
+            return Err(GribberishError::MessageError(
+                "location is not within the models bounds".into(),
+            ));
         }
 
         let min_lat = location.relative_latitude() - *tolerance;
@@ -161,7 +176,10 @@ pub trait NOAAModel {
                 let row = i / lng.len();
                 let col = i % lng.len();
 
-                normalize_latitude(lat[row]) >= min_lat && normalize_latitude(lat[row]) <= max_lat && normalize_longitude(lng[col]) >= min_lng && normalize_longitude(lng[col]) <= max_lng
+                normalize_latitude(lat[row]) >= min_lat
+                    && normalize_latitude(lat[row]) <= max_lat
+                    && normalize_longitude(lng[col]) >= min_lng
+                    && normalize_longitude(lng[col]) <= max_lng
             })
             .map(|(_, v)| *v)
             .collect();
@@ -169,12 +187,18 @@ pub trait NOAAModel {
         Ok(data)
     }
 
-    fn query_location_data(&self, location: &Location, message: &Message) -> Result<f64, GribberishError> {
+    fn query_location_data(
+        &self,
+        location: &Location,
+        message: &Message,
+    ) -> Result<f64, GribberishError> {
         let projector = message.latlng_projector()?;
         let bbox = projector.bbox();
 
         if !location.within_bbox(&bbox) {
-            return Err(GribberishError::MessageError("location is not within the models bounds".into()));
+            return Err(GribberishError::MessageError(
+                "location is not within the models bounds".into(),
+            ));
         }
 
         // This only works for regular grids.
@@ -198,12 +222,18 @@ pub trait NOAAModel {
         Ok(value)
     }
 
-    fn interp_location_data(&self, location: &Location, message: &Message) -> Result<f64, GribberishError> {
+    fn interp_location_data(
+        &self,
+        location: &Location,
+        message: &Message,
+    ) -> Result<f64, GribberishError> {
         let projector = message.latlng_projector()?;
         let bbox = projector.bbox();
 
         if !location.within_bbox(&bbox) {
-            return Err(GribberishError::MessageError("location is not within the models bounds".into()));
+            return Err(GribberishError::MessageError(
+                "location is not within the models bounds".into(),
+            ));
         }
 
         // This only works for regular grids.
@@ -214,16 +244,20 @@ pub trait NOAAModel {
         let lng_step = (end.1 - start.1) / lng_size as f64;
         let lat_step = (end.0 - start.0) / lat_size as f64;
 
-        let lng_lower_index = ((location.relative_longitude() - normalize_longitude(start.1)) / lng_step)
+        let lng_lower_index = ((location.relative_longitude() - normalize_longitude(start.1))
+            / lng_step)
             .abs()
             .floor() as usize;
-        let lng_upper_index = ((location.relative_longitude() - normalize_longitude(start.1)) / lng_step)
+        let lng_upper_index = ((location.relative_longitude() - normalize_longitude(start.1))
+            / lng_step)
             .abs()
             .ceil() as usize;
-        let lat_lower_index = ((location.relative_latitude() - normalize_latitude(start.0)) / lat_step)
+        let lat_lower_index = ((location.relative_latitude() - normalize_latitude(start.0))
+            / lat_step)
             .abs()
             .floor() as usize;
-        let lat_upper_index = ((location.relative_latitude() - normalize_latitude(start.0)) / lat_step)
+        let lat_upper_index = ((location.relative_latitude() - normalize_latitude(start.0))
+            / lat_step)
             .abs()
             .ceil() as usize;
 
@@ -247,7 +281,18 @@ pub trait NOAAModel {
         } else if lng_lower_index == lat_lower_index {
             lerp(&a, &c, &location.latitude, &y0, &y1)
         } else {
-            bilerp(&a, &b, &c, &d, &location.longitude, &x0, &x1, &location.latitude, &y0, &y1)
+            bilerp(
+                &a,
+                &b,
+                &c,
+                &d,
+                &location.longitude,
+                &x0,
+                &x1,
+                &location.latitude,
+                &y0,
+                &y1,
+            )
         };
 
         Ok(value)
@@ -276,10 +321,7 @@ pub trait NOAAModel {
 
             let data = message.data()?;
             if unit != target {
-                data
-                    .into_iter()
-                    .map(|v| unit.convert(v, &target))
-                    .collect()
+                data.into_iter().map(|v| unit.convert(v, &target)).collect()
             } else {
                 data
             }
@@ -300,15 +342,11 @@ pub trait NOAAModel {
             threshold_count,
             Some(|index: &usize, value: &f64| {
                 if index % 2 > 0 {
-                    format!(
-                        "{:.0}{}",
-                        value.round(),
-                        unit_abbrev
-                    )
+                    format!("{:.0}{}", value.round(), unit_abbrev)
                 } else {
                     "".to_string()
                 }
-            })
+            }),
         )
         .map_err(|_| GribberishError::MessageError("Failed to contour data".into()))
     }
@@ -322,32 +360,77 @@ mod test {
 
     #[test]
     fn test_model_source_parse() {
-        assert_eq!(ModelDataSource::try_from("NOMADS").unwrap(), ModelDataSource::NOMADS);
-        assert_eq!(ModelDataSource::try_from("noaa").unwrap(), ModelDataSource::NOMADS);
-        assert_eq!(ModelDataSource::try_from("NODDAWS").unwrap(), ModelDataSource::NODDAWS);
-        assert_eq!(ModelDataSource::try_from("noddgcp").unwrap(), ModelDataSource::NODDGCP);
-        assert_eq!(ModelDataSource::try_from("noddgcs").unwrap(), ModelDataSource::NODDGCP);
+        assert_eq!(
+            ModelDataSource::try_from("NOMADS").unwrap(),
+            ModelDataSource::NOMADS
+        );
+        assert_eq!(
+            ModelDataSource::try_from("noaa").unwrap(),
+            ModelDataSource::NOMADS
+        );
+        assert_eq!(
+            ModelDataSource::try_from("NODDAWS").unwrap(),
+            ModelDataSource::NODDAWS
+        );
+        assert_eq!(
+            ModelDataSource::try_from("noddgcp").unwrap(),
+            ModelDataSource::NODDGCP
+        );
+        assert_eq!(
+            ModelDataSource::try_from("noddgcs").unwrap(),
+            ModelDataSource::NODDGCP
+        );
         assert!(ModelDataSource::try_from("unknown").is_err());
     }
 
     #[test]
     fn test_model_output_time_index_to_hour() {
         assert_eq!(ModelTimeOutputResolution::Hourly.hour_for_index(140), 140);
-        assert_eq!(ModelTimeOutputResolution::ThreeHourly.hour_for_index(20), 60);
-        assert_eq!(ModelTimeOutputResolution::HybridHourlyThreeHourly(120).hour_for_index(90), 90);
-        assert_eq!(ModelTimeOutputResolution::HybridHourlyThreeHourly(120).hour_for_index(130), 150);
-        assert_eq!(ModelTimeOutputResolution::HybridThreeHourlySixHourly(240).hour_for_index(18), 54);
-        assert_eq!(ModelTimeOutputResolution::HybridThreeHourlySixHourly(240).hour_for_index(104), 384);
+        assert_eq!(
+            ModelTimeOutputResolution::ThreeHourly.hour_for_index(20),
+            60
+        );
+        assert_eq!(
+            ModelTimeOutputResolution::HybridHourlyThreeHourly(120).hour_for_index(90),
+            90
+        );
+        assert_eq!(
+            ModelTimeOutputResolution::HybridHourlyThreeHourly(120).hour_for_index(130),
+            150
+        );
+        assert_eq!(
+            ModelTimeOutputResolution::HybridThreeHourlySixHourly(240).hour_for_index(18),
+            54
+        );
+        assert_eq!(
+            ModelTimeOutputResolution::HybridThreeHourlySixHourly(240).hour_for_index(104),
+            384
+        );
     }
 
     #[test]
     fn test_model_output_time_hour_to_index() {
         assert_eq!(ModelTimeOutputResolution::Hourly.index_for_hour(140), 140);
-        assert_eq!(ModelTimeOutputResolution::ThreeHourly.index_for_hour(63), 21);
-        assert_eq!(ModelTimeOutputResolution::HybridHourlyThreeHourly(120).index_for_hour(90), 90);
-        assert_eq!(ModelTimeOutputResolution::HybridHourlyThreeHourly(120).index_for_hour(132), 124);
-        assert_eq!(ModelTimeOutputResolution::HybridThreeHourlySixHourly(240).index_for_hour(240), 80);
-        assert_eq!(ModelTimeOutputResolution::HybridThreeHourlySixHourly(240).index_for_hour(384), 104);
+        assert_eq!(
+            ModelTimeOutputResolution::ThreeHourly.index_for_hour(63),
+            21
+        );
+        assert_eq!(
+            ModelTimeOutputResolution::HybridHourlyThreeHourly(120).index_for_hour(90),
+            90
+        );
+        assert_eq!(
+            ModelTimeOutputResolution::HybridHourlyThreeHourly(120).index_for_hour(132),
+            124
+        );
+        assert_eq!(
+            ModelTimeOutputResolution::HybridThreeHourlySixHourly(240).index_for_hour(240),
+            80
+        );
+        assert_eq!(
+            ModelTimeOutputResolution::HybridThreeHourlySixHourly(240).index_for_hour(384),
+            104
+        );
     }
 
     #[test]
@@ -357,9 +440,22 @@ mod test {
         let three_hourly_hours = [117, 120, 123, 126];
         let hybrid_three_hourly = [234, 237, 240, 246, 252, 258];
 
-        assert_eq!(ModelTimeOutputResolution::Hourly.hours_for_hour_range(117, 126), hourly_hours);
-        assert_eq!(ModelTimeOutputResolution::ThreeHourly.hours_for_hour_range(117, 126), three_hourly_hours);
-        assert_eq!(ModelTimeOutputResolution::HybridHourlyThreeHourly(120).hours_for_hour_range(117, 126), hybrid_hourly);
-        assert_eq!(ModelTimeOutputResolution::HybridThreeHourlySixHourly(240).hours_for_hour_range(234, 258), hybrid_three_hourly);
+        assert_eq!(
+            ModelTimeOutputResolution::Hourly.hours_for_hour_range(117, 126),
+            hourly_hours
+        );
+        assert_eq!(
+            ModelTimeOutputResolution::ThreeHourly.hours_for_hour_range(117, 126),
+            three_hourly_hours
+        );
+        assert_eq!(
+            ModelTimeOutputResolution::HybridHourlyThreeHourly(120).hours_for_hour_range(117, 126),
+            hybrid_hourly
+        );
+        assert_eq!(
+            ModelTimeOutputResolution::HybridThreeHourlySixHourly(240)
+                .hours_for_hour_range(234, 258),
+            hybrid_three_hourly
+        );
     }
 }

@@ -1,6 +1,11 @@
 use std::fs;
 
-use surfrs::{data::nws_weather_forecast_data_record::{NwsWeatherForecastDataRecordCollection, NwsGridPointData}, units::{Unit, CardinalDirection}};
+use surfrs::{
+    data::nws_weather_forecast_data_record::{
+        NwsGridPointData, NwsWeatherForecastDataRecordCollection,
+    },
+    units::{CardinalDirection, Unit},
+};
 
 fn read_mock_data(name: &str) -> String {
     fs::read_to_string(format!("mock/{}", name)).unwrap()
@@ -42,6 +47,10 @@ fn read_hourly_forecast_data() {
     assert_eq!(wind_speed.unit, Unit::MilesPerHour);
 
     let wind_direction = &records[0].wind_direction;
-    let wind_direction_value = wind_direction.value.as_ref().map(|d| d.cardinal_direction()).unwrap_or(&CardinalDirection::Invalid);
+    let wind_direction_value = wind_direction
+        .value
+        .as_ref()
+        .map(|d| d.cardinal_direction())
+        .unwrap_or(&CardinalDirection::Invalid);
     assert!(wind_direction_value == &CardinalDirection::East);
 }

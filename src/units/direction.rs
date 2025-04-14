@@ -5,12 +5,12 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use super::CardinalDirection;
-use super::Unit;
 use super::DataParseError;
+use super::Unit;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DirectionConvention {
-    From, 
+    From,
     Towards,
     Met,
 }
@@ -49,9 +49,9 @@ impl Direction {
 
     pub fn from_radians(radians: f64) -> Direction {
         let degrees = radians.to_degrees() as i32;
-        Direction { 
-            direction: CardinalDirection::from_degrees(&degrees), 
-            degrees
+        Direction {
+            direction: CardinalDirection::from_degrees(&degrees),
+            degrees,
         }
     }
 

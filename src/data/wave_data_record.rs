@@ -44,20 +44,16 @@ impl ParseableDataRecord for WaveDataRecord {
 
         Ok(WaveDataRecord {
             date,
-            wave_height: DimensionalData::from_raw_data(
-                row[5],
-                "wave height".into(),
-                Unit::Meters,
-            ),
+            wave_height: DimensionalData::from_raw_data(row[5], "wave height".into(), Unit::Meters),
             swell_wave_height: DimensionalData::from_raw_data(
                 row[6],
                 "swell wave height".into(),
-                Unit::Meters
+                Unit::Meters,
             ),
             swell_wave_period: DimensionalData::from_raw_data(
                 row[7],
                 "swell period".into(),
-                Unit::Seconds
+                Unit::Seconds,
             ),
             wind_wave_height: DimensionalData::from_raw_data(
                 row[8],
@@ -71,7 +67,7 @@ impl ParseableDataRecord for WaveDataRecord {
             ),
             swell_wave_direction: DimensionalData::from_raw_data(
                 row[10],
-                "swell wave direction".into(), 
+                "swell wave direction".into(),
                 Unit::Degrees,
             ),
             wind_wave_direction: DimensionalData::from_raw_data(

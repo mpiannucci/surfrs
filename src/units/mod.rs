@@ -31,7 +31,6 @@ pub enum Unit {
     Percent,
     KiloJoules,
     Unknown,
-
 }
 
 impl Unit {
@@ -92,13 +91,17 @@ impl From<&str> for Unit {
             "mm" | "millimeters" | "millimeter" => Unit::Millimeters,
             "m" | "meters" | "meter" | "wmounit:m" => Unit::Meters,
             "m/s" | "mps" | "ms-1" | "meterspersecond" | "meterpersecond" => Unit::MetersPerSecond,
-            "°c" | "degcelsius" | "degreecelsius" | "degreescelsius" | "wmounit:degc" => Unit::Celsius,
+            "°c" | "degcelsius" | "degreecelsius" | "degreescelsius" | "wmounit:degc" => {
+                Unit::Celsius
+            }
             "pa" | "pascals" | "pascal" => Unit::Pascal,
             "hpa" | "hectapascals" | "hectapascal" => Unit::HectaPascal,
             "in" | "inches" | "inch" => Unit::Inches,
             "ft" | "feet" | "foot" => Unit::Feet,
             "mph" | "m/h" | "mh-1" | "milesperhour" => Unit::MilesPerHour,
-            "°f" | "f" | "degfahrenheit" | "degreesfahrenheit" | "degreefahrenheit" => Unit::Fahrenheit,
+            "°f" | "f" | "degfahrenheit" | "degreesfahrenheit" | "degreefahrenheit" => {
+                Unit::Fahrenheit
+            }
             "inhg" | "inches mercury" => Unit::InchesMercury,
             "kt" | "kts" | "knots" | "knot" => Unit::Knots,
             "k" | "kelvin" => Unit::Kelvin,
@@ -122,96 +125,70 @@ impl Display for Unit {
 impl Unit {
     pub fn convert(&self, value: f64, target: &Unit) -> f64 {
         match self {
-            Unit::Millimeters => {
-                match target {
-                    Unit::Meters => value * 0.001,
-                    Unit::Inches => value / 25.4,
-                    _ => value
-                }
+            Unit::Millimeters => match target {
+                Unit::Meters => value * 0.001,
+                Unit::Inches => value / 25.4,
+                _ => value,
             },
-            Unit::Meters => {
-                match target {
-                    Unit::Millimeters => value * 1000.0, 
-                    Unit::Feet => value * 3.281,
-                    _ => value
-                }
+            Unit::Meters => match target {
+                Unit::Millimeters => value * 1000.0,
+                Unit::Feet => value * 3.281,
+                _ => value,
             },
-            Unit::MetersPerSecond => {
-                match target {
-                    Unit::MilesPerHour => value * 2.237, 
-                    Unit::Knots => value * 1.944,
-                    _ => value
-                }
+            Unit::MetersPerSecond => match target {
+                Unit::MilesPerHour => value * 2.237,
+                Unit::Knots => value * 1.944,
+                _ => value,
             },
-            Unit::Celsius => {
-                match target {
-                    Unit::Fahrenheit => value * (9.0 / 5.0) + 32.0, 
-                    Unit::Kelvin => value + 273.0,
-                    _ => value
-                }
+            Unit::Celsius => match target {
+                Unit::Fahrenheit => value * (9.0 / 5.0) + 32.0,
+                Unit::Kelvin => value + 273.0,
+                _ => value,
             },
-            Unit::Pascal => {
-                match target {
-                    Unit::HectaPascal => value / 100.0, 
-                    _ => value
-                }
+            Unit::Pascal => match target {
+                Unit::HectaPascal => value / 100.0,
+                _ => value,
             },
-            Unit::HectaPascal => {
-                match target {
-                    Unit::Pascal => value * 100.0,
-                    Unit::InchesMercury => value / 33.8638,
-                    _ => value
-                }
+            Unit::HectaPascal => match target {
+                Unit::Pascal => value * 100.0,
+                Unit::InchesMercury => value / 33.8638,
+                _ => value,
             },
-            Unit::Inches => {
-                match target {
-                    Unit::Feet => value / 12.0,
-                    Unit::Millimeters => value * 25.4,
-                    _ => value
-                }
+            Unit::Inches => match target {
+                Unit::Feet => value / 12.0,
+                Unit::Millimeters => value * 25.4,
+                _ => value,
             },
-            Unit::Feet => {
-                match target {
-                    Unit::Inches => value * 12.0, 
-                    Unit::Meters => value / 3.281,
-                    _ => value
-                }
+            Unit::Feet => match target {
+                Unit::Inches => value * 12.0,
+                Unit::Meters => value / 3.281,
+                _ => value,
             },
-            Unit::MilesPerHour => {
-                match target {
-                    Unit::MetersPerSecond => value / 2.237, 
-                    Unit::Knots => value / 1.15,
-                    _ => value
-                }
+            Unit::MilesPerHour => match target {
+                Unit::MetersPerSecond => value / 2.237,
+                Unit::Knots => value / 1.15,
+                _ => value,
             },
-            Unit::Fahrenheit => {
-                match target {
-                    Unit::Celsius => value - 32.0 * (5.0 / 9.0),
-                    Unit::Kelvin => (value + 459.67) * (5.0 / 9.0),
-                    _ => value
-                }
+            Unit::Fahrenheit => match target {
+                Unit::Celsius => value - 32.0 * (5.0 / 9.0),
+                Unit::Kelvin => (value + 459.67) * (5.0 / 9.0),
+                _ => value,
             },
-            Unit::InchesMercury => {
-                match target {
-                    Unit::HectaPascal => value * 33.8638,
-                    _ => value
-                }
+            Unit::InchesMercury => match target {
+                Unit::HectaPascal => value * 33.8638,
+                _ => value,
             },
-            Unit::Knots => {
-                match target {
-                    Unit::MetersPerSecond => value * 0.514, 
-                    Unit::MilesPerHour => value * 1.15,
-                    _ => value
-                }
+            Unit::Knots => match target {
+                Unit::MetersPerSecond => value * 0.514,
+                Unit::MilesPerHour => value * 1.15,
+                _ => value,
             },
-            Unit::Kelvin => {
-                match target {
-                    Unit::Celsius => value - 273.0, 
-                    Unit::Fahrenheit => value * (9.0 / 5.0) - 459.67,
-                    _ => value
-                }
+            Unit::Kelvin => match target {
+                Unit::Celsius => value - 273.0,
+                Unit::Fahrenheit => value * (9.0 / 5.0) - 459.67,
+                _ => value,
             },
-            _ => value
+            _ => value,
         }
     }
 
@@ -263,7 +240,7 @@ impl Unit {
             },
             Unit::Knots => match target_system {
                 UnitSystem::Metric => Unit::MetersPerSecond,
-                UnitSystem::English => Unit::MilesPerHour, 
+                UnitSystem::English => Unit::MilesPerHour,
                 _ => self.clone(),
             },
             Unit::Kelvin => match target_system {
@@ -309,7 +286,7 @@ impl Display for UnitSystem {
             UnitSystem::English => "english",
             UnitSystem::Knots => "knots",
             UnitSystem::Kelvin => "kelvin",
-        }; 
+        };
 
         write!(f, "{as_str}")
     }

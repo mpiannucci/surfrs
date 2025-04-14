@@ -4,6 +4,6 @@ pub mod dap;
 pub mod date;
 pub mod linspace;
 pub mod math;
-pub mod waves;
-pub mod vector;
 pub mod serde;
+pub mod vector;
+pub mod waves;

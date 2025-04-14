@@ -21,20 +21,20 @@ pub fn is_some_missing(v: f64, missing: f64) -> Option<f64> {
 
 #[cfg(test)]
 mod tests {
-    use super::{scalar_from_uv, is_some_missing};
+    use super::{is_some_missing, scalar_from_uv};
 
-	#[test]
-	fn test_scaler_from_uv() {
-        let u = -3.79485; 
+    #[test]
+    fn test_scaler_from_uv() {
+        let u = -3.79485;
         let v = 0.55966;
         let speed_control = 3.8359;
         // This direction is towards, we are computing from
         let direction_control = -81.61058f64.round() as i32 + 180;
 
         let (speed, direction) = scalar_from_uv(u, v);
-        assert!((speed - speed_control).abs() < 0.0001); 
-        assert_eq!(direction, direction_control); 
-	}
+        assert!((speed - speed_control).abs() < 0.0001);
+        assert_eq!(direction, direction_control);
+    }
 
     #[test]
     fn test_missing_value() {

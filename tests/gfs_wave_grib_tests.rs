@@ -50,7 +50,13 @@ fn extract_atlantic_wave_data_record() {
         .find(|m| m.variable_abbrev().unwrap_or("".into()) == "HTSGW")
         .unwrap();
     let wave_features = model
-        .contour_data(wave_message, Some(0.0), Some(12.0), Some(24), Some(surfrs::units::UnitSystem::English))
+        .contour_data(
+            wave_message,
+            Some(0.0),
+            Some(12.0),
+            Some(24),
+            Some(surfrs::units::UnitSystem::English),
+        )
         .unwrap();
     let collection = FeatureCollection {
         bbox: None,

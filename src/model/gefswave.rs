@@ -1,6 +1,6 @@
 use chrono::prelude::*;
 
-use crate::tools::date::{closest_gfs_model_gridded_datetime};
+use crate::tools::date::closest_gfs_model_gridded_datetime;
 
 use super::{ModelDataSource, ModelTimeOutputResolution, NOAAModel};
 
@@ -81,7 +81,7 @@ impl NOAAModel for GEFSWaveModel {
 mod tests {
     use chrono::{DateTime, TimeZone, Utc};
 
-    use super::{ModelDataSource, NOAAModel, GEFSWaveModel};
+    use super::{GEFSWaveModel, ModelDataSource, NOAAModel};
 
     #[test]
     fn test_gefs_wave_url() {
