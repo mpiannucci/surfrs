@@ -2,6 +2,7 @@ pub mod analysis;
 pub mod contour;
 pub mod dap;
 pub mod date;
+pub mod interpolation;
 pub mod linspace;
 pub mod math;
 pub mod serde;

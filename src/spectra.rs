@@ -7,6 +7,7 @@ use crate::{
     tools::{
         analysis::{bilerp, lerp, watershed, WatershedError},
         contour::{compute_contours, ContourError},
+        interpolation::{circular_pchip_interpolate, PchipInterpolator},
         linspace::linspace,
         vector::diff,
         waves::pt_mean,
@@ -481,5 +482,118 @@ impl Spectra {
             features,
             foreign_members: None,
         }))
+    }
+
+    /// Interpolate spectra to a new frequency/direction grid.
+    ///
+    /// Uses log-frequency PCHIP interpolation and circular direction
+    /// interpolation to preserve energy distribution and handle the
+    /// periodic nature of directions.
+    ///
+    /// # Arguments
+    /// * `target_freq` - Target frequency bins in Hz (must be sorted ascending)
+    /// * `target_dir` - Target direction bins in degrees (must be sorted ascending, 0-360 range)
+    ///
+    /// # Returns
+    /// A new `Spectra` with energy interpolated to the target grid.
+    ///
+    /// # Behavior
+    /// - Frequencies below source minimum are zero-filled
+    /// - Frequencies above source maximum use boundary clamping
+    /// - Directions use circular interpolation (360° wraps to 0°)
+    /// - Negative energy values are clamped to zero
+    /// - Source directions are automatically sorted before interpolation
+    pub fn interpolate_to_grid(&self, target_freq: &[f64], target_dir: &[f64]) -> Spectra {
+        let nk_src = self.nk();
+        let nth_src = self.nth();
+        let nk_tgt = target_freq.len();
+        let nth_tgt = target_dir.len();
+
+        // Step 1: Get source directions in degrees and sort them
+        let src_dir_deg = self.direction_deg();
+
+        // Create sort indices
+        let mut sort_indices: Vec<usize> = (0..nth_src).collect();
+        sort_indices.sort_by(|&a, &b| {
+            src_dir_deg[a]
+                .partial_cmp(&src_dir_deg[b])
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        // Apply sort to directions
+        let sorted_dir: Vec<f64> = sort_indices.iter().map(|&i| src_dir_deg[i]).collect();
+
+        // Reorder energy by sorted direction indices
+        // Energy layout: energy[ik + ith * nk] where ik=freq_idx, ith=dir_idx
+        let mut sorted_energy = vec![0.0; nk_src * nth_src];
+        for ik in 0..nk_src {
+            for (new_ith, &old_ith) in sort_indices.iter().enumerate() {
+                let old_idx = ik + old_ith * nk_src;
+                let new_idx = ik + new_ith * nk_src;
+                sorted_energy[new_idx] = self.energy[old_idx];
+            }
+        }
+
+        // Step 2: Transform frequencies to log-space
+        let log_src_freq: Vec<f64> = self.frequency.iter().map(|f| f.ln()).collect();
+        let log_tgt_freq: Vec<f64> = target_freq.iter().map(|f| f.ln()).collect();
+
+        // Step 3: Interpolate along frequency for each source direction
+        // Result shape: (nk_tgt, nth_src) stored as freq_interp[ik_tgt + ith_src * nk_tgt]
+        let mut freq_interp = vec![0.0; nk_tgt * nth_src];
+
+        let src_freq_min = self.frequency[0];
+
+        for ith in 0..nth_src {
+            // Extract energy slice for this direction
+            let energy_slice: Vec<f64> = (0..nk_src)
+                .map(|ik| sorted_energy[ik + ith * nk_src])
+                .collect();
+
+            // Create PCHIP interpolator in log-freq space
+            let pchip = PchipInterpolator::new(&log_src_freq, &energy_slice);
+
+            // Interpolate to target frequencies
+            for (ik_tgt, &log_f) in log_tgt_freq.iter().enumerate() {
+                let f = log_f.exp();
+                let value = if f < src_freq_min {
+                    // Below source range - zero fill
+                    0.0
+                } else {
+                    pchip.interpolate(log_f)
+                };
+                freq_interp[ik_tgt + ith * nk_tgt] = value;
+            }
+        }
+
+        // Step 4: Interpolate along direction (circular) for each target frequency
+        // Result shape: (nk_tgt, nth_tgt) stored as result[ik_tgt + ith_tgt * nk_tgt]
+        let mut result_energy = vec![0.0; nk_tgt * nth_tgt];
+
+        for ik_tgt in 0..nk_tgt {
+            // Extract values along direction for this frequency
+            let values: Vec<f64> = (0..nth_src)
+                .map(|ith| freq_interp[ik_tgt + ith * nk_tgt])
+                .collect();
+
+            // Interpolate to each target direction
+            for (ith_tgt, &tgt_d) in target_dir.iter().enumerate() {
+                let value = circular_pchip_interpolate(&sorted_dir, &values, tgt_d);
+                let idx = ik_tgt + ith_tgt * nk_tgt;
+                // Clamp negative values to zero
+                result_energy[idx] = value.max(0.0);
+            }
+        }
+
+        // Step 5: Create result Spectra
+        // Convert target directions from degrees to radians
+        let target_dir_rad: Vec<f64> = target_dir.iter().map(|d| d.to_radians()).collect();
+
+        Spectra::new(
+            target_freq.to_vec(),
+            target_dir_rad,
+            result_energy,
+            DirectionConvention::From,
+        )
     }
 }
