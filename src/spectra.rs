@@ -21,6 +21,17 @@ pub enum SpectralAxis {
     Direction,
 }
 
+/// Pre-computed mapping from cartesian pixel indices to spectral indices.
+/// Used to accelerate repeated calls to `project_cartesian_with_map` when
+/// the frequency/direction grid remains constant across multiple spectra.
+#[derive(Clone, Debug)]
+pub struct CartesianProjectionMap {
+    /// The size of the cartesian projection (size x size pixels)
+    pub size: usize,
+    /// Mapping from pixel index to spectral index (None for pixels outside the valid region)
+    pub indices: Vec<Option<usize>>,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Spectra {
     /// Frequency bins in hz
@@ -382,26 +393,26 @@ impl Spectra {
 
     /// Projects the energy data to cartesian coordinates
     ///
+    /// Pre-compute the cartesian projection mapping from pixel indices to spectral indices.
+    /// This mapping can be reused across multiple calls to `project_cartesian_with_map` when
+    /// projecting different data (e.g., energy, partitions) that share the same frequency/direction grid.
+    ///
     /// # Arguments
-    /// * `target` - The target energy data to project. This is usually the energy data of the swell component,
-    ///             but can be any data of the same size as the spectra
     /// * `size` - The size of the cartesian projection in pixels
     /// * `period_threshold` - The maximum period to project. This is used to filter out the longer period swell
     /// * `exp_scale` - The exponent to use for scaling the period. This is used to make the longer period swell more visible
     ///
     /// # Returns
-    /// * A vector of the projected energy data
-    pub fn project_cartesian(
+    /// * A `CartesianProjectionMap` containing the pre-computed pixel-to-spectral-index mapping
+    pub fn compute_cartesian_projection_map(
         &self,
-        target: &[f64],
         size: usize,
         period_threshold: Option<f64>,
         exp_scale: Option<f64>,
-    ) -> Vec<f64> {
+    ) -> CartesianProjectionMap {
         let directions = self.direction_deg();
         let periods = self.period();
 
-        // If 0, 0 is the upper left corner
         let origin = (size / 2, size / 2);
         let max_period = periods
             .iter()
@@ -430,31 +441,66 @@ impl Spectra {
                 let _ = kdtree.add(p, i);
             });
 
-        // Create a new image of the specified sizing, and map the pixels to the
-        // energy data using the kdtree representation
-        let mut cartesian = vec![0.0; size * size];
-        cartesian.iter_mut().enumerate().for_each(|(i, ce)| {
-            let x = (i % size) as f64;
-            let y = (i / size) as f64;
-            let p = [x, y];
+        // Pre-compute the mapping from each pixel to its nearest spectral index
+        let indices: Vec<Option<usize>> = (0..size * size)
+            .map(|i| {
+                let x = (i % size) as f64;
+                let y = (i / size) as f64;
+                let p = [x, y];
 
-            let r = y.atan2(x);
-            if r > size as f64 {
-                *ce = f64::NAN;
-                return;
-            }
+                let r = y.atan2(x);
+                if r > size as f64 {
+                    return None;
+                }
 
-            let Ok(nearest) = kdtree.nearest(&p, 1, &squared_euclidean) else {
-                *ce = f64::NAN;
-                return;
-            };
+                kdtree
+                    .nearest(&p, 1, &squared_euclidean)
+                    .ok()
+                    .and_then(|nearest| nearest.first().map(|(_, idx)| **idx))
+            })
+            .collect();
 
-            let nearest_i = nearest[0].1;
-            let nearest_value = target[*nearest_i];
-            *ce = nearest_value;
-        });
+        CartesianProjectionMap { size, indices }
+    }
 
-        cartesian
+    /// Project target data to cartesian coordinates using a pre-computed projection map.
+    /// This is much faster than `project_cartesian` when projecting multiple datasets
+    /// that share the same frequency/direction grid.
+    ///
+    /// # Arguments
+    /// * `target` - The target data to project (must be same size as spectra energy)
+    /// * `map` - The pre-computed projection map from `compute_cartesian_projection_map`
+    ///
+    /// # Returns
+    /// * A vector of the projected data
+    pub fn project_cartesian_with_map(&self, target: &[f64], map: &CartesianProjectionMap) -> Vec<f64> {
+        map.indices
+            .iter()
+            .map(|idx| match idx {
+                Some(i) => target[*i],
+                None => f64::NAN,
+            })
+            .collect()
+    }
+
+    /// # Arguments
+    /// * `target` - The target energy data to project. This is usually the energy data of the swell component,
+    ///             but can be any data of the same size as the spectra
+    /// * `size` - The size of the cartesian projection in pixels
+    /// * `period_threshold` - The maximum period to project. This is used to filter out the longer period swell
+    /// * `exp_scale` - The exponent to use for scaling the period. This is used to make the longer period swell more visible
+    ///
+    /// # Returns
+    /// * A vector of the projected energy data
+    pub fn project_cartesian(
+        &self,
+        target: &[f64],
+        size: usize,
+        period_threshold: Option<f64>,
+        exp_scale: Option<f64>,
+    ) -> Vec<f64> {
+        let map = self.compute_cartesian_projection_map(size, period_threshold, exp_scale);
+        self.project_cartesian_with_map(target, &map)
     }
 
     /// Contours
