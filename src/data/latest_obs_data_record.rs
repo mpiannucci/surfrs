@@ -51,18 +51,23 @@ impl ParseableDataRecord for LatestObsDataRecord {
         row: &Vec<&str>,
     ) -> Result<LatestObsDataRecord, DataRecordParsingError> {
         let station_id = row[0].to_string();
-        let latitude = row[1].parse().unwrap();
-        let longitude = row[2].parse().unwrap();
+        let latitude = row[1]
+            .parse()
+            .map_err(|_| DataRecordParsingError::ParseFailure(format!("invalid latitude: {}", row[1])))?;
+        let longitude = row[2]
+            .parse()
+            .map_err(|_| DataRecordParsingError::ParseFailure(format!("invalid longitude: {}", row[2])))?;
         let date = Utc
             .with_ymd_and_hms(
-                row[3].parse().unwrap(),
-                row[4].parse().unwrap(),
-                row[5].parse().unwrap(),
-                row[6].parse().unwrap(),
-                row[7].parse().unwrap(),
+                row[3].parse().map_err(|_| DataRecordParsingError::ParseFailure(format!("invalid year: {}", row[3])))?,
+                row[4].parse().map_err(|_| DataRecordParsingError::ParseFailure(format!("invalid month: {}", row[4])))?,
+                row[5].parse().map_err(|_| DataRecordParsingError::ParseFailure(format!("invalid day: {}", row[5])))?,
+                row[6].parse().map_err(|_| DataRecordParsingError::ParseFailure(format!("invalid hour: {}", row[6])))?,
+                row[7].parse().map_err(|_| DataRecordParsingError::ParseFailure(format!("invalid minute: {}", row[7])))?,
                 0,
             )
-            .unwrap();
+            .single()
+            .ok_or_else(|| DataRecordParsingError::ParseFailure("invalid date".to_string()))?;
 
         Ok(LatestObsDataRecord {
             station_id,
