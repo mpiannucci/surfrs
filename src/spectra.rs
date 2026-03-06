@@ -473,7 +473,11 @@ impl Spectra {
     ///
     /// # Returns
     /// * A vector of the projected data
-    pub fn project_cartesian_with_map(&self, target: &[f64], map: &CartesianProjectionMap) -> Vec<f64> {
+    pub fn project_cartesian_with_map(
+        &self,
+        target: &[f64],
+        map: &CartesianProjectionMap,
+    ) -> Vec<f64> {
         map.indices
             .iter()
             .map(|idx| match idx {

@@ -51,19 +51,29 @@ impl ParseableDataRecord for LatestObsDataRecord {
         row: &Vec<&str>,
     ) -> Result<LatestObsDataRecord, DataRecordParsingError> {
         let station_id = row[0].to_string();
-        let latitude = row[1]
-            .parse()
-            .map_err(|_| DataRecordParsingError::ParseFailure(format!("invalid latitude: {}", row[1])))?;
-        let longitude = row[2]
-            .parse()
-            .map_err(|_| DataRecordParsingError::ParseFailure(format!("invalid longitude: {}", row[2])))?;
+        let latitude = row[1].parse().map_err(|_| {
+            DataRecordParsingError::ParseFailure(format!("invalid latitude: {}", row[1]))
+        })?;
+        let longitude = row[2].parse().map_err(|_| {
+            DataRecordParsingError::ParseFailure(format!("invalid longitude: {}", row[2]))
+        })?;
         let date = Utc
             .with_ymd_and_hms(
-                row[3].parse().map_err(|_| DataRecordParsingError::ParseFailure(format!("invalid year: {}", row[3])))?,
-                row[4].parse().map_err(|_| DataRecordParsingError::ParseFailure(format!("invalid month: {}", row[4])))?,
-                row[5].parse().map_err(|_| DataRecordParsingError::ParseFailure(format!("invalid day: {}", row[5])))?,
-                row[6].parse().map_err(|_| DataRecordParsingError::ParseFailure(format!("invalid hour: {}", row[6])))?,
-                row[7].parse().map_err(|_| DataRecordParsingError::ParseFailure(format!("invalid minute: {}", row[7])))?,
+                row[3].parse().map_err(|_| {
+                    DataRecordParsingError::ParseFailure(format!("invalid year: {}", row[3]))
+                })?,
+                row[4].parse().map_err(|_| {
+                    DataRecordParsingError::ParseFailure(format!("invalid month: {}", row[4]))
+                })?,
+                row[5].parse().map_err(|_| {
+                    DataRecordParsingError::ParseFailure(format!("invalid day: {}", row[5]))
+                })?,
+                row[6].parse().map_err(|_| {
+                    DataRecordParsingError::ParseFailure(format!("invalid hour: {}", row[6]))
+                })?,
+                row[7].parse().map_err(|_| {
+                    DataRecordParsingError::ParseFailure(format!("invalid minute: {}", row[7]))
+                })?,
                 0,
             )
             .single()

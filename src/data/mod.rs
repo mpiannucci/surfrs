@@ -1,6 +1,8 @@
 pub mod directional_spectral_wave_data_record;
 pub mod forecast_cbulletin_wave_data_record;
 pub mod forecast_spectral_wave_data_record;
+pub mod gefs_bulletin_wave_data_record;
+pub mod gefs_timeseries_wave_data_record;
 pub mod gfs_wave_grib_point_data_record;
 pub mod grib_index_record;
 pub mod latest_obs_data_record;

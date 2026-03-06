@@ -58,7 +58,8 @@ impl PchipInterpolator {
 
         // Interior slopes
         for i in 1..n - 1 {
-            if delta[i - 1].signum() != delta[i].signum() || delta[i - 1] == 0.0 || delta[i] == 0.0 {
+            if delta[i - 1].signum() != delta[i].signum() || delta[i - 1] == 0.0 || delta[i] == 0.0
+            {
                 // Different signs or zero - set slope to zero for monotonicity
                 slopes[i] = 0.0;
             } else {
@@ -165,11 +166,7 @@ impl PchipInterpolator {
 ///
 /// # Returns
 /// Interpolated value at target_dir using circular PCHIP interpolation
-pub fn circular_pchip_interpolate(
-    source_dir: &[f64],
-    values: &[f64],
-    target_dir: f64,
-) -> f64 {
+pub fn circular_pchip_interpolate(source_dir: &[f64], values: &[f64], target_dir: f64) -> f64 {
     assert_eq!(source_dir.len(), values.len());
     let n = source_dir.len();
 
@@ -229,8 +226,13 @@ mod tests {
         let pchip = PchipInterpolator::new(&x, &y);
 
         for i in 0..x.len() {
-            assert!((pchip.interpolate(x[i]) - y[i]).abs() < 1e-10,
-                "Failed at knot {}: expected {}, got {}", i, y[i], pchip.interpolate(x[i]));
+            assert!(
+                (pchip.interpolate(x[i]) - y[i]).abs() < 1e-10,
+                "Failed at knot {}: expected {}, got {}",
+                i,
+                y[i],
+                pchip.interpolate(x[i])
+            );
         }
     }
 
@@ -245,8 +247,13 @@ mod tests {
         for i in 1..40 {
             let x_val = i as f64 * 0.1;
             let curr = pchip.interpolate(x_val);
-            assert!(curr >= prev - 1e-10,
-                "Monotonicity violated at x={}: prev={}, curr={}", x_val, prev, curr);
+            assert!(
+                curr >= prev - 1e-10,
+                "Monotonicity violated at x={}: prev={}, curr={}",
+                x_val,
+                prev,
+                curr
+            );
             prev = curr;
         }
     }
@@ -261,8 +268,12 @@ mod tests {
         for i in 0..30 {
             let x_val = i as f64 * 0.1;
             let val = pchip.interpolate(x_val);
-            assert!(val >= -1e-10 && val <= 1.0 + 1e-10,
-                "Overshoot at x={}: y={}", x_val, val);
+            assert!(
+                val >= -1e-10 && val <= 1.0 + 1e-10,
+                "Overshoot at x={}: y={}",
+                x_val,
+                val
+            );
         }
     }
 
@@ -273,8 +284,8 @@ mod tests {
         let y = vec![10.0, 20.0, 30.0];
         let pchip = PchipInterpolator::new(&x, &y);
 
-        assert!((pchip.interpolate(0.0) - 10.0).abs() < 1e-10);  // Below range
-        assert!((pchip.interpolate(5.0) - 30.0).abs() < 1e-10);  // Above range
+        assert!((pchip.interpolate(0.0) - 10.0).abs() < 1e-10); // Below range
+        assert!((pchip.interpolate(5.0) - 30.0).abs() < 1e-10); // Above range
     }
 
     #[test]
@@ -295,7 +306,11 @@ mod tests {
 
         // At 45 degrees, should be between 1.0 and 2.0
         let result = circular_pchip_interpolate(&dir, &vals, 45.0);
-        assert!(result > 1.0 && result < 2.0, "Expected value between 1 and 2, got {}", result);
+        assert!(
+            result > 1.0 && result < 2.0,
+            "Expected value between 1 and 2, got {}",
+            result
+        );
     }
 
     #[test]
@@ -307,13 +322,19 @@ mod tests {
         // At 315 degrees (between 270 and 360/0)
         let result = circular_pchip_interpolate(&dir, &vals, 315.0);
         // Should be between the values at 270 (2.0) and 0 (1.0)
-        assert!(result >= 1.0 && result <= 2.0,
-            "Expected value between 1 and 2 at 315 deg, got {}", result);
+        assert!(
+            result >= 1.0 && result <= 2.0,
+            "Expected value between 1 and 2 at 315 deg, got {}",
+            result
+        );
 
         // At 350 degrees (close to 0/360)
         let result2 = circular_pchip_interpolate(&dir, &vals, 350.0);
-        assert!(result2 >= 1.0 && result2 <= 2.0,
-            "Expected value between 1 and 2 at 350 deg, got {}", result2);
+        assert!(
+            result2 >= 1.0 && result2 <= 2.0,
+            "Expected value between 1 and 2 at 350 deg, got {}",
+            result2
+        );
     }
 
     #[test]
@@ -324,8 +345,13 @@ mod tests {
 
         for i in 0..dir.len() {
             let result = circular_pchip_interpolate(&dir, &vals, dir[i]);
-            assert!((result - vals[i]).abs() < 1e-10,
-                "Expected {} at {} deg, got {}", vals[i], dir[i], result);
+            assert!(
+                (result - vals[i]).abs() < 1e-10,
+                "Expected {} at {} deg, got {}",
+                vals[i],
+                dir[i],
+                result
+            );
         }
     }
 }
