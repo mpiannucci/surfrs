@@ -298,6 +298,38 @@ impl BuoyStation {
             ModelDataSource::NODDGCP => "https://storage.googleapis.com/global-forecast-system",
         }
     }
+
+    pub fn gefswave_bulk_bulletin_url(source: &ModelDataSource, model_date: &DateTime<Utc>) -> String {
+        format!(
+            "{}/gefs.{}{:02}{:02}/{:02}/wave/station/gefs.wave.t{:02}z.bull_tar",
+            Self::gefswave_source_path(source),
+            model_date.year(),
+            model_date.month(),
+            model_date.day(),
+            model_date.hour(),
+            model_date.hour()
+        )
+    }
+
+    pub fn gefswave_bulk_station_url(source: &ModelDataSource, model_date: &DateTime<Utc>) -> String {
+        format!(
+            "{}/gefs.{}{:02}{:02}/{:02}/wave/station/gefs.wave.t{:02}z.station_tar",
+            Self::gefswave_source_path(source),
+            model_date.year(),
+            model_date.month(),
+            model_date.day(),
+            model_date.hour(),
+            model_date.hour()
+        )
+    }
+
+    pub fn gefswave_source_path(source: &ModelDataSource) -> &'static str {
+        match source {
+            ModelDataSource::NODDAWS => "https://noaa-gefs-pds.s3.amazonaws.com",
+            ModelDataSource::NOMADS => "https://nomads.ncep.noaa.gov/pub/data/nccf/com/gens/prod/",
+            ModelDataSource::NODDGCP => "https://storage.googleapis.com/gfs-ensemble-forecast-system",
+        }
+    }
 }
 
 impl Station for BuoyStation {
