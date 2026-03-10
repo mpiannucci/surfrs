@@ -291,6 +291,51 @@ impl BuoyStation {
         )
     }
 
+    pub fn gfswave_bulk_bulletin_url(
+        source: &ModelDataSource,
+        model_date: &DateTime<Utc>,
+    ) -> String {
+        format!(
+            "{}/gfs.{}{:02}{:02}/{:02}/wave/station/gfswave.t{:02}z.bull_tar",
+            Self::gfswave_source_path(source),
+            model_date.year(),
+            model_date.month(),
+            model_date.day(),
+            model_date.hour(),
+            model_date.hour()
+        )
+    }
+
+    pub fn gfswave_bulk_cbulletin_url(
+        source: &ModelDataSource,
+        model_date: &DateTime<Utc>,
+    ) -> String {
+        format!(
+            "{}/gfs.{}{:02}{:02}/{:02}/wave/station/gfswave.t{:02}z.cbull_tar",
+            Self::gfswave_source_path(source),
+            model_date.year(),
+            model_date.month(),
+            model_date.day(),
+            model_date.hour(),
+            model_date.hour()
+        )
+    }
+
+    pub fn gfswave_bulk_spectral_url(
+        source: &ModelDataSource,
+        model_date: &DateTime<Utc>,
+    ) -> String {
+        format!(
+            "{}/gfs.{}{:02}{:02}/{:02}/wave/station/gfswave.t{:02}z.spec_tar.gz",
+            Self::gfswave_source_path(source),
+            model_date.year(),
+            model_date.month(),
+            model_date.day(),
+            model_date.hour(),
+            model_date.hour()
+        )
+    }
+
     fn gfswave_source_path(source: &ModelDataSource) -> &'static str {
         match source {
             ModelDataSource::NODDAWS => "https://noaa-gfs-bdp-pds.s3.amazonaws.com",
@@ -299,7 +344,10 @@ impl BuoyStation {
         }
     }
 
-    pub fn gefswave_bulk_bulletin_url(source: &ModelDataSource, model_date: &DateTime<Utc>) -> String {
+    pub fn gefswave_bulk_bulletin_url(
+        source: &ModelDataSource,
+        model_date: &DateTime<Utc>,
+    ) -> String {
         format!(
             "{}/gefs.{}{:02}{:02}/{:02}/wave/station/gefs.wave.t{:02}z.bull_tar",
             Self::gefswave_source_path(source),
@@ -311,7 +359,10 @@ impl BuoyStation {
         )
     }
 
-    pub fn gefswave_bulk_station_url(source: &ModelDataSource, model_date: &DateTime<Utc>) -> String {
+    pub fn gefswave_bulk_station_url(
+        source: &ModelDataSource,
+        model_date: &DateTime<Utc>,
+    ) -> String {
         format!(
             "{}/gefs.{}{:02}{:02}/{:02}/wave/station/gefs.wave.t{:02}z.station_tar",
             Self::gefswave_source_path(source),
@@ -327,7 +378,9 @@ impl BuoyStation {
         match source {
             ModelDataSource::NODDAWS => "https://noaa-gefs-pds.s3.amazonaws.com",
             ModelDataSource::NOMADS => "https://nomads.ncep.noaa.gov/pub/data/nccf/com/gens/prod/",
-            ModelDataSource::NODDGCP => "https://storage.googleapis.com/gfs-ensemble-forecast-system",
+            ModelDataSource::NODDGCP => {
+                "https://storage.googleapis.com/gfs-ensemble-forecast-system"
+            }
         }
     }
 }
