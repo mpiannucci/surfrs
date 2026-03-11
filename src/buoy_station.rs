@@ -350,12 +350,29 @@ impl BuoyStation {
     ) -> String {
         format!(
             "{}/gefs.{}{:02}{:02}/{:02}/wave/station/gefs.wave.t{:02}z.bull_tar",
-            Self::gefswave_source_path(source),
+            Self::gefswave_source_path(source, None),
             model_date.year(),
             model_date.month(),
             model_date.day(),
             model_date.hour(),
             model_date.hour()
+        )
+    }
+
+    pub fn gefswave_bulletin_url(
+        self,
+        source: &ModelDataSource,
+        model_date: &DateTime<Utc>,
+        bucket: Option<String>,
+    ) -> String {
+        format!(
+            "{}/gefs.{}{:02}{:02}/{:02}/wave/station/gefs.wave.{}.bull",
+            Self::gefswave_source_path(source, bucket),
+            model_date.year(),
+            model_date.month(),
+            model_date.day(),
+            model_date.hour(),
+            self.station_id
         )
     }
 
@@ -365,7 +382,7 @@ impl BuoyStation {
     ) -> String {
         format!(
             "{}/gefs.{}{:02}{:02}/{:02}/wave/station/gefs.wave.t{:02}z.station_tar",
-            Self::gefswave_source_path(source),
+            Self::gefswave_source_path(source, None),
             model_date.year(),
             model_date.month(),
             model_date.day(),
@@ -374,13 +391,43 @@ impl BuoyStation {
         )
     }
 
-    pub fn gefswave_source_path(source: &ModelDataSource) -> &'static str {
+    pub fn gefswave_station_url(
+        self,
+        source: &ModelDataSource,
+        model_date: &DateTime<Utc>,
+        bucket: Option<String>,
+    ) -> String {
+        format!(
+            "{}/gefs.{}{:02}{:02}/{:02}/wave/station/gefs.wave.{}.ts",
+            Self::gefswave_source_path(source, bucket),
+            model_date.year(),
+            model_date.month(),
+            model_date.day(),
+            model_date.hour(),
+            self.station_id
+        )
+    }
+
+    pub fn gefswave_source_path(source: &ModelDataSource, bucket: Option<String>) -> String {
+        let bucket = bucket
+            .as_deref()
+            .unwrap_or(Self::gefswave_source_bucket(source).unwrap_or(""));
         match source {
-            ModelDataSource::NODDAWS => "https://noaa-gefs-pds.s3.amazonaws.com",
-            ModelDataSource::NOMADS => "https://nomads.ncep.noaa.gov/pub/data/nccf/com/gens/prod/",
-            ModelDataSource::NODDGCP => {
-                "https://storage.googleapis.com/gfs-ensemble-forecast-system"
+            ModelDataSource::NODDAWS => format!("https://{bucket}.s3.amazonaws.com",),
+            ModelDataSource::NOMADS => {
+                format!("https://nomads.ncep.noaa.gov/pub/data/nccf/com/gens/prod/{bucket}")
             }
+            ModelDataSource::NODDGCP => {
+                format!("https://storage.googleapis.com/{bucket}")
+            }
+        }
+    }
+
+    pub fn gefswave_source_bucket(source: &ModelDataSource) -> Option<&'static str> {
+        match source {
+            ModelDataSource::NODDAWS => Some("noaa-gefs-pds"),
+            ModelDataSource::NOMADS => None,
+            ModelDataSource::NODDGCP => Some("gfs-ensemble-forecast-system"),
         }
     }
 }
