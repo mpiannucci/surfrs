@@ -212,9 +212,13 @@ impl BuoyStation {
     }
 
     pub fn swden_dap_url_root(&self) -> String {
+        let type_code = match self.station_id.as_str() {
+            "44098" => "wb",
+            _ => "w",
+        };
         format!(
-            "https://dods.ndbc.noaa.gov/thredds/dodsC/data/swden/{station_id}/{station_id}w9999.nc",
-            station_id = self.station_id,
+            "https://dods.ndbc.noaa.gov/thredds/dodsC/data/swden/{id}/{id}{type_code}9999.nc",
+            id = self.station_id,
         )
     }
 
