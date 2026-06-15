@@ -20,8 +20,6 @@ impl FromStr for GEFSBulletinWaveRecordMetadata {
     type Err = DataRecordParsingError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut lines = s.lines();
-
         let location_parser = Regex::new(
             r"Location\s*:\s*(.{0,10}?)\s*\(\s*([+-]?[0-9]*\.?[0-9]+[NS])\s+([+-]?[0-9]*\.?[0-9]+[EW])\)",
         )
@@ -29,9 +27,15 @@ impl FromStr for GEFSBulletinWaveRecordMetadata {
             DataRecordParsingError::ParseFailure(format!("Failed to create location regex: {e}"))
         })?;
 
-        let location_str = lines.next().ok_or(DataRecordParsingError::ParseFailure(
-            "Invalid data for location metadata".into(),
-        ))?;
+        // Locate header lines by keyword rather than by position: the real
+        // bulletin files (extracted from the station tar) start with a leading
+        // blank line, so we cannot assume the Location line comes first.
+        let location_str = s
+            .lines()
+            .find(|l| l.contains("Location"))
+            .ok_or(DataRecordParsingError::ParseFailure(
+                "Invalid data for location metadata".into(),
+            ))?;
 
         let location = match location_parser.captures(location_str) {
             Some(captures) => {
@@ -65,17 +69,15 @@ impl FromStr for GEFSBulletinWaveRecordMetadata {
             )),
         }?;
 
-        // Skip Model line
-        lines.next();
-
         // Cycle line: "Cycle    : 20260305 t12z UTC"
         let cycle_parser = Regex::new(r"Cycle\s*:\s*([0-9]{4})([0-9]{2})([0-9]{2})\s+t([0-9]{2})z")
             .map_err(|e| {
                 DataRecordParsingError::ParseFailure(format!("Failed to create cycle regex: {e}"))
             })?;
 
-        let cycle_line = lines
-            .next()
+        let cycle_line = s
+            .lines()
+            .find(|l| l.contains("Cycle"))
             .ok_or_else(|| DataRecordParsingError::ParseFailure("Missing cycle line".into()))?;
 
         let model_run_date = match cycle_parser.captures(cycle_line) {
@@ -391,5 +393,20 @@ mod tests {
         assert!((first.prob_hs_gt_1m - 1.00).abs() < 0.001);
         assert!((first.prob_hs_gt_2m - 0.98).abs() < 0.001);
         assert!((first.prob_hs_gt_3m - 0.00).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_parse_gefs_bulletin_leading_blank_line() {
+        // Real .bull files extracted from the station tar begin with a blank
+        // line before the Location header. The parser must tolerate it.
+        let data = format!("\n{SAMPLE}");
+
+        let meta = data.parse::<GEFSBulletinWaveRecordMetadata>().unwrap();
+        assert_eq!(meta.location.name, "44097");
+        assert_eq!(meta.model_run_date.hour(), 12);
+
+        let collection = GEFSBulletinWaveRecordCollection::from_data(&data);
+        let (_, records) = collection.records().unwrap();
+        assert_eq!(records.count(), 2);
     }
 }
