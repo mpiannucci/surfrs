@@ -1,0 +1,929 @@
+use std::{
+    error::Error,
+    f64::consts::PI,
+    fmt,
+    io::Write,
+    str::{FromStr, Utf8Error},
+};
+
+use chrono::{DateTime, NaiveDateTime, Utc};
+
+use crate::{
+    location::Location, spectra::Spectra, tools::vector::argsort_partial,
+    units::direction::DirectionConvention,
+};
+
+const EXCEPTION_VALUE: f64 = -99.0;
+const GRID_TOLERANCE: f64 = 1.0e-9;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SwanCoordinateSystem {
+    Cartesian,
+    Spherical,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SwanFrequencyType {
+    Absolute,
+    Relative,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct SwanLocation {
+    /// X in meters for Cartesian files, or longitude in degrees for spherical files.
+    pub x: f64,
+    /// Y in meters for Cartesian files, or latitude in degrees for spherical files.
+    pub y: f64,
+    pub name: Option<String>,
+}
+
+impl SwanLocation {
+    pub fn new(x: f64, y: f64, name: Option<String>) -> Self {
+        Self { x, y, name }
+    }
+}
+
+impl From<&Location> for SwanLocation {
+    fn from(location: &Location) -> Self {
+        Self {
+            x: location.longitude,
+            y: location.latitude,
+            name: (!location.name.is_empty()).then(|| location.name.clone()),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SwanSpectralFrame {
+    pub time: Option<DateTime<Utc>>,
+    /// One spectrum per file location. `None` represents SWAN's `NODATA` keyword.
+    pub spectra: Vec<Option<Spectra>>,
+}
+
+impl SwanSpectralFrame {
+    pub fn stationary(spectra: Vec<Option<Spectra>>) -> Self {
+        Self {
+            time: None,
+            spectra,
+        }
+    }
+
+    pub fn at_time(time: DateTime<Utc>, spectra: Vec<Option<Spectra>>) -> Self {
+        Self {
+            time: Some(time),
+            spectra,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SwanSpectralFile {
+    pub coordinate_system: SwanCoordinateSystem,
+    pub frequency_type: SwanFrequencyType,
+    pub locations: Vec<SwanLocation>,
+    pub frames: Vec<SwanSpectralFrame>,
+    frequency: Vec<f64>,
+    direction: Vec<f64>,
+}
+
+impl SwanSpectralFile {
+    pub fn new(
+        coordinate_system: SwanCoordinateSystem,
+        frequency_type: SwanFrequencyType,
+        locations: Vec<SwanLocation>,
+        frames: Vec<SwanSpectralFrame>,
+    ) -> Result<Self, SwanSpectralError> {
+        let reference = frames
+            .iter()
+            .flat_map(|frame| frame.spectra.iter())
+            .find_map(Option::as_ref)
+            .ok_or_else(|| {
+                SwanSpectralError::Invalid(
+                    "at least one frame location must contain a spectrum".into(),
+                )
+            })?;
+        let frequency = reference.frequency.clone();
+        let direction = sorted_direction_grid(reference.direction_deg())?.0;
+
+        Self::from_parts(
+            coordinate_system,
+            frequency_type,
+            locations,
+            frames,
+            frequency,
+            direction,
+        )
+    }
+
+    pub fn spherical_stationary(
+        location: &Location,
+        spectra: Spectra,
+    ) -> Result<Self, SwanSpectralError> {
+        Self::new(
+            SwanCoordinateSystem::Spherical,
+            SwanFrequencyType::Relative,
+            vec![SwanLocation::from(location)],
+            vec![SwanSpectralFrame::stationary(vec![Some(spectra)])],
+        )
+    }
+
+    pub fn spherical_nonstationary<I>(
+        location: &Location,
+        records: I,
+    ) -> Result<Self, SwanSpectralError>
+    where
+        I: IntoIterator<Item = (DateTime<Utc>, Spectra)>,
+    {
+        let frames = records
+            .into_iter()
+            .map(|(time, spectra)| SwanSpectralFrame::at_time(time, vec![Some(spectra)]))
+            .collect();
+        Self::new(
+            SwanCoordinateSystem::Spherical,
+            SwanFrequencyType::Relative,
+            vec![SwanLocation::from(location)],
+            frames,
+        )
+    }
+
+    /// Frequencies from the SWAN header in Hz.
+    pub fn frequency(&self) -> &[f64] {
+        &self.frequency
+    }
+
+    /// Directions from the SWAN header normalized to nautical "from" degrees.
+    pub fn direction(&self) -> &[f64] {
+        &self.direction
+    }
+
+    /// Parses an in-memory SWAN standard spectral file.
+    pub fn from_data(data: &[u8]) -> Result<Self, SwanSpectralError> {
+        std::str::from_utf8(data)?.parse()
+    }
+
+    /// Encodes this collection as an in-memory SWAN standard spectral file.
+    pub fn to_data(&self) -> Result<Vec<u8>, SwanSpectralError> {
+        let mut data = Vec::new();
+        self.write_to(&mut data)?;
+        Ok(data)
+    }
+
+    /// Encodes this collection to any byte writer.
+    pub fn write_to(&self, writer: &mut impl Write) -> Result<(), SwanSpectralError> {
+        self.validate()?;
+
+        writeln!(writer, "SWAN   1")?;
+        writeln!(writer, "$ Generated by surfrs")?;
+
+        if self.is_nonstationary()? {
+            writeln!(writer, "TIME")?;
+            writeln!(writer, "1")?;
+        }
+
+        match self.coordinate_system {
+            SwanCoordinateSystem::Cartesian => writeln!(writer, "LOCATIONS")?,
+            SwanCoordinateSystem::Spherical => writeln!(writer, "LONLAT")?,
+        }
+        writeln!(writer, "{}", self.locations.len())?;
+        for location in &self.locations {
+            write!(writer, "{:.10} {:.10}", location.x, location.y)?;
+            if let Some(name) = &location.name {
+                write!(writer, " {name}")?;
+            }
+            writeln!(writer)?;
+        }
+
+        match self.frequency_type {
+            SwanFrequencyType::Absolute => writeln!(writer, "AFREQ")?,
+            SwanFrequencyType::Relative => writeln!(writer, "RFREQ")?,
+        }
+        writeln!(writer, "{}", self.frequency.len())?;
+        for frequency in &self.frequency {
+            writeln!(writer, "{frequency:.10}")?;
+        }
+
+        writeln!(writer, "NDIR")?;
+        writeln!(writer, "{}", self.direction.len())?;
+        for direction in &self.direction {
+            writeln!(writer, "{direction:.10}")?;
+        }
+
+        writeln!(writer, "QUANT")?;
+        writeln!(writer, "1")?;
+        writeln!(writer, "VaDens")?;
+        writeln!(writer, "m2/Hz/degr")?;
+        writeln!(writer, "{EXCEPTION_VALUE:.4E}")?;
+
+        for frame in &self.frames {
+            if let Some(time) = frame.time {
+                writeln!(writer, "{}", time.format("%Y%m%d.%H%M%S"))?;
+            }
+
+            for spectra in &frame.spectra {
+                let Some(spectra) = spectra else {
+                    writeln!(writer, "NODATA")?;
+                    continue;
+                };
+
+                let direction_order = sorted_direction_grid(spectra.direction_deg())?.1;
+                let all_zero = spectra
+                    .energy
+                    .iter()
+                    .all(|energy| energy.is_finite() && *energy == 0.0);
+                if all_zero {
+                    writeln!(writer, "ZERO")?;
+                    continue;
+                }
+
+                writeln!(writer, "FACTOR")?;
+                writeln!(writer, "1.000000000E+00")?;
+                for frequency_index in 0..self.frequency.len() {
+                    for (output_index, source_direction_index) in direction_order.iter().enumerate()
+                    {
+                        if output_index > 0 {
+                            write!(writer, " ")?;
+                        }
+                        let density_per_radian =
+                            spectra.energy_at(frequency_index, *source_direction_index);
+                        let density_per_degree = density_per_radian * PI / 180.0;
+                        if density_per_degree.is_finite() {
+                            write!(writer, "{density_per_degree:.9E}")?;
+                        } else {
+                            write!(writer, "{EXCEPTION_VALUE:.9E}")?;
+                        }
+                    }
+                    writeln!(writer)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn from_parts(
+        coordinate_system: SwanCoordinateSystem,
+        frequency_type: SwanFrequencyType,
+        locations: Vec<SwanLocation>,
+        frames: Vec<SwanSpectralFrame>,
+        frequency: Vec<f64>,
+        direction: Vec<f64>,
+    ) -> Result<Self, SwanSpectralError> {
+        let file = Self {
+            coordinate_system,
+            frequency_type,
+            locations,
+            frames,
+            frequency,
+            direction,
+        };
+        file.validate()?;
+        Ok(file)
+    }
+
+    fn validate(&self) -> Result<(), SwanSpectralError> {
+        if self.locations.is_empty() {
+            return Err(SwanSpectralError::Invalid(
+                "a SWAN spectral file requires at least one location".into(),
+            ));
+        }
+        if self.frames.is_empty() {
+            return Err(SwanSpectralError::Invalid(
+                "a SWAN spectral file requires at least one frame".into(),
+            ));
+        }
+        if self.frequency.is_empty() || self.direction.is_empty() {
+            return Err(SwanSpectralError::Invalid(
+                "frequency and direction axes cannot be empty".into(),
+            ));
+        }
+        if self
+            .frequency
+            .iter()
+            .any(|frequency| !frequency.is_finite() || *frequency <= 0.0)
+        {
+            return Err(SwanSpectralError::Invalid(
+                "frequencies must be finite and positive".into(),
+            ));
+        }
+        if self.frequency.windows(2).any(|pair| pair[0] >= pair[1]) {
+            return Err(SwanSpectralError::Invalid(
+                "frequencies must be strictly increasing".into(),
+            ));
+        }
+        if self
+            .direction
+            .iter()
+            .any(|direction| !direction.is_finite())
+        {
+            return Err(SwanSpectralError::Invalid(
+                "directions must be finite".into(),
+            ));
+        }
+
+        let nonstationary = self.is_nonstationary()?;
+        if !nonstationary && self.frames.len() != 1 {
+            return Err(SwanSpectralError::Invalid(
+                "stationary files must contain exactly one frame".into(),
+            ));
+        }
+
+        for frame in &self.frames {
+            if frame.spectra.len() != self.locations.len() {
+                return Err(SwanSpectralError::Invalid(format!(
+                    "frame has {} spectra for {} locations",
+                    frame.spectra.len(),
+                    self.locations.len()
+                )));
+            }
+            for spectra in frame.spectra.iter().flatten() {
+                validate_spectra_grid(spectra, &self.frequency, &self.direction)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn is_nonstationary(&self) -> Result<bool, SwanSpectralError> {
+        let timed_frames = self
+            .frames
+            .iter()
+            .filter(|frame| frame.time.is_some())
+            .count();
+        if timed_frames != 0 && timed_frames != self.frames.len() {
+            return Err(SwanSpectralError::Invalid(
+                "frames must either all have times or all be stationary".into(),
+            ));
+        }
+        Ok(timed_frames == self.frames.len())
+    }
+}
+
+impl fmt::Display for SwanSpectralFile {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let output = self.to_data().map_err(|_| fmt::Error)?;
+        formatter.write_str(std::str::from_utf8(&output).map_err(|_| fmt::Error)?)
+    }
+}
+
+impl FromStr for SwanSpectralFile {
+    type Err = SwanSpectralError;
+
+    fn from_str(data: &str) -> Result<Self, Self::Err> {
+        let mut lines = SwanLines::new(data);
+        let (line_number, header) = lines.next()?;
+        let header_parts: Vec<_> = header.split_whitespace().collect();
+        if header_parts.len() < 2
+            || !header_parts[0].eq_ignore_ascii_case("SWAN")
+            || header_parts[1] != "1"
+        {
+            return Err(SwanSpectralError::parse(
+                line_number,
+                "expected SWAN standard spectral file version 1",
+            ));
+        }
+
+        let nonstationary = lines.peek_keyword("TIME")?;
+        if nonstationary {
+            lines.expect_keyword("TIME")?;
+            let (line_number, time_code) = lines.next()?;
+            if first_token(time_code) != Some("1") {
+                return Err(SwanSpectralError::parse(
+                    line_number,
+                    "only ISO time coding option 1 is supported",
+                ));
+            }
+        }
+
+        let (coordinate_system, location_keyword) = if lines.peek_keyword("LONLAT")? {
+            (SwanCoordinateSystem::Spherical, "LONLAT")
+        } else if lines.peek_keyword("LOCATIONS")? {
+            (SwanCoordinateSystem::Cartesian, "LOCATIONS")
+        } else {
+            let (line_number, _) = lines.peek()?;
+            return Err(SwanSpectralError::parse(
+                line_number,
+                "expected LONLAT or LOCATIONS",
+            ));
+        };
+        lines.expect_keyword(location_keyword)?;
+        let location_count = lines.next_usize("location count")?;
+        let mut locations = Vec::with_capacity(location_count);
+        for _ in 0..location_count {
+            let (line_number, line) = lines.next()?;
+            let mut values = line.split_whitespace();
+            let x = parse_f64(values.next(), line_number, "location x/longitude")?;
+            let y = parse_f64(values.next(), line_number, "location y/latitude")?;
+            let name = values.collect::<Vec<_>>().join(" ");
+            locations.push(SwanLocation::new(x, y, (!name.is_empty()).then_some(name)));
+        }
+
+        let (frequency_type, frequency_keyword) = if lines.peek_keyword("AFREQ")? {
+            (SwanFrequencyType::Absolute, "AFREQ")
+        } else if lines.peek_keyword("RFREQ")? {
+            (SwanFrequencyType::Relative, "RFREQ")
+        } else {
+            let (line_number, _) = lines.peek()?;
+            return Err(SwanSpectralError::parse(
+                line_number,
+                "expected AFREQ or RFREQ",
+            ));
+        };
+        lines.expect_keyword(frequency_keyword)?;
+        let frequency_count = lines.next_usize("frequency count")?;
+        let frequency = lines.next_scalars(frequency_count, "frequency")?;
+
+        let (direction_convention, direction_keyword) = if lines.peek_keyword("NDIR")? {
+            (DirectionConvention::From, "NDIR")
+        } else if lines.peek_keyword("CDIR")? {
+            (DirectionConvention::Met, "CDIR")
+        } else {
+            let (line_number, _) = lines.peek()?;
+            return Err(SwanSpectralError::parse(
+                line_number,
+                "only 2D spectra with NDIR or CDIR are supported",
+            ));
+        };
+        lines.expect_keyword(direction_keyword)?;
+        let direction_count = lines.next_usize("direction count")?;
+        let raw_direction_degrees = lines.next_scalars(direction_count, "direction")?;
+        let raw_direction: Vec<_> = raw_direction_degrees
+            .iter()
+            .map(|direction| direction.to_radians())
+            .collect();
+
+        lines.expect_keyword("QUANT")?;
+        let quantity_count = lines.next_usize("quantity count")?;
+        if quantity_count != 1 {
+            return Err(SwanSpectralError::Unsupported(
+                "only 2D variance-density files with one quantity are supported".into(),
+            ));
+        }
+        let (quantity_line, quantity) = lines.next()?;
+        if !first_token(quantity)
+            .map(|value| value.eq_ignore_ascii_case("VaDens"))
+            .unwrap_or(false)
+        {
+            return Err(SwanSpectralError::parse(
+                quantity_line,
+                "only VaDens variance density is supported",
+            ));
+        }
+        let (unit_line, unit) = lines.next()?;
+        let density_scale = match first_token(unit).map(|value| value.to_ascii_lowercase()) {
+            Some(value) if value == "m2/hz/degr" || value == "m2/hz/deg" => 180.0 / PI,
+            Some(value) if value == "m2/hz/rad" => 1.0,
+            _ => {
+                return Err(SwanSpectralError::parse(
+                    unit_line,
+                    "expected VaDens units m2/Hz/degr or m2/Hz/rad",
+                ))
+            }
+        };
+        let exception = lines.next_f64("exception value")?;
+
+        let mut frames = Vec::new();
+        while !lines.is_empty() {
+            let time = if nonstationary {
+                let (line_number, line) = lines.next()?;
+                let value = first_token(line)
+                    .ok_or_else(|| SwanSpectralError::parse(line_number, "expected frame time"))?;
+                let naive =
+                    NaiveDateTime::parse_from_str(value, "%Y%m%d.%H%M%S").map_err(|error| {
+                        SwanSpectralError::parse(
+                            line_number,
+                            format!("invalid ISO frame time: {error}"),
+                        )
+                    })?;
+                Some(DateTime::from_naive_utc_and_offset(naive, Utc))
+            } else {
+                None
+            };
+
+            let mut frame_spectra = Vec::with_capacity(location_count);
+            for _ in 0..location_count {
+                let (line_number, marker) = lines.next()?;
+                match first_token(marker).map(|value| value.to_ascii_uppercase()) {
+                    Some(value) if value == "NODATA" => frame_spectra.push(None),
+                    Some(value) if value == "ZERO" => frame_spectra.push(Some(Spectra::new(
+                        frequency.clone(),
+                        raw_direction.clone(),
+                        vec![0.0; frequency_count * direction_count],
+                        direction_convention.clone(),
+                    ))),
+                    Some(value) if value == "FACTOR" => {
+                        let factor = lines.next_f64("spectral factor")?;
+                        let table = lines.next_matrix(
+                            frequency_count,
+                            direction_count,
+                            "spectral density",
+                        )?;
+                        let mut energy = vec![0.0; frequency_count * direction_count];
+                        for frequency_index in 0..frequency_count {
+                            for direction_index in 0..direction_count {
+                                let raw =
+                                    table[frequency_index * direction_count + direction_index];
+                                energy[frequency_index + direction_index * frequency_count] =
+                                    if approximately_equal(raw, exception) {
+                                        f64::NAN
+                                    } else {
+                                        raw * factor * density_scale
+                                    };
+                            }
+                        }
+                        frame_spectra.push(Some(Spectra::new(
+                            frequency.clone(),
+                            raw_direction.clone(),
+                            energy,
+                            direction_convention.clone(),
+                        )));
+                    }
+                    _ => {
+                        return Err(SwanSpectralError::parse(
+                            line_number,
+                            "expected FACTOR, ZERO, or NODATA",
+                        ))
+                    }
+                }
+            }
+            frames.push(SwanSpectralFrame {
+                time,
+                spectra: frame_spectra,
+            });
+
+            if !nonstationary && !lines.is_empty() {
+                let (line_number, _) = lines.peek()?;
+                return Err(SwanSpectralError::parse(
+                    line_number,
+                    "stationary files can contain only one frame",
+                ));
+            }
+        }
+
+        if frames.is_empty() {
+            return Err(SwanSpectralError::Invalid(
+                "spectral file contains no data frames".into(),
+            ));
+        }
+
+        let normalized_direction: Vec<_> = raw_direction_degrees
+            .iter()
+            .map(|direction| direction_convention.normalize(*direction))
+            .collect();
+        let direction = sorted_direction_grid(normalized_direction)?.0;
+        Self::from_parts(
+            coordinate_system,
+            frequency_type,
+            locations,
+            frames,
+            frequency,
+            direction,
+        )
+    }
+}
+
+#[derive(Debug)]
+pub enum SwanSpectralError {
+    Io(std::io::Error),
+    Utf8(Utf8Error),
+    Parse { line: usize, message: String },
+    Invalid(String),
+    Unsupported(String),
+}
+
+impl SwanSpectralError {
+    fn parse(line: usize, message: impl Into<String>) -> Self {
+        Self::Parse {
+            line,
+            message: message.into(),
+        }
+    }
+}
+
+impl fmt::Display for SwanSpectralError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Io(error) => write!(formatter, "SWAN spectral file I/O error: {error}"),
+            Self::Utf8(error) => write!(formatter, "SWAN spectral data is not UTF-8: {error}"),
+            Self::Parse { line, message } => {
+                write!(
+                    formatter,
+                    "SWAN spectral parse error on line {line}: {message}"
+                )
+            }
+            Self::Invalid(message) => write!(formatter, "invalid SWAN spectral data: {message}"),
+            Self::Unsupported(message) => {
+                write!(formatter, "unsupported SWAN spectral data: {message}")
+            }
+        }
+    }
+}
+
+impl Error for SwanSpectralError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            Self::Io(error) => Some(error),
+            Self::Utf8(error) => Some(error),
+            _ => None,
+        }
+    }
+}
+
+impl From<std::io::Error> for SwanSpectralError {
+    fn from(error: std::io::Error) -> Self {
+        Self::Io(error)
+    }
+}
+
+impl From<Utf8Error> for SwanSpectralError {
+    fn from(error: Utf8Error) -> Self {
+        Self::Utf8(error)
+    }
+}
+
+fn validate_spectra_grid(
+    spectra: &Spectra,
+    frequency: &[f64],
+    direction: &[f64],
+) -> Result<(), SwanSpectralError> {
+    if spectra.energy.len() != spectra.nk() * spectra.nth() {
+        return Err(SwanSpectralError::Invalid(format!(
+            "spectrum has {} energy values for a {} by {} grid",
+            spectra.energy.len(),
+            spectra.nk(),
+            spectra.nth()
+        )));
+    }
+    if !slices_approximately_equal(&spectra.frequency, frequency) {
+        return Err(SwanSpectralError::Invalid(
+            "all spectra must use the same frequency grid".into(),
+        ));
+    }
+    let normalized_direction = sorted_direction_grid(spectra.direction_deg())?.0;
+    if !slices_approximately_equal(&normalized_direction, direction) {
+        return Err(SwanSpectralError::Invalid(
+            "all spectra must use the same physical direction grid".into(),
+        ));
+    }
+    Ok(())
+}
+
+fn sorted_direction_grid(direction: Vec<f64>) -> Result<(Vec<f64>, Vec<usize>), SwanSpectralError> {
+    if direction.iter().any(|value| !value.is_finite()) {
+        return Err(SwanSpectralError::Invalid(
+            "directions must be finite".into(),
+        ));
+    }
+    let order = argsort_partial(&direction);
+    let sorted = order.iter().map(|index| direction[*index]).collect();
+    Ok((sorted, order))
+}
+
+fn slices_approximately_equal(left: &[f64], right: &[f64]) -> bool {
+    left.len() == right.len()
+        && left
+            .iter()
+            .zip(right)
+            .all(|(left, right)| approximately_equal(*left, *right))
+}
+
+fn approximately_equal(left: f64, right: f64) -> bool {
+    (left - right).abs() <= GRID_TOLERANCE * left.abs().max(right.abs()).max(1.0)
+}
+
+fn first_token(line: &str) -> Option<&str> {
+    line.split_whitespace().next()
+}
+
+fn parse_f64(
+    value: Option<&str>,
+    line: usize,
+    description: &str,
+) -> Result<f64, SwanSpectralError> {
+    value
+        .ok_or_else(|| SwanSpectralError::parse(line, format!("expected {description}")))?
+        .parse()
+        .map_err(|error| SwanSpectralError::parse(line, format!("invalid {description}: {error}")))
+}
+
+struct SwanLines<'a> {
+    lines: Vec<(usize, &'a str)>,
+    index: usize,
+}
+
+impl<'a> SwanLines<'a> {
+    fn new(data: &'a str) -> Self {
+        let lines = data
+            .lines()
+            .enumerate()
+            .filter_map(|(index, line)| {
+                let trimmed = line.trim();
+                (!trimmed.is_empty() && !trimmed.starts_with('$') && !trimmed.starts_with('%'))
+                    .then_some((index + 1, trimmed))
+            })
+            .collect();
+        Self { lines, index: 0 }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.index >= self.lines.len()
+    }
+
+    fn next(&mut self) -> Result<(usize, &'a str), SwanSpectralError> {
+        let value = self.lines.get(self.index).copied().ok_or_else(|| {
+            SwanSpectralError::parse(
+                self.lines.last().map(|(line, _)| line + 1).unwrap_or(1),
+                "unexpected end of file",
+            )
+        })?;
+        self.index += 1;
+        Ok(value)
+    }
+
+    fn peek(&self) -> Result<(usize, &'a str), SwanSpectralError> {
+        self.lines.get(self.index).copied().ok_or_else(|| {
+            SwanSpectralError::parse(
+                self.lines.last().map(|(line, _)| line + 1).unwrap_or(1),
+                "unexpected end of file",
+            )
+        })
+    }
+
+    fn peek_keyword(&self, expected: &str) -> Result<bool, SwanSpectralError> {
+        let (_, line) = self.peek()?;
+        Ok(first_token(line)
+            .map(|value| value.eq_ignore_ascii_case(expected))
+            .unwrap_or(false))
+    }
+
+    fn expect_keyword(&mut self, expected: &str) -> Result<(), SwanSpectralError> {
+        let (line_number, line) = self.next()?;
+        if first_token(line)
+            .map(|value| value.eq_ignore_ascii_case(expected))
+            .unwrap_or(false)
+        {
+            Ok(())
+        } else {
+            Err(SwanSpectralError::parse(
+                line_number,
+                format!("expected {expected}"),
+            ))
+        }
+    }
+
+    fn next_usize(&mut self, description: &str) -> Result<usize, SwanSpectralError> {
+        let (line_number, line) = self.next()?;
+        first_token(line)
+            .ok_or_else(|| {
+                SwanSpectralError::parse(line_number, format!("expected {description}"))
+            })?
+            .parse()
+            .map_err(|error| {
+                SwanSpectralError::parse(line_number, format!("invalid {description}: {error}"))
+            })
+    }
+
+    fn next_f64(&mut self, description: &str) -> Result<f64, SwanSpectralError> {
+        let (line_number, line) = self.next()?;
+        parse_f64(first_token(line), line_number, description)
+    }
+
+    fn next_scalars(
+        &mut self,
+        count: usize,
+        description: &str,
+    ) -> Result<Vec<f64>, SwanSpectralError> {
+        let mut values = Vec::with_capacity(count);
+        for _ in 0..count {
+            values.push(self.next_f64(description)?);
+        }
+        Ok(values)
+    }
+
+    fn next_matrix(
+        &mut self,
+        rows: usize,
+        columns: usize,
+        description: &str,
+    ) -> Result<Vec<f64>, SwanSpectralError> {
+        let mut values = Vec::with_capacity(rows * columns);
+        for _ in 0..rows {
+            let (line_number, line) = self.next()?;
+            let row: Result<Vec<f64>, _> = line
+                .split_whitespace()
+                .take(columns)
+                .map(str::parse)
+                .collect();
+            let row = row.map_err(|error| {
+                SwanSpectralError::parse(line_number, format!("invalid {description}: {error}"))
+            })?;
+            if row.len() != columns {
+                return Err(SwanSpectralError::parse(
+                    line_number,
+                    format!("expected {columns} {description} values"),
+                ));
+            }
+            values.extend(row);
+        }
+        Ok(values)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::TimeZone;
+
+    use super::*;
+
+    fn example_spectra() -> Spectra {
+        Spectra::new(
+            vec![0.05, 0.1],
+            vec![0.0, 90.0_f64.to_radians(), 180.0_f64.to_radians()],
+            vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            DirectionConvention::From,
+        )
+    }
+
+    #[test]
+    fn parses_stationary_factor_table_and_transposes_energy() {
+        let input = "SWAN 1\n\
+LONLAT\n\
+1\n\
+-71.4 41.3 buoy\n\
+RFREQ\n\
+2\n\
+0.05\n\
+0.10\n\
+NDIR\n\
+3\n\
+0\n\
+90\n\
+180\n\
+QUANT\n\
+1\n\
+VaDens\n\
+m2/Hz/degr\n\
+-99\n\
+FACTOR\n\
+0.01\n\
+1 2 3\n\
+4 5 6\n";
+
+        let file: SwanSpectralFile = input.parse().unwrap();
+        let spectra = file.frames[0].spectra[0].as_ref().unwrap();
+        let scale = 180.0 / PI * 0.01;
+        assert_eq!(spectra.nk(), 2);
+        assert_eq!(spectra.nth(), 3);
+        assert!((spectra.energy_at(0, 0) - scale).abs() < 1.0e-12);
+        assert!((spectra.energy_at(1, 0) - 4.0 * scale).abs() < 1.0e-12);
+        assert!((spectra.energy_at(0, 2) - 3.0 * scale).abs() < 1.0e-12);
+        assert_eq!(file.locations[0].name.as_deref(), Some("buoy"));
+    }
+
+    #[test]
+    fn converts_cartesian_directions_to_nautical_from() {
+        let input = "SWAN 1\nLOCATIONS\n1\n0 0\nRFREQ\n1\n0.1\nCDIR\n4\n0\n90\n180\n270\nQUANT\n1\nVaDens\nm2/Hz/rad\n-99\nFACTOR\n1\n1 2 3 4\n";
+        let file: SwanSpectralFile = input.parse().unwrap();
+        assert_eq!(file.direction(), &[0.0, 90.0, 180.0, 270.0]);
+        let spectra = file.frames[0].spectra[0].as_ref().unwrap();
+        assert_eq!(spectra.direction_deg(), vec![270.0, 180.0, 90.0, 0.0]);
+    }
+
+    #[test]
+    fn round_trips_nonstationary_spherical_spectra() {
+        let location = Location::new(41.3, -71.4, "44097".into());
+        let first_time = Utc.with_ymd_and_hms(2026, 7, 1, 0, 0, 0).unwrap();
+        let second_time = Utc.with_ymd_and_hms(2026, 7, 1, 1, 0, 0).unwrap();
+        let source = SwanSpectralFile::spherical_nonstationary(
+            &location,
+            vec![
+                (first_time, example_spectra()),
+                (second_time, example_spectra()),
+            ],
+        )
+        .unwrap();
+
+        let encoded = source.to_data().unwrap();
+        let decoded = SwanSpectralFile::from_data(&encoded).unwrap();
+        assert_eq!(decoded.coordinate_system, SwanCoordinateSystem::Spherical);
+        assert_eq!(decoded.frames.len(), 2);
+        assert_eq!(decoded.frames[0].time, Some(first_time));
+        assert_eq!(decoded.frames[1].time, Some(second_time));
+        assert_eq!(decoded.locations[0].name.as_deref(), Some("44097"));
+
+        let decoded_spectra = decoded.frames[0].spectra[0].as_ref().unwrap();
+        for (actual, expected) in decoded_spectra.energy.iter().zip(example_spectra().energy) {
+            assert!((actual - expected).abs() < 1.0e-8);
+        }
+    }
+
+    #[test]
+    fn preserves_zero_and_nodata_locations() {
+        let input = "SWAN 1\nLOCATIONS\n2\n0 0\n1 1\nRFREQ\n1\n0.1\nNDIR\n1\n0\nQUANT\n1\nVaDens\nm2/Hz/degr\n-99\nZERO\nNODATA\n";
+        let file: SwanSpectralFile = input.parse().unwrap();
+        assert_eq!(
+            file.frames[0].spectra[0].as_ref().unwrap().energy,
+            vec![0.0]
+        );
+        assert!(file.frames[0].spectra[1].is_none());
+    }
+}
