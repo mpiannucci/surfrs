@@ -18,11 +18,12 @@ pub enum DirectionConvention {
 impl DirectionConvention {
     /// Normalizes direction to From convention in degrees
     pub fn normalize(&self, dir: f64) -> f64 {
-        match self {
+        let direction = match self {
             DirectionConvention::From => dir,
-            DirectionConvention::Towards => (dir + 180.0) % 360.0,
-            DirectionConvention::Met => ((270.0 - dir) + 360.0) % 360.0,
-        }
+            DirectionConvention::Towards => dir + 180.0,
+            DirectionConvention::Met => 270.0 - dir,
+        };
+        direction.rem_euclid(360.0)
     }
 }
 
@@ -109,5 +110,18 @@ impl FromStr for Direction {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::DirectionConvention;
+
+    #[test]
+    fn normalizes_direction_conventions_to_nautical_from_degrees() {
+        assert_eq!(DirectionConvention::From.normalize(-10.0), 350.0);
+        assert_eq!(DirectionConvention::Towards.normalize(190.0), 10.0);
+        assert_eq!(DirectionConvention::Met.normalize(360.0), 270.0);
+        assert_eq!(DirectionConvention::Met.normalize(-90.0), 0.0);
     }
 }

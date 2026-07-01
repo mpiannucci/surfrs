@@ -10,6 +10,7 @@ pub mod meteorological_data_record;
 pub mod nws_weather_forecast_data_record;
 pub mod parseable_data_record;
 pub mod spectral_wave_data_record;
+pub mod swan_spectral_file;
 pub mod swden_wave_data_record;
 pub mod tidal_data_record;
 pub mod wave_data_record;
