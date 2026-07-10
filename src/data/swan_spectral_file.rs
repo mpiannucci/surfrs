@@ -805,22 +805,22 @@ impl<'a> SwanLines<'a> {
         columns: usize,
         description: &str,
     ) -> Result<Vec<f64>, SwanSpectralError> {
+        // SWAN wraps long spectral rows across multiple physical lines
+        // (SPECOUT prints 18 values per line for a 36-direction grid), so
+        // each logical row accumulates lines until `columns` values arrive.
         let mut values = Vec::with_capacity(rows * columns);
         for _ in 0..rows {
-            let (line_number, line) = self.next()?;
-            let row: Result<Vec<f64>, _> = line
-                .split_whitespace()
-                .take(columns)
-                .map(str::parse)
-                .collect();
-            let row = row.map_err(|error| {
-                SwanSpectralError::parse(line_number, format!("invalid {description}: {error}"))
-            })?;
-            if row.len() != columns {
-                return Err(SwanSpectralError::parse(
-                    line_number,
-                    format!("expected {columns} {description} values"),
-                ));
+            let mut row: Vec<f64> = Vec::with_capacity(columns);
+            while row.len() < columns {
+                let (line_number, line) = self.next()?;
+                for token in line.split_whitespace().take(columns - row.len()) {
+                    row.push(token.parse().map_err(|error| {
+                        SwanSpectralError::parse(
+                            line_number,
+                            format!("invalid {description}: {error}"),
+                        )
+                    })?);
+                }
             }
             values.extend(row);
         }
@@ -914,6 +914,50 @@ FACTOR\n\
         for (actual, expected) in decoded_spectra.energy.iter().zip(example_spectra().energy) {
             assert!((actual - expected).abs() < 1.0e-8);
         }
+    }
+
+    #[test]
+    fn parses_swan_specout_wrapped_rows_and_negative_directions() {
+        // SWAN SPECOUT output wraps each frequency row across multiple
+        // physical lines (18 values per line for 36 directions) and writes
+        // nautical directions that can be negative (-85 for 275). Trailing
+        // keyword annotations mirror real SWAN output.
+        let input = "SWAN   1                                Swan standard spectral file, version\n\
+$   Data produced by SWAN version 41.51A\n\
+LONLAT                                  locations in spherical coordinates\n\
+     1                                  number of locations\n\
+  -71.544998   41.365002\n\
+AFREQ                                   absolute frequencies in Hz\n\
+    2\n\
+    0.0350\n\
+    0.0390\n\
+NDIR                                    spectral nautical directions in degr\n\
+    4\n\
+   15.0000\n\
+    5.0000\n\
+   -5.0000\n\
+  -85.0000\n\
+QUANT\n\
+     1                                  number of quantities in table\n\
+VaDens                                  variance densities in m2/Hz/degr\n\
+m2/Hz/degr                              unit\n\
+   -0.9900E+02                          exception value\n\
+FACTOR\n\
+    0.10000000E-01\n\
+    1    2\n\
+    3    4\n\
+    5    6\n\
+    7    8\n";
+        let file: SwanSpectralFile = input.parse().unwrap();
+        let spectra = file.frames[0].spectra[0].as_ref().unwrap();
+        assert_eq!(spectra.nk(), 2);
+        assert_eq!(spectra.nth(), 4);
+        let scale = 180.0 / PI * 0.01;
+        // Row-major in the file: freq 0 -> [1 2 3 4], freq 1 -> [5 6 7 8].
+        assert!((spectra.energy_at(0, 0) - scale).abs() < 1.0e-12);
+        assert!((spectra.energy_at(0, 3) - 4.0 * scale).abs() < 1.0e-12);
+        assert!((spectra.energy_at(1, 0) - 5.0 * scale).abs() < 1.0e-12);
+        assert!((spectra.energy_at(1, 3) - 8.0 * scale).abs() < 1.0e-12);
     }
 
     #[test]
