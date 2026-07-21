@@ -9,7 +9,7 @@ use crate::{
         contour::{compute_contours, ContourError},
         interpolation::{circular_pchip_interpolate, PchipInterpolator},
         linspace::linspace,
-        vector::diff,
+        vector::{argsort_partial, diff},
         waves::pt_mean,
     },
     units::direction::DirectionConvention,
@@ -20,6 +20,15 @@ pub enum SpectralAxis {
     Frequency,
     Direction,
 }
+
+/// cos-2s exponent cap for directional de-binning: r1 -> 1 sends s -> infinity,
+/// and s = 399 is roughly 4 degrees of spread, well below one 5 degree output
+/// bin, so narrower fits are indistinguishable.
+const DEBIN_S_MAX: f64 = 399.0;
+
+/// De-binned output direction axis: 72 bins of 5 degrees centered at 2.5 + 5k
+const DEBIN_DIRECTION_COUNT: usize = 72;
+const DEBIN_DIRECTION_STEP: f64 = 5.0;
 
 /// Pre-computed mapping from cartesian pixel indices to spectral indices.
 /// Used to accelerate repeated calls to `project_cartesian_with_map` when
@@ -330,6 +339,128 @@ impl Spectra {
                 }
             })
             .collect()
+    }
+
+    /// Per-frequency circular first moments of the binned directional
+    /// distribution as (m0 in m2/hz, mean direction in degrees, resultant
+    /// length r1). The first moments survive direction binning with sub-bin
+    /// precision, which is what makes de-binning possible.
+    fn binned_first_moments(&self) -> Vec<(f64, f64, f64)> {
+        let direction = self.direction_deg();
+        let widths = circular_bin_widths_deg(&direction);
+        let nk = self.nk();
+        let nth = self.nth();
+
+        (0..nk)
+            .map(|ik| {
+                let mut m0 = 0.0;
+                let mut esin = 0.0;
+                let mut ecos = 0.0;
+                for ith in 0..nth {
+                    let energy = self.energy_at(ik, ith);
+                    if !energy.is_finite() {
+                        continue;
+                    }
+                    let binned = energy * widths[ith].to_radians();
+                    let rad = direction[ith].to_radians();
+                    m0 += binned;
+                    ecos += binned * rad.cos();
+                    esin += binned * rad.sin();
+                }
+                if m0 <= 0.0 {
+                    (0.0, 0.0, 0.0)
+                } else {
+                    let a1 = ecos / m0;
+                    let b1 = esin / m0;
+                    let mean_direction = b1.atan2(a1).to_degrees().rem_euclid(360.0);
+                    (m0, mean_direction, a1.hypot(b1))
+                }
+            })
+            .collect()
+    }
+
+    /// De-bin the directional distribution onto a smooth 72 x 5 degree axis.
+    ///
+    /// Binned direction axes (like 36 x ~10 degree buoy spectra) render as a
+    /// directional staircase, which measurably shifts island shadows for
+    /// narrow long-period swell when fed to SWAN as a boundary. For every
+    /// frequency row this fits a cos-2s spreading shape to the circular first
+    /// moment of the binned distribution and samples it on the 5 degree axis,
+    /// preserving each row's total energy exactly and its mean direction and
+    /// directional spread to sub-bin precision. Note `interpolate_to_grid` is
+    /// not a substitute: interpolating the staircase preserves the staircase.
+    ///
+    /// Known limitation of the per-frequency fit: two wave systems crossing
+    /// at the same frequency from different directions merge into a single
+    /// cos-2s shape.
+    pub fn debin(&self) -> Spectra {
+        self.debin_rows(self.binned_first_moments())
+    }
+
+    /// De-bin like [`Spectra::debin`], but override the per-frequency mean
+    /// direction (degrees, from-convention) and first normalized polar
+    /// coefficient r1 with exact values where available - for example NDBC
+    /// alpha1 (.swdir) and r1 (.swr1) records for spectra reconstructed from
+    /// directional Fourier coefficients. Rows with missing or invalid values
+    /// (such as the NDBC 999.0 fill) fall back to moments estimated from the
+    /// bins; each row's total energy always comes from the binned spectrum.
+    pub fn debin_with_moments(
+        &self,
+        mean_direction: &[f64],
+        first_polar_coefficient: &[f64],
+    ) -> Spectra {
+        let mut moments = self.binned_first_moments();
+        for (ik, moment) in moments.iter_mut().enumerate() {
+            let (Some(direction), Some(r1)) =
+                (mean_direction.get(ik), first_polar_coefficient.get(ik))
+            else {
+                continue;
+            };
+            if (0.0..=360.0).contains(direction) && (0.0..=1.0).contains(r1) {
+                *moment = (moment.0, *direction, *r1);
+            }
+        }
+        self.debin_rows(moments)
+    }
+
+    fn debin_rows(&self, moments: Vec<(f64, f64, f64)>) -> Spectra {
+        let nk = self.nk();
+        let direction: Vec<f64> = (0..DEBIN_DIRECTION_COUNT)
+            .map(|ith| DEBIN_DIRECTION_STEP / 2.0 + DEBIN_DIRECTION_STEP * ith as f64)
+            .collect();
+
+        let mut energy = vec![0.0; nk * DEBIN_DIRECTION_COUNT];
+        for (ik, (m0, mean_direction, r1)) in moments.into_iter().enumerate() {
+            if m0 <= 0.0 {
+                continue;
+            }
+
+            // Compute the cos-2s shape in log space so large exponents do not
+            // underflow before normalization
+            let s = (r1 / (1.0 - r1).max(1.0 / (1.0 + DEBIN_S_MAX))).min(DEBIN_S_MAX);
+            let log_shape: Vec<f64> = direction
+                .iter()
+                .map(|d| {
+                    let half = ((d - mean_direction) / 2.0).to_radians();
+                    2.0 * s * half.cos().abs().max(1.0e-300).ln()
+                })
+                .collect();
+            let log_max = log_shape.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+            let shape: Vec<f64> = log_shape.iter().map(|l| (l - log_max).exp()).collect();
+
+            // Discrete normalization preserves the row's m0 exactly
+            let scale = shape.iter().sum::<f64>() * DEBIN_DIRECTION_STEP.to_radians();
+            for (ith, value) in shape.iter().enumerate() {
+                energy[ik + ith * nk] = m0 * (value / scale);
+            }
+        }
+
+        Spectra::new(
+            self.frequency.clone(),
+            direction.iter().map(|d| d.to_radians()).collect(),
+            energy,
+            DirectionConvention::From,
+        )
     }
 
     /// The value range of the energy data in the form of (min, max)
@@ -645,5 +776,192 @@ impl Spectra {
             result_energy,
             DirectionConvention::From,
         )
+    }
+}
+
+/// Circular bin widths in degrees for a direction axis in degrees, in the
+/// same order as `direction`: half the gap to each neighbor on the circle,
+/// wrapping around 360. Real buoy axes are non-uniform (36 integer
+/// directions alternating 9 and 11 degree gaps), so widths cannot be assumed
+/// constant, and axes are not assumed pre-sorted (e.g. a Met-convention axis
+/// normalized via `270 - dir` reverses ascending input order) - this sorts
+/// internally so neighbor gaps are always spatial neighbors on the circle.
+fn circular_bin_widths_deg(direction: &[f64]) -> Vec<f64> {
+    let count = direction.len();
+    let order = argsort_partial(direction);
+    let sorted: Vec<f64> = order.iter().map(|&i| direction[i]).collect();
+
+    let mut widths = vec![0.0; count];
+    for (position, &original_index) in order.iter().enumerate() {
+        let up = (sorted[(position + 1) % count] - sorted[position]).rem_euclid(360.0);
+        let down =
+            (sorted[position] - sorted[(position + count - 1) % count]).rem_euclid(360.0);
+        widths[original_index] = (up + down) / 2.0;
+    }
+    widths
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The playbuoy direction axis: 36 integer directions alternating 9 and
+    /// 11 degree gaps
+    fn playbuoy_directions_deg() -> Vec<f64> {
+        (0..36)
+            .map(|i| 6.0 + 20.0 * ((i / 2) as f64) + 9.0 * ((i % 2) as f64))
+            .collect()
+    }
+
+    /// A binned spectrum on the playbuoy axis: one narrow row, one broad row,
+    /// and one zero row
+    fn binned_spectra() -> Spectra {
+        let direction_deg = playbuoy_directions_deg();
+        let frequency = vec![0.07, 0.1, 0.2];
+        let mut energy = vec![0.0; frequency.len() * direction_deg.len()];
+        for (ith, dir) in direction_deg.iter().enumerate() {
+            let narrow = (-((dir - 115.0) / 12.0).powi(2)).exp();
+            let broad = 0.4 * (-((dir - 240.0) / 55.0).powi(2)).exp();
+            energy[0 + ith * frequency.len()] = narrow;
+            energy[1 + ith * frequency.len()] = broad;
+        }
+        Spectra::new(
+            frequency,
+            direction_deg.iter().map(|d| d.to_radians()).collect(),
+            energy,
+            DirectionConvention::From,
+        )
+    }
+
+    fn spread_deg(r1: f64) -> f64 {
+        (2.0 * (1.0 - r1)).max(0.0).sqrt().to_degrees()
+    }
+
+    #[test]
+    fn circular_bin_widths_wrap_and_cover_the_circle() {
+        let widths = circular_bin_widths_deg(&playbuoy_directions_deg());
+        assert!((widths.iter().sum::<f64>() - 360.0).abs() < 1.0e-9);
+
+        // An asymmetric axis: bin widths are the midpoint-to-midpoint spans
+        let widths = circular_bin_widths_deg(&[0.0, 90.0, 180.0]);
+        assert_eq!(widths, vec![135.0, 90.0, 135.0]);
+    }
+
+    #[test]
+    fn circular_bin_widths_are_order_independent() {
+        // A reversed, non-monotonic axis (as produced by e.g. Met convention
+        // normalization, which computes 270 - dir) must give each direction
+        // the same width as the sorted axis, keyed by its own position in
+        // the input rather than assuming ascending order
+        let sorted = [0.0, 90.0, 180.0, 270.0];
+        let reversed = [270.0, 180.0, 90.0, 0.0];
+
+        let sorted_widths = circular_bin_widths_deg(&sorted);
+        let reversed_widths = circular_bin_widths_deg(&reversed);
+
+        for (i, &dir) in reversed.iter().enumerate() {
+            let sorted_index = sorted.iter().position(|&d| d == dir).unwrap();
+            assert_eq!(reversed_widths[i], sorted_widths[sorted_index]);
+        }
+    }
+
+    #[test]
+    fn debin_round_trips_row_moments_with_met_convention() {
+        // Met-convention directions normalize via `270 - dir`, which reverses
+        // ascending input into a descending physical axis; debin must still
+        // recover the correct moments rather than treating array order as
+        // spatial order
+        let direction_met_deg: Vec<f64> = (0..36).map(|i| 10.0 * i as f64).collect();
+        let frequency = vec![0.07, 0.1];
+        let mut energy = vec![0.0; frequency.len() * direction_met_deg.len()];
+        for (ith, met_dir) in direction_met_deg.iter().enumerate() {
+            let physical_dir = DirectionConvention::Met.normalize(*met_dir);
+            let narrow = (-((physical_dir - 200.0) / 12.0).powi(2)).exp();
+            energy[0 + ith * frequency.len()] = narrow;
+        }
+        let binned = Spectra::new(
+            frequency,
+            direction_met_deg.iter().map(|d| d.to_radians()).collect(),
+            energy,
+            DirectionConvention::Met,
+        );
+
+        let debinned = binned.debin();
+        let source_moments = binned.binned_first_moments();
+        let debinned_moments = debinned.binned_first_moments();
+        for ((m0_in, dir_in, r1_in), (m0_out, dir_out, r1_out)) in
+            source_moments.into_iter().zip(debinned_moments)
+        {
+            if m0_in <= 0.0 {
+                assert_eq!(m0_out, 0.0);
+                continue;
+            }
+            assert!((m0_out / m0_in - 1.0).abs() < 1.0e-9);
+            let dir_error = (dir_out - dir_in + 180.0).rem_euclid(360.0) - 180.0;
+            assert!(dir_error.abs() < 0.5, "dir_in={dir_in} dir_out={dir_out}");
+            assert!((spread_deg(r1_out) - spread_deg(r1_in)).abs() < 0.5);
+        }
+    }
+
+    #[test]
+    fn debin_round_trips_row_moments() {
+        let binned = binned_spectra();
+        let debinned = binned.debin();
+
+        assert_eq!(debinned.nk(), binned.nk());
+        assert_eq!(debinned.nth(), DEBIN_DIRECTION_COUNT);
+        assert_eq!(debinned.direction_deg()[0], 2.5);
+        assert_eq!(debinned.direction_deg()[71], 357.5);
+
+        let source_moments = binned.binned_first_moments();
+        let debinned_moments = debinned.binned_first_moments();
+        for ((m0_in, dir_in, r1_in), (m0_out, dir_out, r1_out)) in
+            source_moments.into_iter().zip(debinned_moments)
+        {
+            if m0_in <= 0.0 {
+                assert_eq!(m0_out, 0.0);
+                continue;
+            }
+            assert!((m0_out / m0_in - 1.0).abs() < 1.0e-12);
+            let dir_error = (dir_out - dir_in + 180.0).rem_euclid(360.0) - 180.0;
+            assert!(dir_error.abs() < 0.01);
+            assert!((spread_deg(r1_out) - spread_deg(r1_in)).abs() < 0.01);
+        }
+    }
+
+    #[test]
+    fn debin_with_moments_prefers_exact_coefficients() {
+        let binned = binned_spectra();
+        // Exact moments for the first two rows; the NDBC 999.0 fill for the
+        // zero row must fall back to the bin estimate
+        let mean_direction = vec![120.0, 250.0, 999.0];
+        let first_polar_coefficient = vec![0.95, 0.5, 999.0];
+
+        let debinned = binned.debin_with_moments(&mean_direction, &first_polar_coefficient);
+        let moments = debinned.binned_first_moments();
+
+        let source_moments = binned.binned_first_moments();
+        for ik in 0..2 {
+            let (m0, direction, r1) = moments[ik];
+            assert!((m0 / source_moments[ik].0 - 1.0).abs() < 1.0e-12);
+            let dir_error = (direction - mean_direction[ik] + 180.0).rem_euclid(360.0) - 180.0;
+            assert!(dir_error.abs() < 0.01);
+            assert!((spread_deg(r1) - spread_deg(first_polar_coefficient[ik])).abs() < 0.01);
+        }
+        assert_eq!(moments[2], (0.0, 0.0, 0.0));
+    }
+
+    #[test]
+    fn debin_zeroes_rows_with_non_finite_energy() {
+        let mut binned = binned_spectra();
+        let nk = binned.nk();
+        for ith in 0..binned.nth() {
+            binned.energy[2 + ith * nk] = f64::NAN;
+        }
+
+        let debinned = binned.debin();
+        for ith in 0..debinned.nth() {
+            assert_eq!(debinned.energy_at(2, ith), 0.0);
+        }
     }
 }

@@ -86,6 +86,19 @@ impl DirectionalSpectralWaveDataRecord {
             &second_polar_coefficient.value,
         )
     }
+
+    /// De-bin this record's spectra onto the smooth 72 x 5 degree axis using
+    /// the exact NDBC directional Fourier coefficients (alpha1 from .swdir
+    /// and r1 from .swr1) instead of re-estimating the first moments from the
+    /// direction bins
+    pub fn debinned_spectra(
+        &self,
+        mean_wave_direction: &SpectralWaveDataRecord,
+        first_polar_coefficient: &SpectralWaveDataRecord,
+    ) -> Spectra {
+        self.spectra
+            .debin_with_moments(&mean_wave_direction.value, &first_polar_coefficient.value)
+    }
 }
 
 impl SwellProvider for DirectionalSpectralWaveDataRecord {
