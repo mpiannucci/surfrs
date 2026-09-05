@@ -453,7 +453,6 @@ mod tests {
     use super::lerp;
     use super::nearest_neighbors;
     use super::watershed;
-    use rand;
 
     #[test]
     fn test_linear_interpolation() {
@@ -483,43 +482,42 @@ mod tests {
 
     #[test]
     fn test_nearest_neighbors() {
-        // Test given:
-        // 0   1   2   3
-        // 4   5   6   7
-        // 8   9   10  11
-        // 12  13  14  15
-        //
-        // Only wraps y and not x
-
-        let i = 0;
-        let neighbors = nearest_neighbors(4, 4, i);
-        assert_eq!(neighbors.len(), 5);
-
-        let i = 6;
-        let neighbors = nearest_neighbors(4, 4, i);
-        assert_eq!(neighbors.len(), 8);
-
-        let i = 15;
-        let neighbors = nearest_neighbors(4, 4, i);
-        assert_eq!(neighbors.len(), 5);
-
-        // 0   1   2   3  4  5
-        // 5   7   8   9  10 11
-        // 12  13  14  15 16 17
-        // 18  19  20  21 22 23
-        // 24  25  26  27 28 29
-        let i = 5;
-        let neighbors = nearest_neighbors(6, 5, i);
-        assert_eq!(neighbors.len(), 5);
+        // Preserve traversal order, direction wrap, and the port's duplicates.
+        assert_eq!(nearest_neighbors(4, 4, 0), [1, 12, 4, 13, 5]);
+        assert_eq!(nearest_neighbors(4, 4, 6), [5, 7, 2, 10, 2, 3, 9, 11]);
+        assert_eq!(nearest_neighbors(4, 4, 15), [14, 11, 3, 11, 2]);
+        assert_eq!(nearest_neighbors(6, 5, 5), [4, 29, 11, 28, 10]);
+        assert_eq!(nearest_neighbors(1, 1, 0), [0, 0]);
+        assert_eq!(nearest_neighbors(1, 3, 0), [2, 1]);
+        assert_eq!(nearest_neighbors(3, 1, 1), [0, 2, 1, 1, 0, 2, 0, 2]);
     }
 
     #[test]
-    fn test_watershed_smoke() {
-        const WIDTH: usize = 6;
-        const HEIGHT: usize = 5;
-        let data: [f64; WIDTH * HEIGHT] = rand::random();
-
-        let watershed_result = watershed(&data, WIDTH, HEIGHT, 50, None);
-        assert!(watershed_result.is_ok());
+    fn test_watershed_ties_and_boundary_cleanup() {
+        // Quantized plateaus and several basins leave boundaries that exercise all
+        // cleanup passes. These expected maps come from the original implementation.
+        let energy = (0..30)
+            .map(|i| ((i * 17 + i * i) % 11) as f64)
+            .collect::<Vec<_>>();
+        assert_eq!(
+            watershed(&energy, 6, 5, 5, None).unwrap(),
+            (
+                vec![
+                    4, 1, 1, 0, 2, 2, 3, 4, 4, 4, 5, 5, 3, 3, 4, 4, 5, 5, 0, 1, 0, 1, 5, 5, 1, 1,
+                    1, 5, 5, 2
+                ],
+                6
+            ),
+        );
+        assert_eq!(
+            watershed(&energy, 6, 5, 5, Some(0.8)).unwrap(),
+            (
+                vec![
+                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 2, 2, 1, 1,
+                    1, 1, 1, 1
+                ],
+                3
+            ),
+        );
     }
 }

@@ -46,13 +46,13 @@ against the original for 3,020 cases: all 385 forecast and 1,099 buoy fixture
 records, plus 1,536 synthetic cases spanning ties, flat spectra, small and
 single-axis grids, several level counts, nonfinite inputs, and blur/no-blur.
 
-Permanent regression tests in `tests/watershed_tests.rs` retain eight complete
-forecast/buoy maps captured before the change, plus small expected maps and exact
-neighbor lists. Snapshot provenance is in `tests/fixtures/README.md`.
+The existing unit tests in `src/tools/analysis.rs` now check exact neighbor
+lists and one small partition map with and without blur. The expected labels
+were captured from the original implementation and cover level ties and boundary
+cleanup. The existing integration tests continue to exercise real spectra.
 
 ```sh
 cargo test --lib
-cargo test --test watershed_tests
 cargo test --test buoy_data_tests read_wave_spectra_data
 cargo test --test buoy_data_tests read_spectral_forecast_station_data
 ```

@@ -1,15 +1,21 @@
 //! Run with `cargo bench --bench watershed`. Fixture loading and buoy spectrum
 //! reconstruction happen outside the timed region; blur and result disposal are
 //! included. Report medians of batch averages, not individual-call percentiles.
-#[path = "../tests/support/watershed.rs"]
-mod support;
+use std::{f64::consts::PI, fs, hint::black_box, path::Path, time::Instant};
 
-use std::{hint::black_box, time::Instant};
+use surfrs::{
+    data::{
+        directional_spectral_wave_data_record::DirectionalSpectralWaveDataRecord,
+        forecast_spectral_wave_data_record::ForecastSpectralWaveDataRecordCollection,
+        spectral_wave_data_record::SpectralWaveDataRecordCollection,
+    },
+    spectra::Spectra,
+};
 
 fn main() {
     for (name, spectra, blur) in [
-        ("forecast", support::forecast_spectra(), None),
-        ("buoy", support::buoy_spectra(), Some(0.8)),
+        ("forecast", forecast_spectra(), None),
+        ("buoy", buoy_spectra(), Some(0.8)),
     ] {
         let samples = (0..32)
             .map(|i| &spectra[i * spectra.len() / 32])
@@ -37,4 +43,47 @@ fn main() {
             times[7],
         );
     }
+}
+
+fn read_mock(name: &str) -> String {
+    fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("mock")
+            .join(name),
+    )
+    .unwrap()
+}
+
+fn forecast_spectra() -> Vec<Spectra> {
+    let raw = read_mock("gfswave.44097.spec");
+    let mut collection = ForecastSpectralWaveDataRecordCollection::from_data(&raw);
+    let spectra = collection.records().unwrap().1.map(|r| r.spectra).collect();
+    spectra
+}
+
+fn buoy_spectra() -> Vec<Spectra> {
+    let raw = ["data_spec", "swdir", "swdir2", "swr1", "swr2"]
+        .map(|extension| read_mock(&format!("44097.{extension}")));
+    let [energy, mean_direction, primary_direction, first, second] = &raw;
+    let mut energy = SpectralWaveDataRecordCollection::from_data(energy);
+    let mut mean_direction = SpectralWaveDataRecordCollection::from_data(mean_direction);
+    let mut primary_direction = SpectralWaveDataRecordCollection::from_data(primary_direction);
+    let mut first = SpectralWaveDataRecordCollection::from_data(first);
+    let mut second = SpectralWaveDataRecordCollection::from_data(second);
+    let direction = (0..36)
+        .map(|i| (2.0 * PI / 36.0) * i as f64)
+        .collect::<Vec<_>>();
+
+    itertools::izip!(
+        energy.records(),
+        mean_direction.records(),
+        primary_direction.records(),
+        first.records(),
+        second.records(),
+    )
+    .map(|(e, mwd, pwd, r1, r2)| {
+        DirectionalSpectralWaveDataRecord::from_data_records(&direction, e, mwd, pwd, r1, r2)
+            .spectra
+    })
+    .collect()
 }
