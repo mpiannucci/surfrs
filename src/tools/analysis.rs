@@ -2,8 +2,6 @@ use std::{collections::VecDeque, f64};
 
 use image::imageops;
 
-use crate::tools::vector::argsort;
-
 /// Linearly interpolate between and b by fraction diff
 pub fn lerp(a: &f64, b: &f64, x: &f64, x0: &f64, x1: &f64) -> f64 {
     let diff = (x - x0) / (x1 - x0);
@@ -127,7 +125,32 @@ pub fn detect_peaks(data: &Vec<f64>, delta: f64) -> (Vec<usize>, Vec<usize>) {
 /// TODO
 ///
 pub fn nearest_neighbors(width: usize, height: usize, index: usize) -> Vec<usize> {
-    let mut neighbors = Vec::new();
+    neighbor_cells(width, height, index).as_slice().to_vec()
+}
+
+// Keep each cell's neighbors inline so watershed needs only one allocation for
+// the grid. Their order (including duplicates) affects basin and boundary ties.
+struct Neighbors {
+    indices: [usize; 8],
+    len: usize,
+}
+
+impl Neighbors {
+    fn push(&mut self, index: usize) {
+        self.indices[self.len] = index;
+        self.len += 1;
+    }
+
+    fn as_slice(&self) -> &[usize] {
+        &self.indices[..self.len]
+    }
+}
+
+fn neighbor_cells(width: usize, height: usize, index: usize) -> Neighbors {
+    let mut neighbors = Neighbors {
+        indices: [0; 8],
+        len: 0,
+    };
 
     let t = width * height;
     let j = index / width;
@@ -165,6 +188,7 @@ pub fn nearest_neighbors(width: usize, height: usize, index: usize) -> Vec<usize
 
     // Point at the bottom, left(5)
     if i != 0 && j != 0 {
+        // Preserve the original port's duplicate bottom neighbor.
         neighbors.push(index - width);
     }
 
@@ -257,13 +281,28 @@ pub fn watershed(
             .collect::<Vec<u8>>()
     };
 
-    // Sort the digitized data indices, so all levels are grouped in order
-    let ind = argsort::<u8>(&imi);
+    // Stable counting sort of the u8 levels. Scattering in input order keeps
+    // ties identical to argsort: changing that order can change basin labels.
+    let mut offsets = [0usize; 256];
+    for &level in &imi {
+        offsets[level as usize] += 1;
+    }
+    let mut total = 0;
+    for offset in &mut offsets {
+        let size = *offset;
+        *offset = total;
+        total += size;
+    }
+    let mut ind = vec![0; count];
+    for (index, &level) in imi.iter().enumerate() {
+        ind[offsets[level as usize]] = index;
+        offsets[level as usize] += 1;
+    }
 
     // Compute the nearest neighbor for every index ahead of time
     let neigh = (0..count)
-        .map(|i| nearest_neighbors(width, height, i))
-        .collect::<Vec<Vec<usize>>>();
+        .map(|i| neighbor_cells(width, height, i))
+        .collect::<Vec<_>>();
 
     // Constants
     const MASK: i32 = -2;
@@ -295,7 +334,7 @@ pub fn watershed(
 
             // Consider neighbors. If there is neighbor, set distance and add
             // to queue.
-            for ipp in &neigh[ip] {
+            for ipp in neigh[ip].as_slice() {
                 if imo[*ipp] > 0 || imo[*ipp] == IWSHED {
                     imd[ip] = 1;
                     fifo.push_back(ip as i32);
@@ -323,7 +362,7 @@ pub fn watershed(
             }
 
             // Process queue
-            for ipp in &neigh[ip as usize] {
+            for ipp in neigh[ip as usize].as_slice() {
                 // Check for labeled watersheds or basins
                 if imd[*ipp] < ic_dist && (imo[*ipp] > 0 || imo[*ipp] == IWSHED) {
                     if imo[*ipp] > 0 {
@@ -361,7 +400,7 @@ pub fn watershed(
 
                 // ... and all connected to it ...
                 while let Some(ipp) = fifo.pop_front() {
-                    for ippp in &neigh[ipp as usize] {
+                    for ippp in neigh[ipp as usize].as_slice() {
                         if imo[*ippp] == MASK {
                             fifo.push_back(*ippp as i32);
                             imo[*ippp] = ic_label;
@@ -375,16 +414,16 @@ pub fn watershed(
 
     // Find nearest neighbor of 0 watershed points and replace
     // use original input to check which group to affiliate with 0
-    // Soring changes first in IMD to assure symetry in adjustment.
+    // Store changes in IMD so every decision in a pass reads the same labels.
     for _ in 0..5 {
-        imd = imo.clone();
+        imd.copy_from_slice(&imo);
 
         for jl in 0..count {
             let mut ipt = -1;
             if imo[jl] == 0 {
                 let mut ep1 = max_value;
 
-                for (ijn, jn) in neigh[jl].iter().enumerate() {
+                for (ijn, jn) in neigh[jl].as_slice().iter().enumerate() {
                     let diff = (data[jl] - data[*jn]).abs();
                     if diff <= ep1 && imo[*jn] != 0 {
                         ep1 = diff;
@@ -393,12 +432,12 @@ pub fn watershed(
                 }
 
                 if ipt > 0 {
-                    imd[jl] = imo[neigh[jl][ipt as usize]];
+                    imd[jl] = imo[neigh[jl].as_slice()[ipt as usize]];
                 }
             }
         }
 
-        imo = imd.clone();
+        std::mem::swap(&mut imo, &mut imd);
         let min_imo = imo.iter().min().unwrap_or(&-1);
         if *min_imo > 0 {
             break;
