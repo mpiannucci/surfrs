@@ -7,9 +7,11 @@ use serde::{Deserialize, Serialize};
 use crate::{
     dimensional_data::DimensionalData,
     location::Location,
-    model::NOAAModel,
     swell::Swell,
-    tools::waves::wave_energy,
+    tools::{
+        grid_sampler::{GridSampler, SampleMethod},
+        waves::wave_energy,
+    },
     units::{Direction, Unit, UnitConvertible, UnitSystem},
 };
 
@@ -26,10 +28,8 @@ pub struct GFSWaveGribPointDataRecord {
 
 impl GFSWaveGribPointDataRecord {
     pub fn from_messages(
-        model: &impl NOAAModel,
-        messages: &Vec<Message>,
+        messages: &[Message],
         location: &Location,
-        tolerance: f64,
     ) -> Result<Self, DataRecordParsingError> {
         let mut date: DateTime<Utc> = Utc::now();
         let mut data: HashMap<String, f64> = HashMap::new();
@@ -49,6 +49,8 @@ impl GFSWaveGribPointDataRecord {
                 return;
             };
 
+            let method = sample_method(&abbrev);
+
             match level.0 {
                 FixedSurfaceType::OrderedSequence => {
                     abbrev = format!("{abbrev}_{}", level.1.map(|l| l as usize).unwrap_or(0))
@@ -56,13 +58,12 @@ impl GFSWaveGribPointDataRecord {
                 _ => {}
             }
 
-            match model.query_location_tolerance(location, &tolerance, m) {
-                Ok(value) => {
-                    let sum: f64 = value.iter().sum();
-                    let mean: f64 = sum / value.len() as f64;
-                    data.insert(abbrev, mean);
-                }
-                Err(err) => println!("{err}"),
+            let Ok(sampler) = GridSampler::from_message(m) else {
+                return;
+            };
+
+            if let Some(value) = sampler.sample(location, method).value {
+                data.insert(abbrev, value);
             }
         });
 
@@ -162,6 +163,15 @@ impl GFSWaveGribPointDataRecord {
             wind_direction,
             swell_components,
         })
+    }
+}
+
+/// Heights are interpolated as energy, directions as angles, everything else linearly.
+fn sample_method(abbrev: &str) -> SampleMethod {
+    match abbrev {
+        "HTSGW" | "WVHGT" | "SWELL" => SampleMethod::BilinearEnergy,
+        "DIRPW" | "WVDIR" | "SWDIR" | "WDIR" => SampleMethod::BilinearAngular,
+        _ => SampleMethod::Bilinear,
     }
 }
 

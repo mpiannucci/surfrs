@@ -30,12 +30,9 @@ impl FromStr for GEFSBulletinWaveRecordMetadata {
         // Locate header lines by keyword rather than by position: the real
         // bulletin files (extracted from the station tar) start with a leading
         // blank line, so we cannot assume the Location line comes first.
-        let location_str = s
-            .lines()
-            .find(|l| l.contains("Location"))
-            .ok_or(DataRecordParsingError::ParseFailure(
-                "Invalid data for location metadata".into(),
-            ))?;
+        let location_str = s.lines().find(|l| l.contains("Location")).ok_or(
+            DataRecordParsingError::ParseFailure("Invalid data for location metadata".into()),
+        )?;
 
         let location = match location_parser.captures(location_str) {
             Some(captures) => {

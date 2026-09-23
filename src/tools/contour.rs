@@ -1,9 +1,13 @@
 use contour::ContourBuilder;
 use geojson::{Feature, Value};
+use gribberish::{error::GribberishError, message::Message};
 use itertools::Either;
 use serde::{Deserialize, Serialize};
 
-use crate::location::normalize_longitude;
+use crate::{
+    location::normalize_longitude,
+    units::{Unit, UnitSystem},
+};
 
 use super::{linspace::linspace, vector::min_max_fill};
 
@@ -138,4 +142,57 @@ pub fn compute_latlng_gridded_contours<F: Fn(&usize, &f64) -> String>(
         }),
         label_format,
     )
+}
+
+/// Contour a regular lat/lng grib message into geojson features, optionally
+/// converting the data to `units` first.
+pub fn contour_message(
+    message: &Message,
+    threshold_min: Option<f64>,
+    threshold_max: Option<f64>,
+    threshold_count: Option<usize>,
+    units: Option<UnitSystem>,
+) -> Result<Vec<Feature>, GribberishError> {
+    let projector = message.latlng_projector()?;
+    let (lat_count, lng_count) = message.grid_dimensions()?;
+
+    let (lat_start, lng_start) = projector.latlng_start();
+    let (lat_end, lng_end) = projector.latlng_end();
+
+    let mut unit_abbrev = message.unit()?;
+    let data = if let Some(unit_system) = units.as_ref() {
+        let unit = Unit::from(unit_abbrev.as_str());
+        let target = unit.convert_system(unit_system);
+        unit_abbrev = target.abbreviation().into();
+
+        let data = message.data()?;
+        if unit != target {
+            data.into_iter().map(|v| unit.convert(v, &target)).collect()
+        } else {
+            data
+        }
+    } else {
+        message.data()?
+    };
+
+    compute_latlng_gridded_contours(
+        data,
+        lng_count,
+        lat_count,
+        lng_start,
+        lng_end,
+        lat_start,
+        lat_end,
+        threshold_min,
+        threshold_max,
+        threshold_count,
+        Some(|index: &usize, value: &f64| {
+            if index % 2 > 0 {
+                format!("{:.0}{}", value.round(), unit_abbrev)
+            } else {
+                "".to_string()
+            }
+        }),
+    )
+    .map_err(|_| GribberishError::MessageError("Failed to contour data".into()))
 }

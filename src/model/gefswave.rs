@@ -2,7 +2,7 @@ use chrono::prelude::*;
 
 use crate::tools::date::closest_gfs_model_gridded_datetime;
 
-use super::{ModelDataSource, ModelTimeOutputResolution, NOAAModel};
+use super::{GriddedModel, ModelTimeOutputResolution, NOAADataSource};
 
 pub struct GEFSWaveModel {
     pub id: &'static str,
@@ -26,9 +26,15 @@ impl GEFSWaveModel {
             description: "GEFS Wave Model: Global 0.25 degree Ensemble Spread",
         }
     }
+
+    pub fn time_resolution(&self) -> ModelTimeOutputResolution {
+        ModelTimeOutputResolution::HybridThreeHourlySixHourly(240)
+    }
 }
 
-impl NOAAModel for GEFSWaveModel {
+impl GriddedModel for GEFSWaveModel {
+    type Source = NOAADataSource;
+
     fn id(&self) -> &'static str {
         self.id
     }
@@ -45,21 +51,21 @@ impl NOAAModel for GEFSWaveModel {
         closest_gfs_model_gridded_datetime(date)
     }
 
-    fn time_resolution(&self) -> ModelTimeOutputResolution {
-        ModelTimeOutputResolution::HybridThreeHourlySixHourly(240)
+    fn forecast_hours(&self, _run: &DateTime<Utc>) -> Vec<usize> {
+        self.time_resolution().hours_for_hour_range(0, 384)
     }
 
-    fn url_root(&self, source: &ModelDataSource) -> &'static str {
+    fn url_root(&self, source: &NOAADataSource) -> &'static str {
         match source {
-            ModelDataSource::NODDAWS => "https://noaa-gefs-pds.s3.amazonaws.com",
-            ModelDataSource::NOMADS => "https://nomads.ncep.noaa.gov/pub/data/nccf/com/gefs/prod",
-            ModelDataSource::NODDGCP => "",
+            NOAADataSource::NODDAWS => "https://noaa-gefs-pds.s3.amazonaws.com",
+            NOAADataSource::NOMADS => "https://nomads.ncep.noaa.gov/pub/data/nccf/com/gefs/prod",
+            NOAADataSource::NODDGCP => "",
         }
     }
 
     fn create_url(
         &self,
-        source: &ModelDataSource,
+        source: &NOAADataSource,
         output_index: usize,
         model_date: Option<DateTime<Utc>>,
     ) -> String {
@@ -81,7 +87,7 @@ impl NOAAModel for GEFSWaveModel {
 mod tests {
     use chrono::{DateTime, TimeZone, Utc};
 
-    use super::{GEFSWaveModel, ModelDataSource, NOAAModel};
+    use super::{GEFSWaveModel, GriddedModel, NOAADataSource};
 
     #[test]
     fn test_gefs_wave_url() {
@@ -90,11 +96,11 @@ mod tests {
         let date: DateTime<Utc> = Utc.with_ymd_and_hms(2023, 05, 25, 13, 0, 0).unwrap();
 
         let gefs_wave = GEFSWaveModel::global_25_spread();
-        let url = gefs_wave.create_url(&ModelDataSource::NODDAWS, 216, Some(date));
+        let url = gefs_wave.create_url(&NOAADataSource::NODDAWS, 216, Some(date));
         assert_eq!(url, truth);
 
         let truth = "https://noaa-gefs-pds.s3.amazonaws.com/gefs.20230525/06/wave/gridded/gefs.wave.t06z.spread.global.0p25.f294.grib2";
-        let url = gefs_wave.create_url(&ModelDataSource::NODDAWS, 294, Some(date));
+        let url = gefs_wave.create_url(&NOAADataSource::NODDAWS, 294, Some(date));
         assert_eq!(url, truth);
     }
 }
