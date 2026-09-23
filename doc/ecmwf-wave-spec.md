@@ -1,7 +1,6 @@
 # Spec: ECMWF wave products and model refactor
 
-Status: phase 1 (branch `gridded-model-sampler`) and phase 2 (branch
-`ecmwf-wave-model`) implemented, 2026-09-23.
+Status: phases 1–3 implemented (PR #6, branch `ecmwf-wave-model`), 2026-09-23.
 Background: `doc/ecmwf-open-data-waves.md`.
 
 ## Goals
@@ -291,8 +290,8 @@ Found when decoding the fixtures:
 
 ```rust
 pub struct PeriodBandHeight {
-    pub min_period: f64,               // s
-    pub max_period: f64,               // s
+    pub min_period: u8,                // s
+    pub max_period: u8,                // s
     pub height: DimensionalData<f64>,  // Hs of energy in [min, max)
 }
 
@@ -305,26 +304,40 @@ pub struct ECMWFWavePointDataRecord {
     pub energy_period: DimensionalData<f64>,          // Tm-1,0
     pub zero_crossing_period: DimensionalData<f64>,   // Tm02, None for AIFS
     pub peak_period: DimensionalData<f64>,            // Tp,   None for AIFS
-    pub period_bands: Vec<PeriodBandHeight>,          // 6 bands, ascending period
-    pub sample_source: SampleSource,                  // how the station value was obtained
+    pub period_bands: Vec<PeriodBandHeight>,          // bands present, ascending period
+    pub sample_source: SampleSource,                  // how swh was sampled at the location
 }
 
 impl ECMWFWavePointDataRecord {
-    /// One record per member present in `messages` (all messages share one valid time).
+    /// One record per (member, valid time) in `messages`, sorted by member then time.
+    /// Errors if a group has no swh. Probability, bathymetry and drag are ignored.
     pub fn from_messages(messages: &[Message], location: &Location) -> Result<Vec<Self>, DataRecordParsingError>;
-    /// sqrt(Σ band²): height from energy at periods of 10–30 s.
+    /// Same, decoding each message once for all locations. One Vec per location.
+    pub fn from_messages_many(messages: &[Message], locations: &[Location]) -> Result<Vec<Vec<Self>>, DataRecordParsingError>;
+    /// sqrt(Σ band²): height from energy at periods of 10–30 s. None unless all 6 bands are present.
     pub fn long_period_height(&self) -> DimensionalData<f64>;
     /// sqrt(max(0, Hs² − Σ band²)): height from energy outside 10–30 s (in practice < 10 s).
+    /// None unless all 6 bands are present.
     pub fn short_period_height(&self) -> DimensionalData<f64>;
-    /// Deep-water energy flux ρg²/(64π)·Hs²·Tm-1,0, in kW/m.
+    /// Deep-water energy flux ρg²/(64π)·Hs²·Tm-1,0 in kW/m (ρ = 1029, g = 9.81, as in
+    /// `tools::waves::wave_energy`). Uses Hs in metres whatever the record's units.
     pub fn energy_flux(&self) -> DimensionalData<f64>;
 }
 ```
 
 Also implements `UnitConvertible`. It does **not** implement `SwellProvider`.
+Adds `Unit::KiloWattsPerMeter`.
 
-To use many stations, build the samplers once per message and loop over the
-locations. A `from_messages_many(messages, &[Location])` variant does this.
+A location with no sea cell within the fallback distance still gets a record,
+with every value `None` and `sample_source: Missing`.
+
+Checked on the IFS HRES fixture (2026-09-23 00z, 24h):
+- At 44097: Hs 3.61 m from 81°, Tp 8.8 s ≥ Tm-1,0 7.4 s ≥ Tm02 5.6 s. The
+  10–30 s bands give 1.44 m, and energy outside them gives 3.31 m. Energy flux
+  is 47.5 kW/m.
+- Over a 1° lattice (36,859 ocean points), band energy exceeds the total at 43
+  points, by at most 1.2e-4 m². That is packing noise, and
+  `short_period_height` clamps it to 0.
 
 ## 6. Ensemble (`data/ecmwf_wave_ensemble_point_data_record.rs`)
 
