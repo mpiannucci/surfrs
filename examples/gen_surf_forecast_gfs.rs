@@ -69,7 +69,11 @@ async fn main() {
 
     let client = Client::new();
 
-    let end_hour = 384;
+    // END_HOUR shortens the run; the GEFS files are whole global grids.
+    let end_hour: usize = std::env::var("END_HOUR")
+        .ok()
+        .and_then(|h| h.parse().ok())
+        .unwrap_or(384);
 
     // Fetch ensemble spread and mean for confidence interval
     println!("Fetching GEFS Ensemble Spread");

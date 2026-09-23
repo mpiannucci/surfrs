@@ -1,7 +1,9 @@
+use std::{fmt, sync::Arc};
+
 use gribberish::{error::GribberishError, message::Message};
 use serde::{Deserialize, Serialize};
 
-use crate::location::Location;
+use crate::location::{normalize_longitude, Location};
 
 const EARTH_RADIUS_KM: f64 = 6371.0;
 const KM_PER_DEGREE: f64 = 111.195;
@@ -52,19 +54,78 @@ impl PointSample {
     }
 }
 
-/// A decoded regular latitude/longitude grid that can be sampled at points.
+/// Maps (latitude, longitude) to projected (x, y) metres, or back.
+type ProjectFn = dyn Fn(f64, f64) -> (f64, f64) + Send + Sync;
+
+/// Where the cells of a grid are.
+#[derive(Clone)]
+enum Geometry {
+    /// Regular latitude/longitude grid.
+    Regular {
+        lat_start: f64,
+        lat_step: f64,
+        lng_start: f64,
+        lng_step: f64,
+        is_global: bool,
+    },
+    /// Grid regular in projected metres (Lambert conformal, polar
+    /// stereographic, Mercator).
+    Projected {
+        x_start: f64,
+        x_step: f64,
+        y_start: f64,
+        y_step: f64,
+        /// (latitude, longitude) to (x, y)
+        to_grid: Arc<ProjectFn>,
+        /// (x, y) to (latitude, longitude)
+        to_latlng: Arc<ProjectFn>,
+    },
+}
+
+impl fmt::Debug for Geometry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Geometry::Regular {
+                lat_start,
+                lat_step,
+                lng_start,
+                lng_step,
+                is_global,
+            } => f
+                .debug_struct("Regular")
+                .field("lat_start", lat_start)
+                .field("lat_step", lat_step)
+                .field("lng_start", lng_start)
+                .field("lng_step", lng_step)
+                .field("is_global", is_global)
+                .finish(),
+            Geometry::Projected {
+                x_start,
+                x_step,
+                y_start,
+                y_step,
+                ..
+            } => f
+                .debug_struct("Projected")
+                .field("x_start", x_start)
+                .field("x_step", x_step)
+                .field("y_start", y_start)
+                .field("y_step", y_step)
+                .finish_non_exhaustive(),
+        }
+    }
+}
+
+/// A decoded grid that can be sampled at points: regular latitude/longitude, or
+/// regular in projected coordinates (e.g. HRRR's Lambert conformal grid).
 ///
 /// Decode a message once with `from_message` and sample as many locations as
 /// needed from it. Masked cells (land) are expected to be NaN.
 #[derive(Clone, Debug)]
 pub struct GridSampler {
-    lat_start: f64,
-    lat_step: f64,
-    lat_count: usize,
-    lng_start: f64,
-    lng_step: f64,
-    lng_count: usize,
-    is_global: bool,
+    geometry: Geometry,
+    rows: usize,
+    columns: usize,
     max_fallback_km: f64,
     data: Vec<f64>,
 }
@@ -72,31 +133,53 @@ pub struct GridSampler {
 impl GridSampler {
     pub fn from_message(message: &Message) -> Result<Self, GribberishError> {
         let projector = message.latlng_projector()?;
-        if !projector.is_regular_latlng_grid() {
-            return Err(GribberishError::MessageError(
-                "point sampling requires a regular lat/lng grid".into(),
-            ));
-        }
-
-        let (lat_count, lng_count) = message.grid_dimensions()?;
-        if lat_count < 2 || lng_count < 2 {
+        let (rows, columns) = message.grid_dimensions()?;
+        if rows < 2 || columns < 2 {
             return Err(GribberishError::MessageError(
                 "point sampling requires at least a 2x2 grid".into(),
             ));
         }
 
-        let (lat_start, lng_start) = projector.latlng_start();
-        let (lat_end, lng_end) = projector.latlng_end();
+        if projector.is_regular_latlng_grid() {
+            let (lat_start, lng_start) = projector.latlng_start();
+            let (lat_end, lng_end) = projector.latlng_end();
 
-        Self::from_regular_grid(
-            lat_start,
-            (lat_end - lat_start) / (lat_count - 1) as f64,
-            lat_count,
-            lng_start,
-            (lng_end - lng_start) / (lng_count - 1) as f64,
-            lng_count,
-            message.data()?,
-        )
+            return Self::from_regular_grid(
+                lat_start,
+                (lat_end - lat_start) / (rows - 1) as f64,
+                rows,
+                lng_start,
+                (lng_end - lng_start) / (columns - 1) as f64,
+                columns,
+                message.data()?,
+            );
+        }
+
+        let xs = projector.x();
+        let ys = projector.y();
+        if xs.len() != columns || ys.len() != rows {
+            return Err(GribberishError::MessageError(
+                "projected grid coordinates do not match the grid dimensions".into(),
+            ));
+        }
+
+        // gribberish names these the other way round: `project_xy(lng, lat)`
+        // projects to (y, x) and `project_latlng(y, x)` inverts to (lat, lng).
+        let forward = projector.clone();
+        let inverse = projector;
+        let geometry = Geometry::Projected {
+            x_start: xs[0],
+            x_step: xs[1] - xs[0],
+            y_start: ys[0],
+            y_step: ys[1] - ys[0],
+            to_grid: Arc::new(move |lat, lng| {
+                let (y, x) = forward.project_xy(normalize_longitude(lng), lat);
+                (x, y)
+            }),
+            to_latlng: Arc::new(move |x, y| inverse.project_latlng(y, x)),
+        };
+
+        Self::new(geometry, rows, columns, message.data()?)
     }
 
     /// Build a sampler from grid geometry and row-major data (latitude rows,
@@ -110,12 +193,6 @@ impl GridSampler {
         lng_count: usize,
         data: Vec<f64>,
     ) -> Result<Self, GribberishError> {
-        if data.len() != lat_count * lng_count {
-            return Err(GribberishError::MessageError(format!(
-                "grid data has {} values, expected {lat_count}x{lng_count}",
-                data.len()
-            )));
-        }
         if lat_step == 0.0 || lng_step == 0.0 {
             return Err(GribberishError::MessageError(
                 "grid steps must be non-zero".into(),
@@ -123,15 +200,34 @@ impl GridSampler {
         }
 
         let is_global = (lng_count as f64 * lng_step.abs() - 360.0).abs() < lng_step.abs() / 2.0;
-
-        Ok(GridSampler {
+        let geometry = Geometry::Regular {
             lat_start,
             lat_step,
-            lat_count,
             lng_start,
             lng_step,
-            lng_count,
             is_global,
+        };
+
+        Self::new(geometry, lat_count, lng_count, data)
+    }
+
+    fn new(
+        geometry: Geometry,
+        rows: usize,
+        columns: usize,
+        data: Vec<f64>,
+    ) -> Result<Self, GribberishError> {
+        if data.len() != rows * columns {
+            return Err(GribberishError::MessageError(format!(
+                "grid data has {} values, expected {rows}x{columns}",
+                data.len()
+            )));
+        }
+
+        Ok(GridSampler {
+            geometry,
+            rows,
+            columns,
             max_fallback_km: DEFAULT_MAX_FALLBACK_KM,
             data,
         })
@@ -163,44 +259,113 @@ impl GridSampler {
         locations.iter().map(|l| self.sample(l, method)).collect()
     }
 
+    fn is_global(&self) -> bool {
+        matches!(
+            self.geometry,
+            Geometry::Regular {
+                is_global: true,
+                ..
+            }
+        )
+    }
+
     /// Fractional (column, row) of a point, or None when it is off the grid.
     fn fractional_index(&self, latitude: f64, longitude: f64) -> Option<(f64, f64)> {
         const EPSILON: f64 = 1e-6;
 
-        let y = (latitude - self.lat_start) / self.lat_step;
-        if y < -EPSILON || y > (self.lat_count - 1) as f64 + EPSILON {
-            return None;
-        }
-
-        // Wrap into one revolution of columns so grids starting at 0, 180 or a
-        // regional offset all index the same way.
-        let columns_per_revolution = 360.0 / self.lng_step.abs();
-        let x = ((longitude - self.lng_start) / self.lng_step).rem_euclid(columns_per_revolution);
-        let x = if x > columns_per_revolution - EPSILON {
-            0.0
-        } else {
-            x
+        let (x, y) = match &self.geometry {
+            Geometry::Regular {
+                lat_start,
+                lat_step,
+                lng_start,
+                lng_step,
+                ..
+            } => {
+                // Wrap into one revolution of columns so grids starting at 0, 180
+                // or a regional offset all index the same way.
+                let columns_per_revolution = 360.0 / lng_step.abs();
+                let x = ((longitude - lng_start) / lng_step).rem_euclid(columns_per_revolution);
+                let x = if x > columns_per_revolution - EPSILON {
+                    0.0
+                } else {
+                    x
+                };
+                (x, (latitude - lat_start) / lat_step)
+            }
+            Geometry::Projected {
+                x_start,
+                x_step,
+                y_start,
+                y_step,
+                to_grid,
+                ..
+            } => {
+                if latitude.abs() > 89.9 {
+                    return None;
+                }
+                let (x, y) = to_grid(latitude, longitude);
+                ((x - x_start) / x_step, (y - y_start) / y_step)
+            }
         };
-        if !self.is_global && x > (self.lng_count - 1) as f64 + EPSILON {
+
+        if !x.is_finite() || !y.is_finite() {
+            return None;
+        }
+        if y < -EPSILON || y > (self.rows - 1) as f64 + EPSILON {
+            return None;
+        }
+        if !self.is_global() && (x < -EPSILON || x > (self.columns - 1) as f64 + EPSILON) {
             return None;
         }
 
-        Some((x, y.clamp(0.0, (self.lat_count - 1) as f64)))
+        let x = if self.is_global() {
+            x
+        } else {
+            x.clamp(0.0, (self.columns - 1) as f64)
+        };
+        Some((x, y.clamp(0.0, (self.rows - 1) as f64)))
+    }
+
+    /// Latitude and longitude of a cell.
+    fn cell_location(&self, column: i64, row: i64) -> (f64, f64) {
+        match &self.geometry {
+            Geometry::Regular {
+                lat_start,
+                lat_step,
+                lng_start,
+                lng_step,
+                ..
+            } => (
+                lat_start + row as f64 * lat_step,
+                lng_start + column as f64 * lng_step,
+            ),
+            Geometry::Projected {
+                x_start,
+                x_step,
+                y_start,
+                y_step,
+                to_latlng,
+                ..
+            } => to_latlng(
+                x_start + column as f64 * x_step,
+                y_start + row as f64 * y_step,
+            ),
+        }
     }
 
     fn value(&self, column: i64, row: i64) -> Option<f64> {
-        if row < 0 || row >= self.lat_count as i64 {
+        if row < 0 || row >= self.rows as i64 {
             return None;
         }
-        let column = if self.is_global {
-            column.rem_euclid(self.lng_count as i64)
-        } else if column < 0 || column >= self.lng_count as i64 {
+        let column = if self.is_global() {
+            column.rem_euclid(self.columns as i64)
+        } else if column < 0 || column >= self.columns as i64 {
             return None;
         } else {
             column
         };
 
-        let value = self.data[row as usize * self.lng_count + column as usize];
+        let value = self.data[row as usize * self.columns + column as usize];
         (!value.is_nan()).then_some(value)
     }
 
@@ -216,7 +381,7 @@ impl GridSampler {
 
     fn bilinear(&self, x: f64, y: f64, method: SampleMethod) -> PointSample {
         let column = x.floor() as i64;
-        let row = (y.floor() as i64).min(self.lat_count as i64 - 2);
+        let row = (y.floor() as i64).min(self.rows as i64 - 2);
         let tx = x - column as f64;
         let ty = y - row as f64;
 
@@ -265,24 +430,44 @@ impl GridSampler {
         }
     }
 
-    fn nearest_sea_cell(&self, location: &Location, x: f64, y: f64) -> PointSample {
-        let row_reach =
-            (self.max_fallback_km / (KM_PER_DEGREE * self.lat_step.abs())).ceil() as i64;
-        // On a global grid, searching more than half way round would visit
-        // columns twice.
-        let max_column_reach = if self.is_global {
-            self.lng_count as i64 / 2
-        } else {
-            self.lng_count as i64
-        };
-        let km_per_column =
-            KM_PER_DEGREE * self.lng_step.abs() * location.latitude.to_radians().cos().abs();
-        let column_reach = if km_per_column < 1e-6 {
-            max_column_reach
-        } else {
-            ((self.max_fallback_km / km_per_column).ceil() as i64).min(max_column_reach)
-        };
+    /// Rows and columns to search around a point for the fallback distance.
+    fn search_reach(&self, location: &Location) -> (i64, i64) {
+        match &self.geometry {
+            Geometry::Regular {
+                lat_step,
+                lng_step,
+                is_global,
+                ..
+            } => {
+                let row_reach =
+                    (self.max_fallback_km / (KM_PER_DEGREE * lat_step.abs())).ceil() as i64;
+                // On a global grid, searching more than half way round would visit
+                // columns twice.
+                let max_column_reach = if *is_global {
+                    self.columns as i64 / 2
+                } else {
+                    self.columns as i64
+                };
+                let km_per_column =
+                    KM_PER_DEGREE * lng_step.abs() * location.latitude.to_radians().cos().abs();
+                let column_reach = if km_per_column < 1e-6 {
+                    max_column_reach
+                } else {
+                    ((self.max_fallback_km / km_per_column).ceil() as i64).min(max_column_reach)
+                };
+                (row_reach, column_reach)
+            }
+            Geometry::Projected { x_step, y_step, .. } => {
+                let reach = |step: f64, count: usize| {
+                    ((self.max_fallback_km * 1000.0 / step.abs()).ceil() as i64).min(count as i64)
+                };
+                (reach(*y_step, self.rows), reach(*x_step, self.columns))
+            }
+        }
+    }
 
+    fn nearest_sea_cell(&self, location: &Location, x: f64, y: f64) -> PointSample {
+        let (row_reach, column_reach) = self.search_reach(location);
         let center_column = x.round() as i64;
         let center_row = y.round() as i64;
 
@@ -292,12 +477,9 @@ impl GridSampler {
                 let Some(value) = self.value(column, row) else {
                     continue;
                 };
-                let distance = haversine_km(
-                    location.latitude,
-                    location.longitude,
-                    self.lat_start + row as f64 * self.lat_step,
-                    self.lng_start + column as f64 * self.lng_step,
-                );
+                let (cell_lat, cell_lng) = self.cell_location(column, row);
+                let distance =
+                    haversine_km(location.latitude, location.longitude, cell_lat, cell_lng);
                 if distance <= self.max_fallback_km && best.map_or(true, |(d, _)| distance < d) {
                     best = Some((distance, value));
                 }

@@ -33,6 +33,8 @@ impl std::fmt::Display for DataRecordParsingError {
     }
 }
 
+impl std::error::Error for DataRecordParsingError {}
+
 impl From<ParseFloatError> for DataRecordParsingError {
     fn from(e: ParseFloatError) -> Self {
         DataRecordParsingError::ParseFailure(format!("Float: {e}"))

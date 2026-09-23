@@ -113,3 +113,67 @@ fn land_point_falls_back_to_nearest_sea_cell() {
     assert_eq!(sample.value, None);
     assert_eq!(sample.source, SampleSource::Missing);
 }
+
+mod projected {
+    use super::*;
+
+    // HRRR 2026-09-23 00z analysis, 2 m temperature (K). Lambert conformal,
+    // 1799 x 1059 at 3 km, LoV 262.5, standard parallel 38.5.
+    const HRRR_TMP_2M: &str = "mock/hrrr.20260923.t00z.wrfsfcf00.tmp2m.grib2";
+
+    fn hrrr() -> GridSampler {
+        let data = fs::read(HRRR_TMP_2M).unwrap();
+        let message = read_messages(&data).next().unwrap();
+        GridSampler::from_message(&message).unwrap()
+    }
+
+    #[test]
+    fn nearest_matches_eccodes_across_conus() {
+        // (lat, lon, eccodes nearest value from `grib_get -l lat,lon,1`)
+        let cases = [
+            (40.97, -71.13, 290.548),
+            (34.0, -118.25, 297.048),
+            (47.6, -122.3, 292.861),
+            (25.8, -80.2, 299.861),
+            (39.74, -104.99, 300.173),
+        ];
+        let grid = hrrr();
+        for (lat, lon, expected) in cases {
+            let sample = grid.sample(&Location::new(lat, lon, "".into()), SampleMethod::Nearest);
+            let value = sample.value.unwrap();
+            assert!(
+                (value - expected).abs() < 1e-3,
+                "{lat},{lon}: {value} vs {expected}"
+            );
+            assert_eq!(sample.source, SampleSource::NearestCell);
+
+            // Positive longitudes index the same cell.
+            let positive = grid.sample(
+                &Location::new(lat, lon + 360.0, "".into()),
+                SampleMethod::Nearest,
+            );
+            assert_eq!(positive, sample);
+        }
+    }
+
+    #[test]
+    fn bilinear_stays_between_neighbours() {
+        // eccodes' four nearest cells to 44097: 290.548, 290.673, 290.486, 290.548
+        let sample = hrrr().sample(&buoy_44097(), SampleMethod::Bilinear);
+        let value = sample.value.unwrap();
+        assert!(
+            value >= 290.486 - 1e-3 && value <= 290.673 + 1e-3,
+            "{value}"
+        );
+        assert_eq!(sample.source, SampleSource::Interpolated { sea_cells: 4 });
+    }
+
+    #[test]
+    fn points_off_the_grid_are_missing() {
+        let grid = hrrr();
+        for (lat, lon) in [(21.3, -157.9), (51.5, -0.13), (-33.9, 151.2)] {
+            let sample = grid.sample(&Location::new(lat, lon, "".into()), SampleMethod::Bilinear);
+            assert_eq!(sample.source, SampleSource::Missing, "{lat},{lon}");
+        }
+    }
+}

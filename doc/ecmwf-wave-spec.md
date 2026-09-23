@@ -1,6 +1,6 @@
 # Spec: ECMWF wave products and model refactor
 
-Status: phases 1–3 implemented (PR #6, branch `ecmwf-wave-model`), 2026-09-23.
+Status: all phases implemented (PR #6, branch `ecmwf-wave-model`), 2026-09-23.
 Background: `doc/ecmwf-open-data-waves.md`.
 
 ## Goals
@@ -13,8 +13,9 @@ Background: `doc/ecmwf-open-data-waves.md`.
    **Do not build swell partitions or per-component directions from it.**
 4. Build ensemble statistics from the IFS ENS / AIFS ENS members.
 
-Out of scope for now: wind from the `oper`/`enfo` streams (phase 5), and point
-extraction on projected grids (NWPS). NWPS keeps its URL builder only.
+Also done on the same branch: 10 m wind from the `oper`/`enfo` streams,
+sampling on projected grids (checked on HRRR), a `Location::distance` fix, and
+live examples including a comparison against NDBC buoys.
 
 ## Why the point code is replaced
 
@@ -112,10 +113,10 @@ pub enum SampleSource {
 
 pub struct PointSample { pub value: Option<f64>, pub source: SampleSource }
 
-pub struct GridSampler { /* lat0, dlat, ny, lon0, dlon, nx, is_global, data */ }
+pub struct GridSampler { /* geometry (regular or projected), rows, columns, data */ }
 
 impl GridSampler {
-    /// Decodes once. Errors if the grid is not a regular lat/lng grid.
+    /// Decodes once. Regular lat/lng grids and grids regular in projected metres.
     pub fn from_message(message: &Message) -> Result<Self, GribberishError>;
     /// Geometry plus row-major data, for synthetic grids and tests.
     pub fn from_regular_grid(lat_start, lat_step, lat_count, lng_start, lng_step, lng_count, data) -> Result<Self, GribberishError>;
@@ -124,6 +125,19 @@ impl GridSampler {
     pub fn with_max_fallback_km(self, km: f64) -> Self; // default 30 km
 }
 ```
+
+`from_message` also accepts grids that are regular in projected metres (Lambert
+conformal, polar stereographic, Mercator). The point is projected with the
+message's own projection and interpolated in grid-index space. gribberish keeps
+its projection types private, so the sampler holds the projector inside
+closures (`project_xy(lng, lat)` returns `(y, x)`; `project_latlng(y, x)`
+returns `(lat, lng)`). Exporting `LatLngProjection` from gribberish would make
+this simpler.
+
+Checked on HRRR (Lambert conformal, 3 km): nearest values match eccodes at five
+points across CONUS, in both longitude conventions, and points outside the grid
+(Hawaii, London, Sydney) are `Missing`. NWPS could not be checked: its NOMADS
+directory currently lists nothing.
 
 Rules:
 - Column index is `((lon − lon0).rem_euclid(360)) / dlon`. It wraps on global
@@ -152,12 +166,15 @@ becomes `from_messages(messages, location)`:
 
 ```rust
 pub enum ECMWFDataSource { ECMWF, GCP, AWS }
+// ECMWFWaveModel reads the wave streams (wave/waef); ECMWFWindModel reads the
+// matching atmosphere streams (oper/enfo) for 10 m wind. Both share
+// ECMWFProduct, so steps, delays and URLs stay in step.
 // ECMWF: https://data.ecmwf.int/forecasts
 // GCP:   https://storage.googleapis.com/ecmwf-open-data
 // AWS:   https://ecmwf-forecasts.s3.eu-central-1.amazonaws.com
 // (Azure mirror not yet verified; add when confirmed.)
 
-pub enum ECMWFWaveProduct {
+pub enum ECMWFProduct {   // renamed from ECMWFWaveProduct
     IfsHres,            // ifs/0p25/wave,         type fc
     IfsEnsMembers,      // ifs/0p25/waef,         type ef (members 1–50, no control)
     IfsEnsProbability,  // ifs/0p25/waef,         type ep
@@ -167,7 +184,13 @@ pub enum ECMWFWaveProduct {
     AifsEnsProbability, // aifs-ens/0p25/waef,    type ep
 }
 
-pub struct ECMWFWaveModel { pub product: ECMWFWaveProduct, /* id, name, description */ }
+pub struct ECMWFWaveModel { pub product: ECMWFProduct, /* id, name, description */ }
+pub struct ECMWFWindModel { pub product: ECMWFProduct, /* ... */ }
+impl ECMWFWindModel {
+    // ifs_hres(), ifs_ens_members(), aifs_single(), aifs_ens_control(), aifs_ens_members()
+    /// The wind model for the same run and members; None for probability products.
+    pub fn for_wave_model(wave: &ECMWFWaveModel) -> Option<Self>;
+}
 // Constructors: ifs_hres(), ifs_ens_members(), ifs_ens_probability(), aifs_single(),
 // aifs_ens_control(), aifs_ens_members(), aifs_ens_probability()
 ```
@@ -195,6 +218,9 @@ was written, plus a margin:
 | AIFS single | 5.5 h | 6 h |
 | AIFS ENS | 6.9–7.1 h | 8 h |
 
+The atmosphere streams publish the same steps a minute or two before the wave
+streams, so `ECMWFWindModel` uses the same delays.
+
 ### Selecting fields from the index
 
 A full `waef` step is ~530 MB, so range reads are required.
@@ -215,7 +241,7 @@ pub enum MemberSelection { All, Only(Vec<u8>) }
 
 /// Filters entries from `gribberish::index::parse_ecmwf_index`.
 pub struct ECMWFIndexQuery {
-    pub fields: Vec<ECMWFWaveField>,   // empty = every field
+    pub fields: Vec<ECMWFField>,   // empty = every field
     pub members: MemberSelection,      // entries without `number` always match
     pub steps: Option<Vec<String>>,    // e.g. "24", "120-168"; None = every step
 }
@@ -226,17 +252,28 @@ impl ECMWFIndexQuery {
 }
 ```
 
-Only `ef`/`pf` index entries carry `number`. Probability (`ep`) files hold every
+Only `ef`/`pf` index entries carry `number`.
+
+All 50 members are in one file per step (IFS `ef`: 650 messages, ~537 MB; AIFS
+`pf`: 500), but the messages are in no particular order: neither a field's 50
+members nor a member's fields are adjacent. One file means one index per step,
+but every member's field is still its own request of ~0.85 MB (`swh` for all 50
+members is 42.7 MB per step), and coalescing does not help. Probability (`ep`) files hold every
 step of the run (12–240h or 252–360h), and AIFS adds time windows such as
 `120-168`, so `steps` is needed to fetch one.
 
 surfrs keeps building URLs and ranges only. Fetching stays with the caller, as
 it does for GFS.
 
-## 4. Field classification (`data/ecmwf_wave_field.rs`)
+## 4. Field classification (`data/ecmwf_field.rs`)
+
+`ECMWFWaveField` was renamed `ECMWFField` (and `ECMWFWaveMessageInfo`
+`ECMWFMessageInfo`) when 10 m wind was added: `WindU` (`10u`, 0,2,2) and
+`WindV` (`10v`, 0,2,3), matched only at 10 m above ground so 100 m and
+pressure-level winds are skipped.
 
 ```rust
-pub enum ECMWFWaveField {
+pub enum ECMWFField {
     SignificantHeight,               // swh   10,0,3   PDT 0/1
     MeanDirection,                   // mwd   10,0,14
     EnergyPeriod,                    // mwp   10,0,15  Tm-1,0
@@ -249,7 +286,7 @@ pub enum ECMWFWaveField {
     PeriodExceedance { threshold: u8 },  // mwpg8/10/12/15  255,131,79  PDT 4.5 / 4.9 (AIFS only)
 }
 
-impl ECMWFWaveField {
+impl ECMWFField {
     pub fn from_message(m: &Message) -> Option<Self>;
     pub fn period_bands() -> Vec<Self>;
     pub fn mars_param(&self) -> String;         // for index selection
@@ -259,14 +296,14 @@ impl ECMWFWaveField {
 
 pub enum ForecastMember { Deterministic, Control, Perturbed(u8) }
 
-pub struct ECMWFWaveMessageInfo {
-    pub field: ECMWFWaveField,
+pub struct ECMWFMessageInfo {
+    pub field: ECMWFField,
     pub member: ForecastMember,
     pub reference_date: DateTime<Utc>,
     pub valid_date: DateTime<Utc>,              // window start for PDT 4.9
     pub valid_end_date: Option<DateTime<Utc>>,  // window end for PDT 4.9
 }
-impl ECMWFWaveMessageInfo { pub fn from_message(m: &Message) -> Option<Self>; }
+impl ECMWFMessageInfo { pub fn from_message(m: &Message) -> Option<Self>; }
 ```
 
 Thresholds and band limits are whole numbers, so the enum is `Eq + Hash` and can
@@ -305,6 +342,8 @@ pub struct ECMWFWavePointDataRecord {
     pub zero_crossing_period: DimensionalData<f64>,   // Tm02, None for AIFS
     pub peak_period: DimensionalData<f64>,            // Tp,   None for AIFS
     pub period_bands: Vec<PeriodBandHeight>,          // bands present, ascending period
+    pub wind_speed: DimensionalData<f64>,             // 10 m, when wind messages are passed
+    pub wind_direction: DimensionalData<Direction>,   // 10 m, coming from
     pub sample_source: SampleSource,                  // how swh was sampled at the location
 }
 
@@ -328,6 +367,10 @@ impl ECMWFWavePointDataRecord {
 Also implements `UnitConvertible`. It does **not** implement `SwellProvider`.
 Adds `Unit::KiloWattsPerMeter`.
 
+Wave and wind messages for the same member and time can be passed together and
+land on one record. u and v are sampled with `Bilinear` and combined into speed
+and a meteorological (coming from) direction, as WW3 does for its station wind.
+
 A location with no sea cell within the fallback distance still gets a record,
 with every value `None` and `sample_source: Missing`.
 
@@ -342,37 +385,65 @@ Checked on the IFS HRES fixture (2026-09-23 00z, 24h):
 ## 6. Ensemble (`data/ecmwf_wave_ensemble_point_data_record.rs`)
 
 ```rust
-pub struct EnsembleStat { pub mean: f64, pub spread: f64, pub min: f64, pub max: f64,
-                          pub p10: f64, pub p50: f64, pub p90: f64 }
-pub struct AngularEnsembleStat { pub mean: f64, pub spread: f64 } // circular mean / circular std
+pub struct EnsembleStatistics {
+    pub member_count: usize,        // members with a value for this quantity
+    pub mean: f64,
+    pub spread: f64,                // population standard deviation
+    pub min: f64, pub max: f64,
+    pub p10: f64, pub p50: f64, pub p90: f64,   // linear interpolation between members
+    pub unit: Unit,
+}
+pub struct AngularEnsembleStatistics {
+    pub member_count: usize,
+    pub mean: f64,                  // direction of the mean unit vector
+    pub spread: f64,                // circular standard deviation sqrt(-2 ln R), degrees
+    pub resultant_length: f64,      // R, 0..1
+}
+pub struct PeriodBandStatistics { pub min_period: u8, pub max_period: u8, pub height: EnsembleStatistics }
 
 pub struct ECMWFWaveEnsemblePointDataRecord {
     pub reference_date: DateTime<Utc>,
     pub date: DateTime<Utc>,
     pub member_count: usize,
-    pub significant_wave_height: EnsembleStat,
-    pub energy_period: EnsembleStat,
-    pub peak_period: Option<EnsembleStat>,
-    pub mean_direction: AngularEnsembleStat,
-    pub period_bands: Vec<(f64, f64, EnsembleStat)>,
-    pub long_period_height: EnsembleStat,
+    pub significant_wave_height: Option<EnsembleStatistics>,
+    pub mean_direction: Option<AngularEnsembleStatistics>,
+    pub energy_period: Option<EnsembleStatistics>,
+    pub zero_crossing_period: Option<EnsembleStatistics>,
+    pub peak_period: Option<EnsembleStatistics>,
+    pub period_bands: Vec<PeriodBandStatistics>,
+    pub long_period_height: Option<EnsembleStatistics>,
+    pub short_period_height: Option<EnsembleStatistics>,
+    pub energy_flux: Option<EnsembleStatistics>,
+    pub wind_speed: Option<EnsembleStatistics>,
+    pub wind_direction: Option<AngularEnsembleStatistics>,
 }
 
 impl ECMWFWaveEnsemblePointDataRecord {
-    pub fn from_members(members: &[ECMWFWavePointDataRecord]) -> Result<Self, …>;
+    /// Members must share a valid time and be Control or Perturbed.
+    pub fn from_members(members: &[ECMWFWavePointDataRecord]) -> Result<Self, DataRecordParsingError>;
+    /// Groups by valid time (in order) and skips deterministic records.
+    pub fn from_member_records(records: &[ECMWFWavePointDataRecord]) -> Result<Vec<Self>, DataRecordParsingError>;
 }
-/// Fraction of members for which `predicate` holds, e.g. 14–17 s band > 0.5 m.
-pub fn exceedance_probability(members: &[ECMWFWavePointDataRecord], predicate: impl Fn(&ECMWFWavePointDataRecord) -> bool) -> f64;
+/// Fraction of members (0-1) for which `predicate` holds, e.g. 14–17 s band > 0.5 m.
+pub fn exceedance_probability(members: &[ECMWFWavePointDataRecord], predicate: impl Fn(&ECMWFWavePointDataRecord) -> bool) -> Option<f64>;
 ```
+
+Choices:
+- Each quantity uses the members that have a value, and records how many.
+- Mean Hs is the plain average of member Hs, as GEFS publishes it.
+- Heights are converted to the first member's unit before the statistics.
 
 The published `ep` probabilities (`swhg*`, `mwpg*`) are read as they are, with
 `GridSampler` using `Bilinear`.
 
-## 7. Phase 5 (later): wind
+Live check at 44097 (IFS ENS 2026-09-23 06z, all 50 members): Hs 3.60 ± 0.17 m
+at 24h and 3.25 ± 0.77 m at 72h, with direction agreement going from ±2° to
+±17°.
 
-`10u`/`10v` from `ifs/0p25/oper` (`fc`) and `enfo` (`ef`), same grid and index
-pattern. Interpolate u and v with `Bilinear`, then compute speed and direction.
-This fills an optional `wind` field on the point record.
+## 7. Wind
+
+Done in phase 5: see `ECMWFWindModel` (section 3), `ECMWFField::WindU/WindV`
+(section 4) and the wind fields on the point record (section 5).
 
 ## Validation
 
@@ -385,8 +456,36 @@ This fills an optional `wind` field on the point record.
   with a distance, never a silent NaN or a panic.
 - **ECMWF consistency:** Hs² ≥ Σ band² (to packing precision) at every station
   in a full-grid sweep.
-- **Classification:** each fixture message maps to exactly one `ECMWFWaveField`.
+- **Classification:** each fixture message maps to exactly one `ECMWFField`.
   The 6 bands, and `swh` vs `swhg*`, are told apart.
+
+- **Projected grids:** HRRR nearest values match eccodes (see section 2).
+
+### Against NDBC buoys
+
+`examples/validate_against_ndbc.rs` scores IFS HRES (AWS mirror) and GFS-Wave
+`global.0p16` against NDBC realtime observations, both sampled with
+`GridSampler`. Run 2026-09-20 00z, 0–72 h every 6 h, 15 buoys (bias / RMSE,
+forecast − observed):
+
+| | n | bias | RMSE |
+|---|---|---|---|
+| IFS Hs (m) | 195 | +0.08 | 0.30 |
+| GFS Hs (m) | 195 | −0.10 | 0.25 |
+| IFS Tp vs DPD (s) | 76 | −0.23 | 1.63 |
+| GFS Tp vs DPD (s) | 76 | +1.44 | 3.72 |
+| IFS Tm02 vs APD (s) | 195 | −0.72 | 0.87 |
+
+- IFS Hs at 51201 (Waimea, Oahu north shore) is +0.80 m. The two southern
+  corners are land on the 0.25° grid, so the value comes from the exposed cells
+  to the north (`Interpolated { sea_cells: 2 }`). GFS has a station there on its
+  finer grid. Without it, IFS Hs is within about ±0.25 m everywhere.
+- Peak period is unstable in mixed seas. Off California, GFS follows the long
+  southern swell while the buoy's DPD follows the local wind sea (+6 to +9 s).
+  DPD is often missing at these hours, so n is small.
+- IFS Tm02 is about 0.7 s shorter than buoy APD. A likely cause, not verified:
+  NDBC computes APD from a spectrum truncated at high frequencies, while the
+  model spectrum extends further, which shortens Tm02.
 
 Fixtures (`mock/ecmwf/`, 2026-09-23 00z, 15 MB):
 - IFS HRES 24h: the whole file (13 messages, 10.7 MB) and its index, so index
@@ -396,17 +495,34 @@ Fixtures (`mock/ecmwf/`, 2026-09-23 00z, 15 MB):
 - AIFS single and AIFS ENS control: `h1417` at 24h (PDT 4.103 and control).
 - AIFS ENS probabilities: `swhg2` at 24h and `mwpg10` over 120–168h, plus the
   full index.
+- IFS HRES `oper` 24h: `10u` and `10v` (1.5 MB) and the full index.
 
-## Phases (one PR each)
+Also `mock/hrrr.20260923.t00z.wrfsfcf00.tmp2m.grib2` (1.2 MB) for projected grids.
+
+## Examples
+
+- `examples/ecmwf_point_forecast.rs`: IFS HRES wave and wind table at a point,
+  and IFS ENS statistics for chosen hours (`MAX_HOUR`, `ENS_HOURS`), using index
+  selection and range reads. About 37 s for 0–72 h plus two ensemble steps.
+- `examples/validate_against_ndbc.rs`: the buoy comparison above (`RUN`,
+  `MAX_HOUR`).
+- `examples/gen_surf_forecast_gfs.rs`: now takes `END_HOUR` to shorten the run.
+
+## Phases
+
+All in PR #6, one commit per phase.
 
 1. Trait rename, `NOAADataSource`, `GridSampler`, migrate the GFS record and
    example, delete the broken query functions, add the regression tests.
    Crate → 0.2.0.
 2. `ECMWFWaveModel`/`ECMWFDataSource`, forecast hours, index selection and
-   range merging, `ECMWFWaveField`, fixtures.
+   range merging, `ECMWFField`, fixtures.
 3. `ECMWFWavePointDataRecord` and derived quantities.
 4. Ensemble record and exceedance probabilities.
 5. Wind from `oper`/`enfo`.
+6. Follow-ups: projected-grid sampling, `Location::distance` fix,
+   `DataRecordParsingError` implements `std::error::Error`, examples, buoy
+   validation.
 
 ## Decisions
 
@@ -414,5 +530,13 @@ Fixtures (`mock/ecmwf/`, 2026-09-23 00z, 15 MB):
 - Clean break, no deprecated re-exports. Crate is `0.2.0`.
 - Coastal fallback defaults to 30 km (about one 0.25° cell; the diagonal is
   ~35 km at 41°N).
-- Fixtures of up to ~10 MB in `mock/` are fine. Phase 1 added 1.7 MB (single
-  Hs fields from the 2026-09-23 00z run).
+- Fixtures of about 10 MB in `mock/` are fine. The branch adds about 20 MB in
+  total, mostly the full IFS HRES wave step (10.7 MB).
+
+## Other changes
+
+- `Location::distance` used `sin((Δ/2)²)` instead of `sin²(Δ/2)`, and converted
+  latitudes with `absolute_latitude()` (−30° became 150°). Both fixed, with
+  tests.
+- `DataRecordParsingError` implements `std::error::Error`, so `?` works in
+  functions returning `Box<dyn Error>`.
