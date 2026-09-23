@@ -78,7 +78,8 @@ Hs ≥ 2/4/6/8 m).
 
 ### AIFS
 
-- `wave` / `waef`: 10 fields. Same as IFS minus `pp1d`, `mp2` and `wmb`.
+- `wave` / `waef`: 10 fields. Same as IFS minus `pp1d` and `mp2`. `wmb` is
+  only published at step 0 (IFS has it at every step).
 - `ep`: `swhg2/4/6/8` plus `mwpg8/10/12/15` (mean period ≥ N s). It also has
   time-window probabilities (`120-168`, `120-240`, `168-240`).
 
@@ -127,8 +128,11 @@ Hs ≥ 2/4/6/8 m).
 - **The ensemble is richer than GEFS on members (50 vs 31) and has the bands,**
   but we'd have to compute mean and spread ourselves. We also need range reads
   from the index; the files are far too big to download whole.
-- The ECMWF `.index` format is JSON lines, not the NOAA `.idx` text. It needs a
-  parser alongside `grib_index_record.rs`.
+- The ECMWF `.index` format is JSON lines, not the NOAA `.idx` text.
+  gribberish already parses it: `gribberish::index::parse_ecmwf_index` (or
+  `parse_index`, which auto-detects NOAA vs ECMWF) returns `IndexEntry`s with
+  `offset`/`length` for range reads and all MARS keys (`param`, `number`,
+  `step`, …) in `keys`.
 
 ## gribberish compatibility
 

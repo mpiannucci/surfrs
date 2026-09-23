@@ -2,7 +2,7 @@ use chrono::prelude::*;
 
 use crate::tools::date::closest_gfs_model_gridded_datetime;
 
-use super::{ModelDataSource, ModelTimeOutputResolution, NOAAModel};
+use super::{GriddedModel, ModelTimeOutputResolution, NOAADataSource};
 
 pub struct GFSWaveModel {
     pub id: &'static str,
@@ -50,9 +50,15 @@ impl GFSWaveModel {
             description: "GFS Wave Model: Global 0.25 degree",
         }
     }
+
+    pub fn time_resolution(&self) -> ModelTimeOutputResolution {
+        ModelTimeOutputResolution::HybridHourlyThreeHourly(120)
+    }
 }
 
-impl NOAAModel for GFSWaveModel {
+impl GriddedModel for GFSWaveModel {
+    type Source = NOAADataSource;
+
     fn id(&self) -> &'static str {
         self.id
     }
@@ -69,21 +75,21 @@ impl NOAAModel for GFSWaveModel {
         closest_gfs_model_gridded_datetime(date)
     }
 
-    fn time_resolution(&self) -> ModelTimeOutputResolution {
-        ModelTimeOutputResolution::HybridHourlyThreeHourly(120)
+    fn forecast_hours(&self, _run: &DateTime<Utc>) -> Vec<usize> {
+        self.time_resolution().hours_for_hour_range(0, 384)
     }
 
-    fn url_root(&self, source: &ModelDataSource) -> &'static str {
+    fn url_root(&self, source: &NOAADataSource) -> &'static str {
         match source {
-            ModelDataSource::NODDAWS => "https://noaa-gfs-bdp-pds.s3.amazonaws.com",
-            ModelDataSource::NOMADS => "https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod",
-            ModelDataSource::NODDGCP => "https://storage.googleapis.com/global-forecast-system",
+            NOAADataSource::NODDAWS => "https://noaa-gfs-bdp-pds.s3.amazonaws.com",
+            NOAADataSource::NOMADS => "https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod",
+            NOAADataSource::NODDGCP => "https://storage.googleapis.com/global-forecast-system",
         }
     }
 
     fn create_url(
         &self,
-        source: &ModelDataSource,
+        source: &NOAADataSource,
         output_hour: usize,
         model_date: Option<DateTime<Utc>>,
     ) -> String {
@@ -107,7 +113,7 @@ mod tests {
 
     use crate::model::GFSWaveModel;
 
-    use super::{ModelDataSource, NOAAModel};
+    use super::{GriddedModel, NOAADataSource};
 
     #[test]
     fn test_gfs_wave_url() {
@@ -116,11 +122,11 @@ mod tests {
         let date: DateTime<Utc> = Utc.with_ymd_and_hms(2023, 01, 17, 13, 0, 0).unwrap();
 
         let gfs_wave = GFSWaveModel::atlantic();
-        let url = gfs_wave.create_url(&ModelDataSource::NODDGCP, 115, Some(date));
+        let url = gfs_wave.create_url(&NOAADataSource::NODDGCP, 115, Some(date));
         assert_eq!(url, truth);
 
         let truth = "https://storage.googleapis.com/global-forecast-system/gfs.20230117/06/wave/gridded/gfswave.t06z.atlocn.0p16.f126.grib2";
-        let url = gfs_wave.create_url(&ModelDataSource::NODDGCP, 126, Some(date));
+        let url = gfs_wave.create_url(&NOAADataSource::NODDGCP, 126, Some(date));
         assert_eq!(url, truth);
     }
 }

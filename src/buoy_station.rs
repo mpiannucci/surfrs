@@ -1,6 +1,6 @@
 use crate::{
     location::Location,
-    model::ModelDataSource,
+    model::NOAADataSource,
     station::Station,
     tools::dap::{format_dods_url, DapConstraint},
 };
@@ -265,7 +265,7 @@ impl BuoyStation {
 
     pub fn gfswave_bulletin_data_url(
         &self,
-        source: &ModelDataSource,
+        source: &NOAADataSource,
         model_date: &DateTime<Utc>,
     ) -> String {
         let file_prefix = self.gfswave_bulletin_data_prefix(&model_date);
@@ -277,14 +277,14 @@ impl BuoyStation {
 
     pub fn gfswave_spectral_data_url(
         &self,
-        source: &ModelDataSource,
+        source: &NOAADataSource,
         model_date: &DateTime<Utc>,
     ) -> String {
         let prefix = self.gfswave_spectral_data_prefix(&model_date);
         format!("{root}/{prefix}", root = Self::gfswave_source_path(source))
     }
 
-    pub fn gfswave_lsl_url(source: &ModelDataSource, model_date: &DateTime<Utc>) -> String {
+    pub fn gfswave_lsl_url(source: &NOAADataSource, model_date: &DateTime<Utc>) -> String {
         format!(
             "{}/gfs.{}{:02}{:02}/{:02}/wave/station/ls-l",
             Self::gfswave_source_path(source),
@@ -296,7 +296,7 @@ impl BuoyStation {
     }
 
     pub fn gfswave_bulk_bulletin_url(
-        source: &ModelDataSource,
+        source: &NOAADataSource,
         model_date: &DateTime<Utc>,
     ) -> String {
         format!(
@@ -311,7 +311,7 @@ impl BuoyStation {
     }
 
     pub fn gfswave_bulk_cbulletin_url(
-        source: &ModelDataSource,
+        source: &NOAADataSource,
         model_date: &DateTime<Utc>,
     ) -> String {
         format!(
@@ -326,7 +326,7 @@ impl BuoyStation {
     }
 
     pub fn gfswave_bulk_spectral_url(
-        source: &ModelDataSource,
+        source: &NOAADataSource,
         model_date: &DateTime<Utc>,
     ) -> String {
         format!(
@@ -340,16 +340,16 @@ impl BuoyStation {
         )
     }
 
-    fn gfswave_source_path(source: &ModelDataSource) -> &'static str {
+    fn gfswave_source_path(source: &NOAADataSource) -> &'static str {
         match source {
-            ModelDataSource::NODDAWS => "https://noaa-gfs-bdp-pds.s3.amazonaws.com",
-            ModelDataSource::NOMADS => "https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod",
-            ModelDataSource::NODDGCP => "https://storage.googleapis.com/global-forecast-system",
+            NOAADataSource::NODDAWS => "https://noaa-gfs-bdp-pds.s3.amazonaws.com",
+            NOAADataSource::NOMADS => "https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod",
+            NOAADataSource::NODDGCP => "https://storage.googleapis.com/global-forecast-system",
         }
     }
 
     pub fn gefswave_bulk_bulletin_url(
-        source: &ModelDataSource,
+        source: &NOAADataSource,
         model_date: &DateTime<Utc>,
     ) -> String {
         format!(
@@ -365,7 +365,7 @@ impl BuoyStation {
 
     pub fn gefswave_bulletin_url(
         self,
-        source: &ModelDataSource,
+        source: &NOAADataSource,
         model_date: &DateTime<Utc>,
         bucket: Option<String>,
     ) -> String {
@@ -381,7 +381,7 @@ impl BuoyStation {
     }
 
     pub fn gefswave_bulk_station_url(
-        source: &ModelDataSource,
+        source: &NOAADataSource,
         model_date: &DateTime<Utc>,
     ) -> String {
         format!(
@@ -397,7 +397,7 @@ impl BuoyStation {
 
     pub fn gefswave_station_url(
         self,
-        source: &ModelDataSource,
+        source: &NOAADataSource,
         model_date: &DateTime<Utc>,
         bucket: Option<String>,
     ) -> String {
@@ -412,26 +412,26 @@ impl BuoyStation {
         )
     }
 
-    pub fn gefswave_source_path(source: &ModelDataSource, bucket: Option<String>) -> String {
+    pub fn gefswave_source_path(source: &NOAADataSource, bucket: Option<String>) -> String {
         let bucket = bucket
             .as_deref()
             .unwrap_or(Self::gefswave_source_bucket(source).unwrap_or(""));
         match source {
-            ModelDataSource::NODDAWS => format!("https://{bucket}.s3.amazonaws.com",),
-            ModelDataSource::NOMADS => {
+            NOAADataSource::NODDAWS => format!("https://{bucket}.s3.amazonaws.com",),
+            NOAADataSource::NOMADS => {
                 format!("https://nomads.ncep.noaa.gov/pub/data/nccf/com/gens/prod/{bucket}")
             }
-            ModelDataSource::NODDGCP => {
+            NOAADataSource::NODDGCP => {
                 format!("https://storage.googleapis.com/{bucket}")
             }
         }
     }
 
-    pub fn gefswave_source_bucket(source: &ModelDataSource) -> Option<&'static str> {
+    pub fn gefswave_source_bucket(source: &NOAADataSource) -> Option<&'static str> {
         match source {
-            ModelDataSource::NODDAWS => Some("noaa-gefs-pds"),
-            ModelDataSource::NOMADS => None,
-            ModelDataSource::NODDGCP => Some("gfs-ensemble-forecast-system"),
+            NOAADataSource::NODDAWS => Some("noaa-gefs-pds"),
+            NOAADataSource::NOMADS => None,
+            NOAADataSource::NODDGCP => Some("gfs-ensemble-forecast-system"),
         }
     }
 }
@@ -524,16 +524,16 @@ impl BuoyStations {
         )
     }
 
-    pub fn gfswave_source_path(source: &ModelDataSource) -> &'static str {
+    pub fn gfswave_source_path(source: &NOAADataSource) -> &'static str {
         match source {
-            ModelDataSource::NODDAWS => "https://noaa-gfs-bdp-pds.s3.amazonaws.com",
-            ModelDataSource::NOMADS => "https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod",
-            ModelDataSource::NODDGCP => "https://storage.googleapis.com/global-forecast-system",
+            NOAADataSource::NODDAWS => "https://noaa-gfs-bdp-pds.s3.amazonaws.com",
+            NOAADataSource::NOMADS => "https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod",
+            NOAADataSource::NODDGCP => "https://storage.googleapis.com/global-forecast-system",
         }
     }
 
     pub fn gfswave_stations_root_url(
-        source: &ModelDataSource,
+        source: &NOAADataSource,
         model_date: &DateTime<Utc>,
     ) -> String {
         let prefix = Self::gfswave_data_url_prefix(&model_date);
