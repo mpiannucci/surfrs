@@ -1,6 +1,7 @@
 # Spec: ECMWF wave products and model refactor
 
-Status: phase 1 implemented (branch `gridded-model-sampler`), 2026-09-23.
+Status: phase 1 (branch `gridded-model-sampler`) and phase 2 (branch
+`ecmwf-wave-model`) implemented, 2026-09-23.
 Background: `doc/ecmwf-open-data-waves.md`.
 
 ## Goals
@@ -167,7 +168,9 @@ pub enum ECMWFWaveProduct {
     AifsEnsProbability, // aifs-ens/0p25/waef,    type ep
 }
 
-pub struct ECMWFWaveModel { pub product: ECMWFWaveProduct }
+pub struct ECMWFWaveModel { pub product: ECMWFWaveProduct, /* id, name, description */ }
+// Constructors: ifs_hres(), ifs_ens_members(), ifs_ens_probability(), aifs_single(),
+// aifs_ens_control(), aifs_ens_members(), aifs_ens_probability()
 ```
 
 URL: `{root}/{YYYYMMDD}/{HH}z/{model}/0p25/{stream}/{YYYYMMDDHH}0000-{step}h-{stream}-{type}.grib2`
@@ -181,25 +184,52 @@ URL: `{root}/{YYYYMMDD}/{HH}z/{model}/0p25/{stream}/{YYYYMMDDHH}0000-{step}h-{st
 | AIFS (all) | 0–360 every 6h | 0–360 every 6h |
 | AIFS ENS probabilities | 240, 360 | 240, 360 |
 
-`closest_model_run_date`: floor to 6h after a publication delay. Initial value
-8h: the 00z step-0 objects were written around 07:35Z. Check this against a
-few more runs before relying on it.
+`closest_model_run_date`: subtract a per-product publication delay, then floor
+to the run interval (12h for IFS ENS probabilities, which only come from 00z/12z;
+6h otherwise). The delays come from when the last file of each 2026-09-22 run
+was written, plus a margin:
+
+| product | last file after run start | delay used |
+|---|---|---|
+| IFS HRES | 6.5–7.6 h | 8 h |
+| IFS ENS members / probabilities | 7.7–9.0 h | 10 h |
+| AIFS single | 5.5 h | 6 h |
+| AIFS ENS | 6.9–7.1 h | 8 h |
 
 ### Selecting fields from the index
 
 A full `waef` step is ~530 MB, so range reads are required.
 
 ```rust
+// model/byte_range.rs, usable for NOAA .idx too
 pub struct ByteRange { pub offset: u64, pub length: u64 }
-
-impl ECMWFWaveModel {
-    /// Filter parsed `gribberish::index::IndexEntry`s by MARS `param` and `number`.
-    pub fn select(entries: &[IndexEntry], fields: &[ECMWFWaveField], members: &MemberSelection) -> Vec<ByteRange>;
+impl ByteRange {
+    pub fn from_index_entry(entry: &IndexEntry) -> Option<Self>;
+    pub fn end(&self) -> u64;
+    pub fn http_range_header(&self) -> String; // "bytes=a-b"
 }
-pub enum MemberSelection { All, Only(Vec<u32>) }
-/// Merge adjacent ranges into fewer HTTP requests.
+/// Merge overlapping ranges or ranges at most `max_gap` apart into fewer requests.
 pub fn coalesce_ranges(ranges: Vec<ByteRange>, max_gap: u64) -> Vec<ByteRange>;
+
+// model/ecmwf_wave.rs
+pub enum MemberSelection { All, Only(Vec<u8>) }
+
+/// Filters entries from `gribberish::index::parse_ecmwf_index`.
+pub struct ECMWFIndexQuery {
+    pub fields: Vec<ECMWFWaveField>,   // empty = every field
+    pub members: MemberSelection,      // entries without `number` always match
+    pub steps: Option<Vec<String>>,    // e.g. "24", "120-168"; None = every step
+}
+impl ECMWFIndexQuery {
+    pub fn matches(&self, entry: &IndexEntry) -> bool;
+    pub fn select(&self, entries: &[IndexEntry]) -> Vec<ByteRange>;
+    pub fn select_coalesced(&self, entries: &[IndexEntry]) -> Vec<ByteRange>;
+}
 ```
+
+Only `ef`/`pf` index entries carry `number`. Probability (`ep`) files hold every
+step of the run (12–240h or 252–360h), and AIFS adds time windows such as
+`120-168`, so `steps` is needed to fetch one.
 
 surfrs keeps building URLs and ranges only. Fetching stays with the caller, as
 it does for GFS.
@@ -213,26 +243,49 @@ pub enum ECMWFWaveField {
     EnergyPeriod,                    // mwp   10,0,15  Tm-1,0
     ZeroCrossingPeriod,              // mp2   10,0,28  Tm02  (IFS only)
     PeakPeriod,                      // pp1d  10,0,34        (IFS only)
-    PeriodBandHeight { min_period: f64, max_period: f64 }, // h1012…h2530  10,0,3  PDT 4.103/4.104
+    PeriodBandHeight { min_period: u8, max_period: u8 }, // h1012…h2530  10,0,3  PDT 4.103/4.104
     ModelBathymetry,                 // wmb   10,4,7
     DragCoefficient,                 // cdww  10,0,16
-    HeightExceedance { threshold_m: f64 },   // swhg2/4/6/8  PDT 4.5
-    PeriodExceedance { threshold_s: f64 },   // mwpg8/10/12/15 (AIFS only)
+    HeightExceedance { threshold: u8 },  // swhg2/4/6/8     10,0,3      PDT 4.5 / 4.9
+    PeriodExceedance { threshold: u8 },  // mwpg8/10/12/15  255,131,79  PDT 4.5 / 4.9 (AIFS only)
 }
 
 impl ECMWFWaveField {
-    /// Classify a decoded message and return it with its ensemble member number, if any.
-    pub fn from_message(m: &Message) -> Option<(Self, Option<u32>)>;
+    pub fn from_message(m: &Message) -> Option<Self>;
+    pub fn period_bands() -> Vec<Self>;
     pub fn mars_param(&self) -> String;         // for index selection
     pub fn sample_method(&self) -> SampleMethod;
     pub fn unit(&self) -> Unit;
 }
+
+pub enum ForecastMember { Deterministic, Control, Perturbed(u8) }
+
+pub struct ECMWFWaveMessageInfo {
+    pub field: ECMWFWaveField,
+    pub member: ForecastMember,
+    pub reference_date: DateTime<Utc>,
+    pub valid_date: DateTime<Utc>,              // window start for PDT 4.9
+    pub valid_end_date: Option<DateTime<Utc>>,  // window end for PDT 4.9
+}
+impl ECMWFWaveMessageInfo { pub fn from_message(m: &Message) -> Option<Self>; }
 ```
+
+Thresholds and band limits are whole numbers, so the enum is `Eq + Hash` and can
+key a map.
 
 Classification uses `(discipline_value, category_value, parameter_value)` plus
 `wave_period_range()`, `perturbation_number()`, `probability_type()` and
 `probability_lower_limit()`. **Never use the abbreviation alone**: all six bands
 and all Hs probabilities decode as `HTSGW`.
+
+Found when decoding the fixtures:
+- IFS HRES encodes its bands with PDT 4.104 as member 0 of an ensemble of
+  **0**. The AIFS ENS control is member 0 of 51. So `ForecastMember` is
+  `Deterministic` when the ensemble size is missing or 0, `Control` for member 0
+  of a real ensemble, and `Perturbed(n)` otherwise.
+- AIFS `mwpg*` probabilities use ECMWF local parameter (255, 131, 79) with no
+  abbreviation, not (10, 0, 15).
+- AIFS time-window probabilities use PDT 4.9, with `forecast_end_date()` set.
 
 ## 5. Point record (`data/ecmwf_wave_point_data_record.rs`)
 
@@ -246,7 +299,7 @@ pub struct PeriodBandHeight {
 pub struct ECMWFWavePointDataRecord {
     pub reference_date: DateTime<Utc>,
     pub date: DateTime<Utc>,                     // valid time
-    pub member: Option<u32>,                     // None = deterministic, 0 = control
+    pub member: ForecastMember,
     pub significant_wave_height: DimensionalData<f64>,
     pub mean_direction: DimensionalData<Direction>,   // whole sea state
     pub energy_period: DimensionalData<f64>,          // Tm-1,0
@@ -322,10 +375,14 @@ This fills an optional `wind` field on the point record.
 - **Classification:** each fixture message maps to exactly one `ECMWFWaveField`.
   The 6 bands, and `swh` vs `swhg*`, are told apart.
 
-Fixtures (`mock/ecmwf/`): the `.index` files for one HRES step and one ENS step,
-plus GRIB messages cut by range read. That is one HRES step (13 messages,
-~10 MB) and 2 ENS members of 3 fields each. Using a single step keeps the fixture
-size down.
+Fixtures (`mock/ecmwf/`, 2026-09-23 00z, 15 MB):
+- IFS HRES 24h: the whole file (13 messages, 10.7 MB) and its index, so index
+  offsets apply to it directly.
+- IFS ENS 24h: `swh` for members 1 and 2, `h1417` for member 1, and the full index.
+- IFS ENS probabilities: `swhg2` at 24h.
+- AIFS single and AIFS ENS control: `h1417` at 24h (PDT 4.103 and control).
+- AIFS ENS probabilities: `swhg2` at 24h and `mwpg10` over 120–168h, plus the
+  full index.
 
 ## Phases (one PR each)
 

@@ -1,6 +1,6 @@
 use std::fs;
 
-use gribberish::message::read_messages;
+use gribberish::message::{read_messages, Message};
 use surfrs::{
     location::Location,
     tools::grid_sampler::{GridSampler, SampleMethod, SampleSource},
@@ -10,18 +10,24 @@ use surfrs::{
 const GFS_GLOBAL_0P16: &str = "mock/gfswave.20260923.t00z.global.0p16.f024.htsgw.grib2";
 const GFS_ATLOCN_0P16: &str = "mock/gfswave.20260923.t00z.atlocn.0p16.f024.htsgw.grib2";
 const GFS_GLOBAL_0P25: &str = "mock/gfswave.20260923.t00z.global.0p25.f024.htsgw.grib2";
-const ECMWF_IFS_0P25: &str = "mock/ecmwf.20260923000000-24h-wave-fc.swh.grib2";
+const ECMWF_IFS_0P25: &str = "mock/ecmwf/ifs.20260923000000-24h-wave-fc.grib2";
 
 // Hst for 2026-09-24 00z from gfswave.t00z.bull_tar, gfswave.44097.bull. The
 // bulletin is computed by WAVEWATCH III at the station, not from the grids.
 const BULLETIN_44097_HST: f64 = 2.89;
 
+/// Sampler for the significant wave height message in a fixture.
 fn sampler(path: &str) -> GridSampler {
     let data = fs::read(path).expect("fixture not found");
     let message = read_messages(&data)
-        .next()
-        .expect("fixture has no messages");
+        .find(is_significant_height)
+        .expect("fixture has no significant wave height");
     GridSampler::from_message(&message).unwrap()
+}
+
+fn is_significant_height(message: &Message) -> bool {
+    message.variable_abbrev().ok().as_deref() == Some("HTSGW")
+        && message.wave_period_range().ok().flatten().is_none()
 }
 
 fn buoy_44097() -> Location {

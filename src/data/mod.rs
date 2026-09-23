@@ -1,4 +1,5 @@
 pub mod directional_spectral_wave_data_record;
+pub mod ecmwf_wave_field;
 pub mod forecast_cbulletin_wave_data_record;
 pub mod forecast_spectral_wave_data_record;
 pub mod gefs_bulletin_wave_data_record;
