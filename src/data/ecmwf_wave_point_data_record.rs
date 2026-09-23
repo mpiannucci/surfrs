@@ -12,9 +12,7 @@ use crate::{
 };
 
 use super::{
-    ecmwf_wave_field::{
-        ECMWFWaveField, ECMWFWaveMessageInfo, ForecastMember, ECMWF_WAVE_PERIOD_BANDS,
-    },
+    ecmwf_field::{ECMWFField, ECMWFMessageInfo, ForecastMember, ECMWF_WAVE_PERIOD_BANDS},
     parseable_data_record::DataRecordParsingError,
 };
 
@@ -32,7 +30,8 @@ pub struct PeriodBandHeight {
 ///
 /// Only what ECMWF publishes: totals, a single mean direction for the whole sea
 /// state, and the energy in six period bands from 10 to 30 s. There are no swell
-/// partitions and no per-band directions.
+/// partitions and no per-band directions. Wind is filled in when 10 m wind
+/// messages from the matching `oper`/`enfo` file are passed in too.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ECMWFWavePointDataRecord {
     pub reference_date: DateTime<Utc>,
@@ -50,13 +49,18 @@ pub struct ECMWFWavePointDataRecord {
     pub peak_period: DimensionalData<f64>,
     /// The bands present in the messages, shortest periods first.
     pub period_bands: Vec<PeriodBandHeight>,
+    /// 10 m wind speed.
+    pub wind_speed: DimensionalData<f64>,
+    /// 10 m wind direction, coming from.
+    pub wind_direction: DimensionalData<Direction>,
     /// How the significant wave height was sampled at the location.
     pub sample_source: SampleSource,
 }
 
 impl ECMWFWavePointDataRecord {
     /// One record per member and valid time found in `messages`, sorted by member
-    /// then time. Probability, bathymetry and drag fields are ignored.
+    /// then time. Wave and 10 m wind messages can be mixed. Probability,
+    /// bathymetry and drag fields are ignored.
     pub fn from_messages(
         messages: &[Message],
         location: &Location,
@@ -78,7 +82,7 @@ impl ECMWFWavePointDataRecord {
         > = BTreeMap::new();
 
         for message in messages {
-            let Some(info) = ECMWFWaveMessageInfo::from_message(message) else {
+            let Some(info) = ECMWFMessageInfo::from_message(message) else {
                 continue;
             };
             let Some(key) = FieldKey::from_field(&info.field) else {
@@ -111,6 +115,14 @@ impl ECMWFWavePointDataRecord {
             for (index, location_records) in records.iter_mut().enumerate() {
                 let value =
                     |key: FieldKey| fields.get(&key).and_then(|samples| samples[index].value);
+                let wind = match (value(FieldKey::WindU), value(FieldKey::WindV)) {
+                    (Some(u), Some(v)) => Some((
+                        u.hypot(v),
+                        // Meteorological convention: the direction the wind comes from.
+                        (-u).atan2(-v).to_degrees().rem_euclid(360.0),
+                    )),
+                    _ => None,
+                };
 
                 let period_bands = ECMWF_WAVE_PERIOD_BANDS
                     .iter()
@@ -160,6 +172,18 @@ impl ECMWFWavePointDataRecord {
                         Unit::Seconds,
                     ),
                     period_bands,
+                    wind_speed: dimensional(
+                        wind.map(|(speed, _)| speed),
+                        "wind speed",
+                        Unit::MetersPerSecond,
+                    ),
+                    wind_direction: DimensionalData {
+                        value: wind.map(|(_, direction)| {
+                            Direction::from_degrees(direction.round() as i32 % 360)
+                        }),
+                        variable_name: "wind direction".into(),
+                        unit: Unit::Degrees,
+                    },
                     sample_source: heights[index].source,
                 });
             }
@@ -232,6 +256,8 @@ impl UnitConvertible for ECMWFWavePointDataRecord {
         for band in &mut self.period_bands {
             band.height.to_units(new_units);
         }
+        self.wind_speed.to_units(new_units);
+        self.wind_direction.to_units(new_units);
         self
     }
 }
@@ -245,20 +271,24 @@ enum FieldKey {
     ZeroCrossingPeriod,
     PeakPeriod,
     PeriodBand(u8, u8),
+    WindU,
+    WindV,
 }
 
 impl FieldKey {
-    fn from_field(field: &ECMWFWaveField) -> Option<Self> {
+    fn from_field(field: &ECMWFField) -> Option<Self> {
         match field {
-            ECMWFWaveField::SignificantHeight => Some(FieldKey::SignificantHeight),
-            ECMWFWaveField::MeanDirection => Some(FieldKey::MeanDirection),
-            ECMWFWaveField::EnergyPeriod => Some(FieldKey::EnergyPeriod),
-            ECMWFWaveField::ZeroCrossingPeriod => Some(FieldKey::ZeroCrossingPeriod),
-            ECMWFWaveField::PeakPeriod => Some(FieldKey::PeakPeriod),
-            ECMWFWaveField::PeriodBandHeight {
+            ECMWFField::SignificantHeight => Some(FieldKey::SignificantHeight),
+            ECMWFField::MeanDirection => Some(FieldKey::MeanDirection),
+            ECMWFField::EnergyPeriod => Some(FieldKey::EnergyPeriod),
+            ECMWFField::ZeroCrossingPeriod => Some(FieldKey::ZeroCrossingPeriod),
+            ECMWFField::PeakPeriod => Some(FieldKey::PeakPeriod),
+            ECMWFField::PeriodBandHeight {
                 min_period,
                 max_period,
             } => Some(FieldKey::PeriodBand(*min_period, *max_period)),
+            ECMWFField::WindU => Some(FieldKey::WindU),
+            ECMWFField::WindV => Some(FieldKey::WindV),
             _ => None,
         }
     }
@@ -301,6 +331,12 @@ mod tests {
                     height: dimensional(Some(*h), "period band wave height", Unit::Meters),
                 })
                 .collect(),
+            wind_speed: dimensional(None, "wind speed", Unit::MetersPerSecond),
+            wind_direction: DimensionalData {
+                value: None,
+                variable_name: "wind direction".into(),
+                unit: Unit::Degrees,
+            },
             sample_source: SampleSource::Interpolated { sea_cells: 4 },
         }
     }
