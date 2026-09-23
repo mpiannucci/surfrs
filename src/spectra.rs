@@ -794,8 +794,7 @@ fn circular_bin_widths_deg(direction: &[f64]) -> Vec<f64> {
     let mut widths = vec![0.0; count];
     for (position, &original_index) in order.iter().enumerate() {
         let up = (sorted[(position + 1) % count] - sorted[position]).rem_euclid(360.0);
-        let down =
-            (sorted[position] - sorted[(position + count - 1) % count]).rem_euclid(360.0);
+        let down = (sorted[position] - sorted[(position + count - 1) % count]).rem_euclid(360.0);
         widths[original_index] = (up + down) / 2.0;
     }
     widths
