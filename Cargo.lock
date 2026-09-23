@@ -551,8 +551,9 @@ checksum = "07e28edb80900c19c28f1072f2e8aeca7fa06b23cd4169cefe1af5aa3260783f"
 
 [[package]]
 name = "gribberish"
-version = "0.21.2"
-source = "git+https://github.com/mpiannucci/gribberish#fd84569e6071356ea8d9d1c077e13fe07a86a672"
+version = "1.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "01c244a7d8b58ac74ebed3dda3e07a36cc7d6de7aecf8bcab2edf9c511138b35"
 dependencies = [
  "bitflags 2.9.0",
  "bitvec",
@@ -564,13 +565,15 @@ dependencies = [
  "num",
  "openjpeg-sys",
  "png",
+ "serde_json",
  "thiserror 1.0.69",
 ]
 
 [[package]]
 name = "gribberish-macros"
-version = "0.21.2"
-source = "git+https://github.com/mpiannucci/gribberish#fd84569e6071356ea8d9d1c077e13fe07a86a672"
+version = "1.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "155176fb848310adaa1c3c6e5d5f7cc3e830f4fc83b6a5921f485a3e929341c3"
 dependencies = [
  "gribberish-types",
  "quote",
@@ -579,8 +582,9 @@ dependencies = [
 
 [[package]]
 name = "gribberish-types"
-version = "0.21.2"
-source = "git+https://github.com/mpiannucci/gribberish#fd84569e6071356ea8d9d1c077e13fe07a86a672"
+version = "1.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e4410172b6110b4ea4d3e859ff98fe7abf3dcb963c32d00c9f3daeaf7b8b5ba"
 
 [[package]]
 name = "h2"
