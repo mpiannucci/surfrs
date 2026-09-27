@@ -30,6 +30,7 @@ pub enum Unit {
     Seconds,
     Percent,
     KiloJoules,
+    KiloWattsPerMeter,
     Unknown,
 }
 
@@ -55,6 +56,7 @@ impl Unit {
             Unit::Seconds => "s",
             Unit::Percent => "%",
             Unit::KiloJoules => "kJ",
+            Unit::KiloWattsPerMeter => "kW/m",
             Unit::Unknown => "",
         }
     }
@@ -80,6 +82,7 @@ impl Unit {
             Unit::Seconds => "seconds",
             Unit::Percent => "percent",
             Unit::KiloJoules => "kilojoules",
+            Unit::KiloWattsPerMeter => "kilowatts per meter",
             Unit::Unknown => "unknown",
         }
     }
@@ -111,6 +114,7 @@ impl From<&str> for Unit {
             "s" | "second" | "seconds" => Unit::Seconds,
             "%" | "percent" | "percentage" | "wmounit:percent" => Unit::Percent,
             "kj" | "kilojoules" | "kilojoule" => Unit::KiloJoules,
+            "kw/m" | "kilowattspermeter" | "kilowattpermeter" => Unit::KiloWattsPerMeter,
             _ => Unit::Unknown,
         }
     }

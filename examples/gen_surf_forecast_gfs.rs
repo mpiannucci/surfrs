@@ -17,9 +17,13 @@ use surfrs::{
     },
     dimensional_data::DimensionalData,
     location::Location,
-    model::{GEFSWaveModel, GFSWaveModel, ModelDataSource, NOAAModel},
+    model::{GEFSWaveModel, GFSWaveModel, GriddedModel, NOAADataSource},
     swell::Swell,
-    tools::{vector::min_max, waves::estimate_breaking_wave_height},
+    tools::{
+        grid_sampler::{GridSampler, SampleMethod},
+        vector::min_max,
+        waves::estimate_breaking_wave_height,
+    },
     units::{Direction, Unit, UnitConvertible, UnitSystem},
     weather::{create_hourly_forecast_url, create_points_url},
 };
@@ -65,7 +69,11 @@ async fn main() {
 
     let client = Client::new();
 
-    let end_hour = 384;
+    // END_HOUR shortens the run; the GEFS files are whole global grids.
+    let end_hour: usize = std::env::var("END_HOUR")
+        .ok()
+        .and_then(|h| h.parse().ok())
+        .unwrap_or(384);
 
     // Fetch ensemble spread and mean for confidence interval
     println!("Fetching GEFS Ensemble Spread");
@@ -75,7 +83,7 @@ async fn main() {
         .hours_for_hour_range(0, end_hour)
         .into_iter()
         .map(|i| {
-            let url = gefs_wave_model_spread.create_url(&ModelDataSource::NODDAWS, i, Some(now));
+            let url = gefs_wave_model_spread.create_url(&NOAADataSource::NODDAWS, i, Some(now));
             let client = &client;
             async move {
                 let resp = client.get(url).send().await?;
@@ -104,12 +112,12 @@ async fn main() {
                 .iter()
                 .find(|m| m.variable_abbrev().unwrap() == "HTSGW")
                 .unwrap();
-            let value = gefs_wave_model_spread
-                .query_location_tolerance(&location, &0.16, wave_height_message)
-                .unwrap();
-            let sum: f64 = value.iter().sum();
-            let spread_mean: f64 = sum / value.len() as f64;
-            (i, spread_mean)
+            let spread = GridSampler::from_message(wave_height_message)
+                .unwrap()
+                .sample(&location, SampleMethod::Bilinear)
+                .value
+                .unwrap_or(f64::NAN);
+            (i, spread)
         })
         .collect::<HashMap<_, _>>();
 
@@ -120,7 +128,7 @@ async fn main() {
         .hours_for_hour_range(0, end_hour)
         .into_iter()
         .map(|i| {
-            let url = gefs_wave_model_mean.create_url(&ModelDataSource::NODDAWS, i, Some(now));
+            let url = gefs_wave_model_mean.create_url(&NOAADataSource::NODDAWS, i, Some(now));
             let client = &client;
             async move {
                 let resp = client.get(url).send().await?;
@@ -149,12 +157,12 @@ async fn main() {
                 .iter()
                 .find(|m| m.variable_abbrev().unwrap() == "HTSGW")
                 .unwrap();
-            let value = gefs_wave_model_mean
-                .query_location_tolerance(&location, &0.16, wave_height_message)
-                .unwrap();
-            let sum: f64 = value.iter().sum();
-            let spread_mean: f64 = sum / value.len() as f64;
-            (i, spread_mean)
+            let mean = GridSampler::from_message(wave_height_message)
+                .unwrap()
+                .sample(&location, SampleMethod::BilinearEnergy)
+                .value
+                .unwrap_or(f64::NAN);
+            (i, mean)
         })
         .collect::<HashMap<_, _>>();
 
@@ -166,7 +174,7 @@ async fn main() {
         .hours_for_hour_range(0, end_hour)
         .into_iter()
         .map(|i| {
-            let url = atlantic_wave_model.create_url(&ModelDataSource::NODDAWS, i, Some(now));
+            let url = atlantic_wave_model.create_url(&NOAADataSource::NODDAWS, i, Some(now));
             let client = &client;
             async move {
                 let resp = client.get(url).send().await?;
@@ -186,14 +194,8 @@ async fn main() {
             let message_body = b.unwrap();
 
             // Extract data to grib data records
-            let messages = read_messages(&message_body).collect();
-            let record = GFSWaveGribPointDataRecord::from_messages(
-                &atlantic_wave_model,
-                &messages,
-                &location,
-                0.167,
-            )
-            .unwrap();
+            let messages = read_messages(&message_body).collect::<Vec<_>>();
+            let record = GFSWaveGribPointDataRecord::from_messages(&messages, &location).unwrap();
 
             // Compute breaking wave data
             let breaking_wave_heights = record
@@ -221,11 +223,13 @@ async fn main() {
                 unit: Unit::Meters,
             };
 
-            let hour = atlantic_wave_model.hour_for_index(i);
-            let spread_index = gefs_wave_model_spread.index_for_hour(hour);
+            let hour = atlantic_wave_model.time_resolution().hour_for_index(i);
+            let spread_index = gefs_wave_model_spread
+                .time_resolution()
+                .index_for_hour(hour);
             let spread = ensemble_spread_data.get(&spread_index).unwrap();
 
-            let mean_index = gefs_wave_model_mean.index_for_hour(hour);
+            let mean_index = gefs_wave_model_mean.time_resolution().index_for_hour(hour);
             let mean = ensemble_mean_data.get(&mean_index).unwrap();
 
             println!(

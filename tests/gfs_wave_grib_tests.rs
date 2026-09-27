@@ -8,12 +8,11 @@ use geojson::FeatureCollection;
 use gribberish::message::read_messages;
 use surfrs::{
     data::gfs_wave_grib_point_data_record::GFSWaveGribPointDataRecord, location::Location,
-    model::GFSWaveModel, model::NOAAModel,
+    tools::contour::contour_message,
 };
 
 #[test]
 fn extract_atlantic_wave_data_record() {
-    let model = GFSWaveModel::atlantic();
     let grib_path = format!("mock/gfswave.t12z.atlocn.0p16.f087.grib2");
     let location = Location::new(41.35, -71.4, "Block Island Sound".into());
 
@@ -26,7 +25,7 @@ fn extract_atlantic_wave_data_record() {
         .expect("Failed to read data from the grib file");
 
     let messages = read_messages(&buf).collect::<Vec<_>>();
-    let _wave_data = GFSWaveGribPointDataRecord::from_messages(&model, &messages, &location, 0.167);
+    let _wave_data = GFSWaveGribPointDataRecord::from_messages(&messages, &location);
 
     // println!("{}", wave_data.date);
     // println!("{:?}", wave_data.swell_components[0].to_string());
@@ -49,15 +48,14 @@ fn extract_atlantic_wave_data_record() {
         .iter()
         .find(|m| m.variable_abbrev().unwrap_or("".into()) == "HTSGW")
         .unwrap();
-    let wave_features = model
-        .contour_data(
-            wave_message,
-            Some(0.0),
-            Some(12.0),
-            Some(24),
-            Some(surfrs::units::UnitSystem::English),
-        )
-        .unwrap();
+    let wave_features = contour_message(
+        wave_message,
+        Some(0.0),
+        Some(12.0),
+        Some(24),
+        Some(surfrs::units::UnitSystem::English),
+    )
+    .unwrap();
     let collection = FeatureCollection {
         bbox: None,
         features: wave_features,
@@ -70,7 +68,6 @@ fn extract_atlantic_wave_data_record() {
 
 #[test]
 fn extract_global_wave_data_record() {
-    let model = GFSWaveModel::atlantic();
     let grib_path = format!("mock/gfswave.t00z.global.0p25.f031.grib2");
 
     let grib_path = Path::new(&grib_path);
@@ -87,9 +84,8 @@ fn extract_global_wave_data_record() {
         .iter()
         .find(|m| m.variable_abbrev().unwrap_or("".into()) == "HTSGW")
         .unwrap();
-    let wave_features = model
-        .contour_data(wave_message, Some(0.0), Some(12.0), Some(24), None)
-        .unwrap();
+    let wave_features =
+        contour_message(wave_message, Some(0.0), Some(12.0), Some(24), None).unwrap();
     let collection = FeatureCollection {
         bbox: None,
         features: wave_features,

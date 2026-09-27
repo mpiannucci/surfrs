@@ -114,7 +114,10 @@ impl fmt::Display for SwanBlockError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Parse { line, message } => {
-                write!(formatter, "SWAN block parse error on line {line}: {message}")
+                write!(
+                    formatter,
+                    "SWAN block parse error on line {line}: {message}"
+                )
             }
             Self::Empty => write!(formatter, "no grid values found in SWAN block output"),
         }

@@ -78,7 +78,8 @@ Hs ≥ 2/4/6/8 m).
 
 ### AIFS
 
-- `wave` / `waef`: 10 fields. Same as IFS minus `pp1d`, `mp2` and `wmb`.
+- `wave` / `waef`: 10 fields. Same as IFS minus `pp1d` and `mp2`. `wmb` is
+  only published at step 0 (IFS has it at every step).
 - `ep`: `swhg2/4/6/8` plus `mwpg8/10/12/15` (mean period ≥ N s). It also has
   time-window probabilities (`120-168`, `120-240`, `168-240`).
 
@@ -122,13 +123,17 @@ Hs ≥ 2/4/6/8 m).
 - **Direction is the big gap.** We only have one energy-weighted mean direction
   for the whole sea state. In a mixed sea (for example an E wind swell plus an S
   groundswell) we can't give each component a direction the way
-  `GFSWaveGribPointDataRecord` does with SWDIR 1–3. A pragmatic workaround is to
-  use `mwd` from a band-dominated state, or take direction from GFS.
+  `GFSWaveGribPointDataRecord` does with SWDIR 1–3. Decision (2026-09-23): don't
+  invent component directions. ECMWF gets its own record types that expose only
+  what is published (see `doc/ecmwf-wave-spec.md`).
 - **The ensemble is richer than GEFS on members (50 vs 31) and has the bands,**
   but we'd have to compute mean and spread ourselves. We also need range reads
   from the index; the files are far too big to download whole.
-- The ECMWF `.index` format is JSON lines, not the NOAA `.idx` text. It needs a
-  parser alongside `grib_index_record.rs`.
+- The ECMWF `.index` format is JSON lines, not the NOAA `.idx` text.
+  gribberish already parses it: `gribberish::index::parse_ecmwf_index` (or
+  `parse_index`, which auto-detects NOAA vs ECMWF) returns `IndexEntry`s with
+  `offset`/`length` for range reads and all MARS keys (`param`, `number`,
+  `step`, …) in `keys`.
 
 ## gribberish compatibility
 
@@ -146,8 +151,12 @@ decode identically to eccodes, and the metadata is complete:
 | period bands (AIFS) | 4.103 | `wave_period_range()` → `(Some(10.0), Some(12.0))`, … |
 | period bands (IFS HRES/ENS) | 4.104 | `wave_period_range()`, plus `perturbation_number()` (0 for HRES, 1–50 for ENS) |
 | probabilities | 4.5 | `probability_type()` = `AboveLowerLimit`, `probability_lower_limit()`, unit `%` |
+| time-window probabilities (AIFS) | 4.9 | as above, plus `forecast_end_date()` for the window end |
 
-The period bands and probabilities all use abbrev `HTSGW`, so don't key on
-the abbrev alone. `key()` disambiguates them (e.g.
+The period bands and Hs probabilities all use abbrev `HTSGW`, so don't key on
+the abbrev alone. AIFS `mwpg*` probabilities are encoded with ECMWF local
+parameter (255, 131, 79) and have no abbrev. IFS HRES bands report
+`perturbation_number()` 0 with `number_of_ensemble_members()` 0; treat that as
+deterministic, not as a control member. `key()` disambiguates them (e.g.
 `HTSGW:…:ens1:per14-17s:ensemble forecast`, `…:probt3_4.00000:…`).
 `bbox()` reports longitudes as 0 → 359.75; point lookups match eccodes.

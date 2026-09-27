@@ -116,7 +116,10 @@ impl fmt::Display for SwanTableError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Parse { line, message } => {
-                write!(formatter, "SWAN table parse error on line {line}: {message}")
+                write!(
+                    formatter,
+                    "SWAN table parse error on line {line}: {message}"
+                )
             }
             Self::Empty => write!(formatter, "no data rows found in SWAN table output"),
         }

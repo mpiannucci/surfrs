@@ -922,7 +922,8 @@ FACTOR\n\
         // physical lines (18 values per line for 36 directions) and writes
         // nautical directions that can be negative (-85 for 275). Trailing
         // keyword annotations mirror real SWAN output.
-        let input = "SWAN   1                                Swan standard spectral file, version\n\
+        let input =
+            "SWAN   1                                Swan standard spectral file, version\n\
 $   Data produced by SWAN version 41.51A\n\
 LONLAT                                  locations in spherical coordinates\n\
      1                                  number of locations\n\

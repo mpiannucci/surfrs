@@ -2,7 +2,7 @@ use chrono::prelude::*;
 
 use crate::tools::date::closest_gfs_model_gridded_datetime;
 
-use super::{ModelTimeOutputResolution, NOAAModel};
+use super::{GriddedModel, NOAADataSource};
 
 pub struct NWPSModel {
     id: &'static str,
@@ -22,7 +22,9 @@ impl NWPSModel {
     }
 }
 
-impl NOAAModel for NWPSModel {
+impl GriddedModel for NWPSModel {
+    type Source = NOAADataSource;
+
     fn id(&self) -> &'static str {
         self.id
     }
@@ -35,8 +37,9 @@ impl NOAAModel for NWPSModel {
         self.description
     }
 
-    fn time_resolution(&self) -> ModelTimeOutputResolution {
-        ModelTimeOutputResolution::Hourly
+    /// A single file holds every output hour of the run.
+    fn forecast_hours(&self, _run: &chrono::DateTime<chrono::Utc>) -> Vec<usize> {
+        vec![0]
     }
 
     fn closest_model_run_date(
@@ -46,14 +49,14 @@ impl NOAAModel for NWPSModel {
         closest_gfs_model_gridded_datetime(date)
     }
 
-    fn url_root(&self, _: &super::ModelDataSource) -> &'static str {
+    fn url_root(&self, _: &NOAADataSource) -> &'static str {
         // At this time, only NOMADS is supported, hopefully NODD will be supported in the future.
         "https://nomads.ncep.noaa.gov/pub/data/nccf/com/nwps/prod/"
     }
 
     fn create_url(
         &self,
-        source: &super::ModelDataSource,
+        source: &NOAADataSource,
         _: usize,
         model_date: Option<chrono::DateTime<chrono::Utc>>,
     ) -> String {
@@ -78,8 +81,8 @@ mod tests {
 
     use crate::model::NWPSModel;
 
-    use super::NOAAModel;
-    use crate::model::ModelDataSource;
+    use super::GriddedModel;
+    use crate::model::NOAADataSource;
 
     #[test]
     fn test_gfs_wave_url() {
@@ -87,7 +90,7 @@ mod tests {
         let box_nwps = NWPSModel::boston();
 
         let truth = "https://nomads.ncep.noaa.gov/pub/data/nccf/com/nwps/prod/er.20230311/box/06/CG1/box_nwps_CG1_20230311_0600.grib2";
-        let url = box_nwps.create_url(&ModelDataSource::NOMADS, 0, Some(date));
+        let url = box_nwps.create_url(&NOAADataSource::NOMADS, 0, Some(date));
         assert_eq!(url, truth);
     }
 }
