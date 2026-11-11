@@ -12,6 +12,8 @@
 //! (for example an 8–10 s swell under a shorter wind sea). See
 //! `doc/ecmwf-wave-spec.md` for how it scores against GFS spectra.
 
+use std::sync::{Arc, Mutex};
+
 use serde::{Deserialize, Serialize};
 
 use crate::units::Unit;
@@ -29,8 +31,10 @@ const MIN_FREQUENCY: f64 = 0.1;
 /// Peak enhancements tried, and the one used when there is too little to fit it.
 const GAMMAS: [f64; 6] = [1.0, 1.5, 2.0, 3.3, 5.0, 7.0];
 const DEFAULT_GAMMA: f64 = 3.3;
-/// Peak frequencies searched when the peak is not pinned to Tp: 10 s to 1.7 s.
-const PEAK_SEARCH: (f64, f64) = (0.1, 0.6);
+/// Peak frequencies tried when the peak is not pinned to Tp: 10 s to 1.7 s in
+/// 1% steps. That is far finer than a plot axis (GFS points are 7% apart).
+const PEAK_RANGE: (f64, f64) = (0.1, 0.6);
+const PEAK_STEP: f64 = 1.01;
 
 /// How the part of the spectrum below 10 s was placed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -228,22 +232,70 @@ fn fit_jonswap(
     } else {
         &[DEFAULT_GAMMA]
     };
-    let misfit = |fp: f64, gamma: f64| {
-        let (_, tm10, tm02) = shape_moments(fp, gamma, max_frequency);
-        ln_tm10.map_or(0.0, |t| (tm10 - t).powi(2)) + ln_tm02.map_or(0.0, |t| (tm02 - t).powi(2))
+    let misfit = |s: &Shape| {
+        ln_tm10.map_or(0.0, |t| (s.ln_tm10 - t).powi(2))
+            + ln_tm02.map_or(0.0, |t| (s.ln_tm02 - t).powi(2))
+    };
+    let best = |shapes: &mut dyn Iterator<Item = Shape>| {
+        shapes
+            .min_by(|a, b| misfit(a).total_cmp(&misfit(b)))
+            .map(|s| (s.peak_frequency, s.gamma, s.m0))
     };
 
-    let (fp, gamma, _) = gammas
-        .iter()
-        .map(|&gamma| {
-            let fp = anchor.unwrap_or_else(|| {
-                let (lo, hi) = (PEAK_SEARCH.0.ln(), PEAK_SEARCH.1.ln());
-                golden_section_min(|ln_fp| misfit(ln_fp.exp(), gamma), lo, hi).exp()
-            });
-            (fp, gamma, misfit(fp, gamma))
-        })
-        .min_by(|a, b| a.2.total_cmp(&b.2))?;
-    Some((fp, gamma, shape_moments(fp, gamma, max_frequency).0))
+    match anchor {
+        // Pinned peak: only the γ values to try, computed directly.
+        Some(fp) => best(&mut gammas.iter().map(|g| Shape::new(fp, *g, max_frequency))),
+        None => best(
+            &mut shape_table(max_frequency)
+                .iter()
+                .filter(|s| gammas.contains(&s.gamma))
+                .copied(),
+        ),
+    }
+}
+
+/// A JONSWAP shape and its moments over [0.1, max_frequency].
+#[derive(Clone, Copy, Debug)]
+struct Shape {
+    peak_frequency: f64,
+    gamma: f64,
+    /// ∫ shape df
+    m0: f64,
+    ln_tm10: f64,
+    ln_tm02: f64,
+}
+
+impl Shape {
+    fn new(peak_frequency: f64, gamma: f64, max_frequency: f64) -> Self {
+        let (m0, ln_tm10, ln_tm02) = shape_moments(peak_frequency, gamma, max_frequency);
+        Shape {
+            peak_frequency,
+            gamma,
+            m0,
+            ln_tm10,
+            ln_tm02,
+        }
+    }
+}
+
+/// Every (peak frequency, γ) tried when the peak is free, for one
+/// `max_frequency`. Built on first use (a few ms) and kept.
+fn shape_table(max_frequency: f64) -> Arc<Vec<Shape>> {
+    static TABLES: Mutex<Vec<(u64, Arc<Vec<Shape>>)>> = Mutex::new(Vec::new());
+    let mut tables = TABLES.lock().unwrap_or_else(|e| e.into_inner());
+    let key = max_frequency.to_bits();
+    if let Some((_, table)) = tables.iter().find(|(k, _)| *k == key) {
+        return table.clone();
+    }
+    let steps = ((PEAK_RANGE.1 / PEAK_RANGE.0).ln() / PEAK_STEP.ln()).ceil() as i32;
+    let table: Arc<Vec<Shape>> = Arc::new(
+        (0..=steps)
+            .map(|i| PEAK_RANGE.0 * PEAK_STEP.powi(i))
+            .flat_map(|fp| GAMMAS.map(|gamma| Shape::new(fp, gamma, max_frequency)))
+            .collect(),
+    );
+    tables.push((key, table.clone()));
+    table
 }
 
 /// Unnormalised JONSWAP shape, σ = 0.07 at or below the peak and 0.09 above.
@@ -275,25 +327,6 @@ fn shape_moments(fp: f64, gamma: f64, max_frequency: f64) -> (f64, f64, f64) {
     (m0 * h / 3.0, (m_1 / m0).ln(), 0.5 * (m0 / m2).ln())
 }
 
-/// Minimum of `f` on [lo, hi], assuming one minimum.
-fn golden_section_min(f: impl Fn(f64) -> f64, mut lo: f64, mut hi: f64) -> f64 {
-    let ratio = (5f64.sqrt() - 1.0) / 2.0;
-    let (mut x1, mut x2) = (hi - ratio * (hi - lo), lo + ratio * (hi - lo));
-    let (mut f1, mut f2) = (f(x1), f(x2));
-    for _ in 0..30 {
-        if f1 <= f2 {
-            (hi, x2, f2) = (x2, x1, f1);
-            x1 = hi - ratio * (hi - lo);
-            f1 = f(x1);
-        } else {
-            (lo, x1, f1) = (x1, x2, f2);
-            x2 = lo + ratio * (hi - lo);
-            f2 = f(x2);
-        }
-    }
-    (lo + hi) / 2.0
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -320,6 +353,10 @@ mod tests {
         let (_, tm10, tm02) = shape_moments(0.2, 3.3, ECWAM_MAX_FREQUENCY);
         let (fp, gamma, _) =
             fit_jonswap(None, Some(tm10), Some(tm02), ECWAM_MAX_FREQUENCY).unwrap();
-        assert!((fp - 0.2).abs() < 1e-4 && gamma == 3.3, "{fp} {gamma}");
+        // To the 1% step of the peak frequencies tried.
+        assert!(
+            (fp / 0.2 - 1.0).abs() < 0.005 && gamma == 3.3,
+            "{fp} {gamma}"
+        );
     }
 }

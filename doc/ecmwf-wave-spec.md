@@ -510,12 +510,17 @@ its own axis. playbuoy uses the six band midpoints (27.5, 23, 19, 15.5, 13,
   3. Residual Tm-1,0 = m₋₁/m0 and Tm02 = √(m0/m2).
   4. Fit the shape's Tm-1,0 and Tm02, integrated over 0.1 Hz to
      `max_frequency`, to the residual ones by least squares in log period.
-     γ ∈ {1, 1.5, 2, 3.3, 5, 7}; fp by golden-section search over 0.1–0.6 Hz.
-     - **Tp < 10 s:** fp = 1/Tp exactly, γ fitted. `PeakAnchored`. ~30 µs.
-     - **Tp ≥ 10 s:** fp and γ fitted. `Approximate`. ~0.7 ms.
+     γ ∈ {1, 1.5, 2, 3.3, 5, 7}.
+     - **Tp < 10 s:** fp = 1/Tp exactly, γ fitted. `PeakAnchored`. ~25 µs.
+     - **Tp ≥ 10 s:** fp and γ fitted. `Approximate`. ~17 µs.
      - **AIFS** (no Tp, no Tm02): fp fitted to Tm-1,0 with γ = 3.3.
-       `Approximate`. Kept rather than returning None: against GFS it places
-       the peak below 10 s with a median error of 0.5 s (see below).
+       `Approximate`. ~3 µs. Kept rather than returning None: against GFS it
+       places the peak below 10 s with a median error of 0.5 s (see below).
+
+   A free peak is chosen from a table of shapes with fp from 0.1 to 0.6 Hz in
+   1% steps, for each γ. The table is built the first time a `max_frequency`
+   is used (~3 ms) and kept. 1% is well under the spacing of a plot axis (7%
+   on the GFS grid), so the line drawn does not depend on it.
   5. Scale the shape so its energy from 0.1 Hz to `max_frequency` is the
      residual m0.
 
@@ -561,13 +566,13 @@ group is small.
 
 | group | n | IFS peak err median / p90 | IFS shape | AIFS peak err median / p90 | AIFS shape |
 |---|---|---|---|---|---|
-| all | 385 | 0.00 / 0.09 s | 0.38 | 0.47 / 3.32 s | 0.51 |
-| Tp < 10 s | 344 | 0.00 / 0.00 s | 0.36 | 0.43 / 3.10 s | 0.50 |
-| Tp ≥ 10 s | 41 | 0.90 / 3.99 s | 0.44 | 0.65 / 3.71 s | 0.54 |
-| … with a peak below 10 s | 31 | 0.81 / 3.99 s | 0.38 | 0.61 / 3.73 s | 0.54 |
-| … swell flank only | 10 | 2.54 / 3.78 s | 0.86 | 1.82 / 3.14 s | 0.63 |
-| one peak below 10 s | 257 | 0.00 / 0.80 s | 0.29 | 0.38 / 2.37 s | 0.44 |
-| 8–10 s peak + 2nd below 10 s | 56 | 0.00 / 0.00 s | 0.80 | 1.12 / 4.35 s | 0.83 |
+| all | 385 | 0.00 / 0.09 s | 0.38 | 0.46 / 3.30 s | 0.51 |
+| Tp < 10 s | 344 | 0.00 / 0.00 s | 0.36 | 0.43 / 3.11 s | 0.50 |
+| Tp ≥ 10 s | 41 | 0.90 / 3.98 s | 0.44 | 0.65 / 3.69 s | 0.54 |
+| … with a peak below 10 s | 31 | 0.84 / 3.98 s | 0.38 | 0.58 / 3.75 s | 0.54 |
+| … swell flank only | 10 | 2.54 / 3.77 s | 0.86 | 1.83 / 3.15 s | 0.64 |
+| one peak below 10 s | 257 | 0.00 / 0.80 s | 0.29 | 0.38 / 2.35 s | 0.44 |
+| 8–10 s peak + 2nd below 10 s | 56 | 0.00 / 0.00 s | 0.80 | 1.12 / 4.34 s | 0.83 |
 
 Compared with the NDBC prototype (3,300 spectra, 0.1–0.485 Hz): Tp < 10 s
 peak error 0.17 / 0.33 s there, Tp ≥ 10 s median 1.4 s, shape error 0.39. The
