@@ -1,6 +1,7 @@
 # Spec: ECMWF wave products and model refactor
 
 Status: all phases implemented (PR #6, branch `ecmwf-wave-model`), 2026-09-23.
+Section 8 (fitted 1-D spectrum) added on branch `ecmwf-fitted-spectrum`, 2026-11-11.
 Background: `doc/ecmwf-open-data-waves.md`.
 
 ## Goals
@@ -445,6 +446,200 @@ at 24h and 3.25 ± 0.77 m at 72h, with direction agreement going from ±2° to
 Done in phase 5: see `ECMWFWindModel` (section 3), `ECMWFField::WindU/WindV`
 (section 4) and the wind fields on the point record (section 5).
 
+## 8. Fitted 1-D spectrum (`data/ecmwf_fitted_spectrum.rs`)
+
+A frequency spectrum (m²/Hz) built from one point record, so IFS can be drawn
+on the same frequency charts as GFS and NDBC. ECMWF publishes no spectrum, so
+the part below 10 s is a **fit**, not data. It does not change the "no fake
+swell components" rule: there are still no partitions or per-band directions,
+and no energy (kJ) or wave power from the curve (a test showed it overestimates
+ET by up to 2× in mixed 8–10 s seas).
+
+```rust
+/// 0.0345 × 1.1³⁵ Hz: top of the ECWAM spectrum (36 frequencies, ratio 1.1).
+pub const ECWAM_MAX_FREQUENCY: f64;
+pub const FIT_GAMMAS: [f64; 6];   // 1, 1.5, 2, 3.3, 5, 7
+pub const DEFAULT_GAMMA: f64;     // 3.3, used when only Tm-1,0 is known
+
+/// Fixed axis, the same for every record. Ascending frequency / descending period.
+pub fn ecmwf_spectrum_frequencies() -> Vec<f64>;
+pub fn ecmwf_spectrum_periods() -> Vec<f64>;
+/// Width (Hz) each axis point stands for: full band widths, then WW3 bin widths.
+pub fn ecmwf_spectrum_bandwidths() -> Vec<f64>;
+
+pub enum FitQuality { PeakAnchored, Approximate }
+
+pub struct JonswapFit {
+    pub peak_period: f64, pub gamma: f64,
+    pub energy: f64,          // m², the residual m0
+    pub max_frequency: f64,   // Hz
+    pub scale: f64,           // multiplies the unit JONSWAP shape
+}
+impl JonswapFit {
+    pub fn density(&self, frequency: f64) -> f64;   // 0 outside [0.1, max_frequency]
+    pub fn significant_height(&self) -> f64;
+}
+
+pub struct ECMWFWaveParameters {   // metres and seconds
+    pub significant_wave_height: f64,
+    pub energy_period: f64,              // Tm-1,0
+    pub zero_crossing_period: Option<f64>,  // Tm02, None for AIFS
+    pub peak_period: Option<f64>,           // None for AIFS
+    pub band_heights: [f64; 6],          // ECMWF_WAVE_PERIOD_BANDS order
+}
+impl ECMWFWaveParameters {
+    /// Converts to metres. None unless Hs, Tm-1,0 and all six bands are present.
+    pub fn from_record(record: &ECMWFWavePointDataRecord) -> Option<Self>;
+}
+
+pub struct ECMWFFittedSpectrum {
+    pub density: Vec<f64>,                 // m²/Hz, one per axis point
+    pub fit: FitQuality,
+    pub short_period: Option<JonswapFit>,  // None when the curve is zero below 10 s
+}
+
+pub struct ECMWFSpectrumFitter { /* max_frequency, table of shape moments */ }
+impl ECMWFSpectrumFitter {
+    pub fn new(max_frequency: f64) -> Self;   // ~35 ms (release): tabulates the shapes
+    pub fn ecwam() -> &'static Self;          // shared, up to ECWAM_MAX_FREQUENCY
+    pub fn max_frequency(&self) -> f64;
+    pub fn fit(&self, parameters: &ECMWFWaveParameters) -> Option<ECMWFFittedSpectrum>; // ~40–70 µs
+}
+
+impl ECMWFWavePointDataRecord {
+    /// `ECMWFSpectrumFitter::ecwam().fit(...)`. None unless Hs, Tm-1,0 and all bands are present.
+    pub fn fitted_spectrum(&self) -> Option<ECMWFFittedSpectrum>;
+}
+```
+
+### Axis
+
+30 points, fixed for every record and time step, in descending period like
+playbuoy's `spectra_axes.period`:
+
+- 6 points at the band midpoint periods: 27.5, 23, 19, 15.5, 13, 11 s.
+- 24 points on the GFS WW3 grid, `0.035 × 1.07ⁿ` Hz for n = 16…39: 0.103 Hz
+  (9.7 s) to 0.490 Hz (2.04 s).
+
+### Values
+
+- **Bands (≥ 10 s):** `(h²/16) / (1/min_period − 1/max_period)` at the band
+  midpoint, i.e. the band's energy spread evenly over its frequency width.
+  These are exact band averages of the model spectrum.
+- **Below 10 s:** a JONSWAP shape (σ = 0.07 at or below fp, 0.09 above):
+  1. Total moments: m0 = Hs²/16, m₋₁ = Tm-1,0·m0, m2 = m0/Tm02².
+  2. Take out each band with flat density d from f1 to f2:
+     m0 −= d(f2−f1), m₋₁ −= d·ln(f2/f1), m2 −= d(f2³−f1³)/3.
+  3. Residual Tm-1,0 = m₋₁/m0 and Tm02 = √(m0/m2).
+  4. Fit the shape's Tm-1,0 and Tm02, integrated over 0.1 Hz to
+     `max_frequency`, to the residual ones by least squares in log period.
+     - **Tp < 10 s:** fp = 1/Tp exactly, γ from `FIT_GAMMAS`. `PeakAnchored`.
+     - **Tp ≥ 10 s:** fp (0.1–0.6 Hz in 0.25% steps) and γ. `Approximate`.
+     - **AIFS** (no Tp, no Tm02): fp only, matched to Tm-1,0, with γ = 3.3.
+       `Approximate`. Kept rather than returning None: against GFS it places
+       the peak below 10 s with a median error of 0.5 s (see below).
+  5. Scale the shape so its energy from 0.1 Hz to `max_frequency` is the
+     residual m0, and evaluate it at the 24 axis points.
+
+The bands plus the whole fitted part give back the published Hs exactly. The
+axis stops at 0.49 Hz, so integrating the 30 points (with
+`ecmwf_spectrum_bandwidths`) misses the tail above that: 0.7% of Hs in the
+median against GFS, 5% at worst, and 3.606 vs 3.608 m at 44097.
+
+Edge cases:
+- **Residual m0 ≤ 0** (bands above the total, packing noise): clamped, zeros
+  below 10 s, `short_period: None`.
+- **Residual moment ≤ 0:** that period is left out of the fit. If neither is
+  usable and there is no Tp anchor, the residual is dropped (zeros below 10 s).
+  This happens in pure swell (Tp ≈ 15 s, Tm02 ≈ 14.8 s), where the residual is
+  a few cm of Hs and the flat-band assumption takes more than all of its m₋₁
+  and m2.
+- Over a 2° lattice of the IFS HRES fixture (9,257 ocean points), 15 points
+  have nothing below 10 s from either cause, and Hs is off by at most 0.32%
+  there. Every other point integrates to Hs within 0.1%.
+- Heights are converted to metres, so the density is m²/Hz whatever units the
+  record is in.
+
+At 44097 (fixture, Hs 3.61 m, Tp 8.79 s): `PeakAnchored`, γ = 1, residual Hs
+3.31 m. The curve runs 6.2 m²/Hz at 11 s and 8.8 at 9.7 s, peaks at 9.7 m²/Hz
+on the 9.04 s point (the axis point nearest Tp), and falls to 0.02 at 2 s.
+
+### Validation against GFS spectra
+
+`examples/validate_ecmwf_spectrum_fit.rs` (runs offline on
+`mock/gfswave.44097.spec`). For each GFS-Wave point spectrum it computes what
+ECMWF would publish (Hs, Tp as the 1-D peak bin, Tm-1,0, Tm02 and the six band
+heights, with WW3 geometric bin edges), rebuilds the curve, and compares the
+part below 10 s (bins above 0.1 Hz) with the truth. GFS spectra reach 0.964 Hz
+(top edge 0.997 Hz, used as `max_frequency`), close to ECWAM's 0.97 Hz, so the
+moments include the same high-frequency tail. NDBC spectra stop at 0.485 Hz.
+
+Data: 385 hourly spectra at 44097 from one run (2022-09-12 06z to 09-28 06z).
+That is one station and one run, so cases are strongly correlated and the
+Tp ≥ 10 s group is small.
+
+- Peak error: |fitted peak period − period of the largest true bin above 0.1 Hz|.
+- Shape error: Σ|fit − truth|·df / Σ truth·df over the bins above 0.1 Hz.
+  0 is perfect, 2 is disjoint. "To 0.49 Hz" stops at the axis (and about
+  NDBC's range).
+- Peaks: local maxima above 25% of the largest bin above 0.1 Hz.
+
+IFS (Hs, Tp, Tm-1,0, Tm02, bands):
+
+| group | n | peak err median / p90 | within 1 s | shape median | shape to 0.49 Hz |
+|---|---|---|---|---|---|
+| all | 385 | 0.00 / 0.10 s | 95% | 0.38 | 0.37 |
+| Tp < 10 s | 344 | 0.00 / 0.00 s | 100% | 0.35 | 0.34 |
+| Tp ≥ 10 s | 41 | 0.91 / 3.96 s | 56% | 0.43 | 0.42 |
+| … with a peak below 10 s | 31 | 0.81 / 3.96 s | 74% | 0.38 | 0.36 |
+| … swell flank only | 10 | 2.51 / 3.75 s | 0% | 0.84 | 0.84 |
+| one peak below 10 s | 257 | 0.00 / 0.81 s | 93% | 0.28 | 0.28 |
+| 8–10 s peak + 2nd peak below 10 s | 56 | 0.00 / 0.00 s | 100% | 0.79 | 0.81 |
+
+AIFS (Hs, Tm-1,0, bands; γ = 3.3):
+
+| group | n | peak err median / p90 | within 1 s | shape median |
+|---|---|---|---|---|
+| all | 385 | 0.48 / 3.32 s | 70% | 0.51 |
+| Tp < 10 s | 344 | 0.43 / 3.09 s | 71% | 0.50 |
+| Tp ≥ 10 s | 41 | 0.67 / 3.68 s | 59% | 0.54 |
+| one peak below 10 s | 257 | 0.38 / 2.34 s | 81% | 0.43 |
+| 8–10 s peak + 2nd peak below 10 s | 56 | 1.13 / 4.34 s | 45% | 0.83 |
+
+Compared with the NDBC prototype (3,300 spectra, 0.1–0.485 Hz):
+
+| | NDBC | GFS |
+|---|---|---|
+| Tp < 10 s peak error, median / p90 | 0.17 / 0.33 s | 0.00 / 0.00 s |
+| Tp ≥ 10 s peak error, median | 1.4 s | 0.91 s (n = 41) |
+| shape error, median | 0.39 | 0.38 (0.37 to 0.49 Hz) |
+
+The GFS check is not worse than the NDBC one. Notes:
+
+- **The `PeakAnchored` peak error is zero by construction here.** When
+  Tp < 10 s the global peak is the peak below 10 s, and both come from the same
+  bins, so pinning fp to 1/Tp is exact. The prototype's 0.17 s came from its
+  pin tolerance (0.006 Hz) on a 0.0025 Hz table; the fitter now pins exactly.
+  With real ECMWF data the error is whatever separates ECWAM's `pp1d` from its
+  own spectral peak. For `PeakAnchored` records, the shape error is the
+  number that matters.
+- **The known failure is confirmed.** When a peak at 8–10 s sits with a second,
+  shorter wind sea below 10 s (56 of 385, 15%), the shape error is 0.79 against
+  0.28 for a single peak. The peak lands on the right place (it is Tp) but one
+  JONSWAP cannot carry the second peak, so that energy is smeared under the
+  first.
+- **With Tp ≥ 10 s and no peak below 10 s** (the energy just under 10 s is the
+  flank of the swell), the fit still draws a wind-sea hump, 2–4 s shorter than
+  the largest true bin (9.7 s). The energy is right; the shape is not.
+- **γ sits at the bottom of the grid.** The fit picks γ = 1 for 267 of 385
+  spectra (and at 44097). For those, the shape's periods miss the residual
+  ones by 7% (rms of log, median) and by 61% at p90, against 5% / 12% when
+  γ > 1. Below 10 s, GFS spectra are usually broader than any JONSWAP with
+  the peak at Tp. Not tuned here; a broader shape (γ < 1, or a wider σ) is
+  the obvious next thing to try.
+- Run with `cargo run --release --example validate_ecmwf_spectrum_fit [spec files…]`
+  to score other GFS station spectra.
+
 ## Validation
 
 - **Regression test for the sampler:** GFS `global.0p16` HTSGW at 44097 using
@@ -507,6 +702,8 @@ Also `mock/hrrr.20260923.t00z.wrfsfcf00.tmp2m.grib2` (1.2 MB) for projected grid
 - `examples/validate_against_ndbc.rs`: the buoy comparison above (`RUN`,
   `MAX_HOUR`).
 - `examples/gen_surf_forecast_gfs.rs`: now takes `END_HOUR` to shorten the run.
+- `examples/validate_ecmwf_spectrum_fit.rs`: scores the fitted spectrum
+  against GFS point spectra (section 8). Offline.
 
 ## Phases
 

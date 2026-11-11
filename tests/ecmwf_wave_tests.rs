@@ -511,3 +511,313 @@ mod ensemble {
         assert_eq!(exceedance_probability(&[], |_| true), None);
     }
 }
+
+mod fitted_spectrum {
+    use super::*;
+    use surfrs::{
+        data::{
+            ecmwf_field::ECMWF_WAVE_PERIOD_BANDS,
+            ecmwf_fitted_spectrum::{
+                ecmwf_spectrum_bandwidths, ecmwf_spectrum_frequencies, ecmwf_spectrum_periods,
+                ECMWFFittedSpectrum, ECMWFSpectrumFitter, ECMWFWaveParameters, FitQuality,
+                JonswapFit, DEFAULT_GAMMA, ECWAM_MAX_FREQUENCY,
+            },
+            ecmwf_wave_point_data_record::ECMWFWavePointDataRecord,
+        },
+        location::Location,
+        units::{UnitConvertible, UnitSystem},
+    };
+
+    fn record_at_44097() -> ECMWFWavePointDataRecord {
+        let data = fs::read(format!("{IFS_HRES}.grib2")).unwrap();
+        let messages: Vec<_> = read_messages(&data).collect();
+        let location = Location::new(40.97, -71.13, "NDBC 44097".into());
+        ECMWFWavePointDataRecord::from_messages(&messages, &location)
+            .unwrap()
+            .remove(0)
+    }
+
+    fn parameters_at_44097() -> ECMWFWaveParameters {
+        ECMWFWaveParameters::from_record(&record_at_44097()).unwrap()
+    }
+
+    /// (h²/16) / (1/min − 1/max) for each band, in axis order (longest first).
+    fn band_densities(p: &ECMWFWaveParameters) -> Vec<f64> {
+        ECMWF_WAVE_PERIOD_BANDS
+            .iter()
+            .zip(p.band_heights)
+            .rev()
+            .map(|((min, max), h)| h * h / 16.0 / (1.0 / *min as f64 - 1.0 / *max as f64))
+            .collect()
+    }
+
+    /// ∫ fit over [0.1, max_frequency] by the midpoint rule in ln f.
+    fn fitted_energy(fit: &JonswapFit) -> f64 {
+        let n = 20_000;
+        let (a, b) = (0.1f64.ln(), fit.max_frequency.ln());
+        let h = (b - a) / n as f64;
+        (0..n)
+            .map(|i| {
+                let f = (a + h * (i as f64 + 0.5)).exp();
+                fit.density(f) * f * h
+            })
+            .sum()
+    }
+
+    /// Hs from the bands at their true widths plus the whole fitted part.
+    fn reconstructed_hs(p: &ECMWFWaveParameters, spectrum: &ECMWFFittedSpectrum) -> f64 {
+        let bands: f64 = p.band_heights.iter().map(|h| h * h / 16.0).sum();
+        let short = spectrum.short_period.as_ref().map_or(0.0, fitted_energy);
+        4.0 * (bands + short).sqrt()
+    }
+
+    /// Hs from integrating the curve over the axis as a chart would.
+    fn axis_hs(spectrum: &ECMWFFittedSpectrum) -> f64 {
+        let m0: f64 = spectrum
+            .density
+            .iter()
+            .zip(ecmwf_spectrum_bandwidths())
+            .map(|(d, w)| d * w)
+            .sum();
+        4.0 * m0.sqrt()
+    }
+
+    #[test]
+    fn band_densities_are_exact_at_44097() {
+        let record = record_at_44097();
+        let spectrum = record.fitted_spectrum().unwrap();
+        let p = parameters_at_44097();
+        assert_eq!(
+            p.significant_wave_height,
+            record.significant_wave_height.get_value()
+        );
+        assert_eq!(&spectrum.density[..6], band_densities(&p).as_slice());
+        // 14–17 s, written out: (h²/16) / (1/14 − 1/17).
+        let h = record
+            .period_bands
+            .iter()
+            .find(|b| (b.min_period, b.max_period) == (14, 17))
+            .unwrap()
+            .height
+            .get_value();
+        assert_eq!(
+            spectrum.density[3],
+            h * h / 16.0 / (1.0 / 14.0 - 1.0 / 17.0)
+        );
+    }
+
+    #[test]
+    fn curve_integrates_to_published_hs() {
+        let p = parameters_at_44097();
+        let spectrum = ECMWFSpectrumFitter::ecwam().fit(&p).unwrap();
+        let hs = p.significant_wave_height;
+
+        // Bands at their true widths plus the fitted part over its whole range.
+        let full = reconstructed_hs(&p, &spectrum);
+        assert!((full / hs - 1.0).abs() < 1e-4, "{full} vs {hs}");
+
+        // Over the axis alone, the fitted part stops at 0.49 Hz, so a little
+        // of the high-frequency tail is missing.
+        let axis = axis_hs(&spectrum);
+        assert!(axis < full && axis / hs > 0.97, "{axis} vs {hs}");
+    }
+
+    #[test]
+    fn peak_anchored_puts_the_short_peak_at_tp() {
+        let p = parameters_at_44097();
+        let tp = p.peak_period.unwrap();
+        assert!(tp < 10.0, "fixture Tp {tp}");
+
+        let spectrum = ECMWFSpectrumFitter::ecwam().fit(&p).unwrap();
+        assert_eq!(spectrum.fit, FitQuality::PeakAnchored);
+        let fit = spectrum.short_period.unwrap();
+        assert!((fit.peak_period - tp).abs() < 1e-9);
+
+        // The continuous shape peaks at Tp ...
+        let fp = 1.0 / tp;
+        for ratio in [0.97, 0.99, 1.01, 1.03] {
+            assert!(fit.density(fp * ratio) < fit.density(fp));
+        }
+        // ... and on the axis, the highest point below 10 s is the one nearest Tp.
+        let frequencies = ecmwf_spectrum_frequencies();
+        let short = 6..frequencies.len();
+        let highest = short
+            .clone()
+            .max_by(|a, b| spectrum.density[*a].total_cmp(&spectrum.density[*b]))
+            .unwrap();
+        let nearest = short
+            .min_by(|a, b| {
+                (frequencies[*a] / fp)
+                    .ln()
+                    .abs()
+                    .total_cmp(&(frequencies[*b] / fp).ln().abs())
+            })
+            .unwrap();
+        assert_eq!(highest, nearest);
+    }
+
+    #[test]
+    fn long_peak_period_is_approximate() {
+        let p = ECMWFWaveParameters {
+            peak_period: Some(12.0),
+            ..parameters_at_44097()
+        };
+        let spectrum = ECMWFSpectrumFitter::ecwam().fit(&p).unwrap();
+        assert_eq!(spectrum.fit, FitQuality::Approximate);
+        let fit = spectrum.short_period.unwrap();
+        assert!(fit.peak_period < 10.0);
+        assert!((reconstructed_hs(&p, &spectrum) / p.significant_wave_height - 1.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn aifs_fits_energy_period_with_fixed_gamma() {
+        let ifs = parameters_at_44097();
+        let aifs = ECMWFWaveParameters {
+            peak_period: None,
+            zero_crossing_period: None,
+            ..ifs.clone()
+        };
+        let spectrum = ECMWFSpectrumFitter::ecwam().fit(&aifs).unwrap();
+        assert_eq!(spectrum.fit, FitQuality::Approximate);
+        let fit = spectrum.short_period.unwrap();
+        assert_eq!(fit.gamma, DEFAULT_GAMMA);
+        assert!(
+            (reconstructed_hs(&aifs, &spectrum) / aifs.significant_wave_height - 1.0).abs() < 1e-4
+        );
+
+        // The residual energy is the same as for IFS; only its shape differs.
+        let ifs_fit = ECMWFSpectrumFitter::ecwam()
+            .fit(&ifs)
+            .unwrap()
+            .short_period
+            .unwrap();
+        assert!((fit.energy - ifs_fit.energy).abs() < 1e-12);
+        // With only Tm-1,0 to go on, the peak still lands in the wind sea.
+        assert!(
+            (fit.peak_period - ifs.peak_period.unwrap()).abs() < 1.5,
+            "{fit:?}"
+        );
+    }
+
+    #[test]
+    fn residual_is_clamped_when_bands_hold_all_the_energy() {
+        // Bands slightly above the total, as packing noise leaves them.
+        let p = ECMWFWaveParameters {
+            significant_wave_height: 1.0,
+            energy_period: 13.0,
+            zero_crossing_period: Some(12.0),
+            peak_period: Some(14.5),
+            band_heights: [0.41, 0.41, 0.41, 0.41, 0.41, 0.41],
+        };
+        let spectrum = ECMWFSpectrumFitter::ecwam().fit(&p).unwrap();
+        assert!(spectrum.short_period.is_none());
+        assert!(spectrum.density[6..].iter().all(|d| *d == 0.0));
+        assert_eq!(&spectrum.density[..6], band_densities(&p).as_slice());
+    }
+
+    #[test]
+    fn axis_is_the_same_for_every_record() {
+        let base = parameters_at_44097();
+        let variants = [
+            base.clone(),
+            ECMWFWaveParameters {
+                peak_period: Some(12.0),
+                ..base.clone()
+            },
+            ECMWFWaveParameters {
+                peak_period: None,
+                zero_crossing_period: None,
+                ..base.clone()
+            },
+            ECMWFWaveParameters {
+                significant_wave_height: 0.5,
+                ..base.clone()
+            },
+        ];
+        let periods = ecmwf_spectrum_periods();
+        for p in &variants {
+            let spectrum = ECMWFSpectrumFitter::ecwam().fit(p).unwrap();
+            assert_eq!(spectrum.density.len(), periods.len());
+        }
+        assert_eq!(periods, ecmwf_spectrum_periods());
+        let frequencies = ecmwf_spectrum_frequencies();
+        assert!(frequencies.windows(2).all(|w| w[0] < w[1]));
+        assert!((frequencies.last().unwrap() - 0.035 * 1.07f64.powi(39)).abs() < 1e-12);
+    }
+
+    #[test]
+    fn record_needs_hs_energy_period_and_every_band() {
+        let mut record = record_at_44097();
+        record.period_bands.pop();
+        assert!(record.fitted_spectrum().is_none());
+
+        let mut record = record_at_44097();
+        record.energy_period.value = None;
+        assert!(record.fitted_spectrum().is_none());
+    }
+
+    #[test]
+    fn density_is_in_metres_whatever_the_record_units() {
+        let record = record_at_44097();
+        let mut english = record.clone();
+        english.to_units(&UnitSystem::English);
+        let metric = record.fitted_spectrum().unwrap();
+        let converted = english.fitted_spectrum().unwrap();
+        for (a, b) in metric.density.iter().zip(&converted.density) {
+            assert!((a - b).abs() <= 1e-9 * a.abs().max(1e-12), "{a} vs {b}");
+        }
+    }
+
+    #[test]
+    fn fits_every_ocean_point() {
+        let data = fs::read(format!("{IFS_HRES}.grib2")).unwrap();
+        let messages: Vec<_> = read_messages(&data).collect();
+        let locations: Vec<Location> = (-35..=35)
+            .flat_map(|lat| {
+                (0..180).map(move |lng| {
+                    Location::new(2.0 * lat as f64 + 0.37, 2.0 * lng as f64 + 0.61, "".into())
+                })
+            })
+            .collect();
+        let records = ECMWFWavePointDataRecord::from_messages_many(&messages, &locations).unwrap();
+
+        let (mut ocean, mut clamped, mut anchored) = (0, 0, 0);
+        let mut worst_dropped: f64 = 0.0;
+        for record in records.iter().map(|r| &r[0]) {
+            if record.significant_wave_height.value.is_none() {
+                continue;
+            }
+            ocean += 1;
+            let p = ECMWFWaveParameters::from_record(record).unwrap();
+            let spectrum = record.fitted_spectrum().expect("no fit");
+            assert!(spectrum.density.iter().all(|d| d.is_finite() && *d >= 0.0));
+            let ratio = reconstructed_hs(&p, &spectrum) / p.significant_wave_height;
+            match spectrum.short_period {
+                // Packing noise, or a residual too small to place: the curve
+                // is the bands alone and Hs is off by very little.
+                None => {
+                    clamped += 1;
+                    worst_dropped = worst_dropped.max((ratio - 1.0).abs());
+                }
+                Some(_) => assert!((ratio - 1.0).abs() < 1e-3, "{ratio} at {:?}", p),
+            }
+            if spectrum.fit == FitQuality::PeakAnchored {
+                anchored += 1;
+            }
+        }
+        assert!(ocean > 6_000, "only {ocean} ocean points");
+        println!(
+            "{ocean} ocean points, {clamped} with nothing below 10 s (Hs off by at most {:.2}%), {anchored} peak-anchored",
+            100.0 * worst_dropped
+        );
+        assert!(worst_dropped < 0.005, "{worst_dropped}");
+    }
+
+    #[test]
+    fn ecwam_upper_frequency() {
+        assert_eq!(
+            ECMWFSpectrumFitter::ecwam().max_frequency(),
+            ECWAM_MAX_FREQUENCY
+        );
+    }
+}
